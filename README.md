@@ -1,5 +1,5 @@
-# zo
+# Zo 🦒
 
-Flutter UI Widget and Kits
+Flutter Widgets and Kits
 
 🚧 keep developing...
