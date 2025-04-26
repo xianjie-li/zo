@@ -1,5 +1,9 @@
 import "package:flutter/material.dart";
 import "package:zo/base/config/config.dart";
+import "package:flutter_localizations/flutter_localizations.dart";
+import "package:zo/base/local/en.dart";
+import "package:zo/base/local/zh.dart";
+import "package:zo/base/local/zo_localizations.dart";
 import "package:zo/base/theme/zo_style.dart";
 import "package:zo/pages/base_page.dart";
 
@@ -17,9 +21,21 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   ThemeMode mode = ThemeMode.light;
 
+  Locale locale = Locale("en");
+
   var theme = ZoStyle(brightness: Brightness.light).toThemeData();
 
   var darkTheme = ZoStyle(brightness: Brightness.dark).toThemeData();
+
+  var supportedLocales = const [Locale("en"), Locale("zh")];
+
+  late var localizationsDelegates = ZoLocalizations.createDelegate(
+    resourceMap: {
+      Locale("en"): ZoLocalizationsDefault(),
+      Locale("zh"): ZoLocalizationsZh(),
+    },
+    supportedLocales: supportedLocales,
+  );
 
   // This widget is the root of your application.
   @override
@@ -30,12 +46,29 @@ class _MyAppState extends State<MyApp> {
       themeMode: mode,
       theme: theme,
       darkTheme: darkTheme,
+      locale: locale,
+      localizationsDelegates: [
+        localizationsDelegates,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: supportedLocales,
       home: ZoConfig(
         message: "hello world",
         child: Scaffold(
           appBar: AppBar(
             title: Text("Zo"),
             actions: [
+              IconButton(
+                icon: locale == Locale("en") ? Text("ZH") : Text("CN"),
+                onPressed: () {
+                  setState(() {
+                    locale =
+                        locale == Locale("en") ? Locale("zh") : Locale("en");
+                  });
+                },
+              ),
               IconButton(
                 icon: Icon(
                   mode == ThemeMode.light ? Icons.dark_mode : Icons.light_mode,

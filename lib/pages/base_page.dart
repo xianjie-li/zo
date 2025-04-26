@@ -1,5 +1,5 @@
 import "package:flutter/material.dart";
-import "package:zo/base/config/config.dart";
+import "package:zo/base/local/zo_localizations.dart";
 import "package:zo/base/theme/zo_style.dart";
 import "package:zo/pages/widgets/title.dart";
 
@@ -14,6 +14,7 @@ class _BasePageState extends State<BasePage> {
   @override
   Widget build(BuildContext context) {
     final ZoStyle zoStyle = context.zoStyle;
+    final locale = ZoLocalizations.of(context);
 
     return SingleChildScrollView(
       child: Padding(
@@ -21,6 +22,7 @@ class _BasePageState extends State<BasePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Text(locale.msg),
             PageTitle("Color"),
             Wrap(
               spacing: 8,
