@@ -1,4 +1,4 @@
-import "package:zo/base/local/zo_localizations.dart";
+import "package:zo/src/base/locale/localizations.dart";
 
 class ZoLocalizationsDefault extends ZoLocalizations {
   const ZoLocalizationsDefault();

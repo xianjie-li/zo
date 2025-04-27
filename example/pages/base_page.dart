@@ -1,7 +1,6 @@
 import "package:flutter/material.dart";
-import "package:zo/base/local/zo_localizations.dart";
-import "package:zo/base/theme/zo_style.dart";
-import "package:zo/pages/widgets/title.dart";
+import "package:zo/zo.dart";
+import "widgets/title.dart";
 
 base class BasePage extends StatefulWidget {
   const BasePage({super.key});

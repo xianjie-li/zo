@@ -1,5 +1,5 @@
 import "package:flutter/widgets.dart";
-import "package:zo/base/local/en.dart";
+import "package:zo/src/base/locale/en.dart";
 
 /// 扩展 BuildContext, 用于更方便的获取 ZoLocalizations
 extension ZoLocalizationsContext on BuildContext {

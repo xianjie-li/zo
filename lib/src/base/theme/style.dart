@@ -1,7 +1,7 @@
 import "dart:ui";
 
 import "package:flutter/material.dart";
-import "package:zo/base/types/types.dart";
+import "package:zo/src/base/types/types.dart";
 
 /// 扩展 BuildContext, 用于更方便的获取 style
 extension ZoStyleContext on BuildContext {
@@ -60,6 +60,7 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
     this.smallSize = 28,
     this.normalSize = 36,
     this.largeSize = 44,
+    this.borderRadius = 8,
 
     this.breakPointSM = 576,
     this.breakPointMD = 768,
@@ -189,6 +190,9 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
   /// 对应 [ZoSize] large 的尺寸
   final double largeSize;
 
+  /// 圆角
+  final double borderRadius;
+
   // # # # # # # # 媒体查询断点: # # # # # # #
 
   /// 媒体查询断点: 小屏
@@ -287,6 +291,7 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
     double? smallSize,
     double? normalSize,
     double? largeSize,
+    double? borderRadius,
     double? breakPointSM,
     double? breakPointMD,
     double? breakPointLG,
@@ -332,6 +337,7 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
       smallSize: smallSize ?? this.smallSize,
       normalSize: normalSize ?? this.normalSize,
       largeSize: largeSize ?? this.largeSize,
+      borderRadius: borderRadius ?? this.borderRadius,
       breakPointSM: breakPointSM ?? this.breakPointSM,
       breakPointMD: breakPointMD ?? this.breakPointMD,
       breakPointLG: breakPointLG ?? this.breakPointLG,
@@ -391,6 +397,7 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
       smallSize: lerpDouble(smallSize, other.smallSize, t)!,
       normalSize: lerpDouble(normalSize, other.normalSize, t)!,
       largeSize: lerpDouble(largeSize, other.largeSize, t)!,
+      borderRadius: lerpDouble(borderRadius, other.borderRadius, t)!,
       breakPointSM: lerpDouble(breakPointSM, other.breakPointSM, t)!,
       breakPointMD: lerpDouble(breakPointMD, other.breakPointMD, t)!,
       breakPointLG: lerpDouble(breakPointLG, other.breakPointLG, t)!,

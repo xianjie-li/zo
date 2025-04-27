@@ -71,9 +71,9 @@ ZoConfig(
 
 ```dart
 import "package:flutter_localizations/flutter_localizations.dart";
-import "package:zo/base/local/en.dart";
-import "package:zo/base/local/zh.dart";
-import "package:zo/base/local/zo_localizations.dart";
+import "package:zo/src/base/local/en.dart";
+import "package:zo/src/base/local/zh.dart";
+import "package:zo/src/base/local/zo_localizations.dart";
 
 class MyAppState extends State<MyApp> {
   var supportedLocales = const [Locale("en"), Locale("zh")];
@@ -109,8 +109,8 @@ class MyAppState extends State<MyApp> {
 3. (可选)如果要添加新的语言包, 需要继承 `ZoLocalizations` 并实现 `ZoLocalizationsDefault`, 然后在 `resourceMap` 中添加它, 比如:
 
 ```dart
-import "package:zo/base/local/en.dart";
-import "package:zo/base/local/zo_localizations.dart";
+import "package:zo/src/base/local/en.dart";
+import "package:zo/src/base/local/zo_localizations.dart";
 
 class ZoLocalizationsZh extends ZoLocalizations
     implements ZoLocalizationsDefault {

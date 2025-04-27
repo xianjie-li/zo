@@ -1,11 +1,8 @@
 import "package:flutter/material.dart";
-import "package:zo/base/config/config.dart";
 import "package:flutter_localizations/flutter_localizations.dart";
-import "package:zo/base/local/en.dart";
-import "package:zo/base/local/zh.dart";
-import "package:zo/base/local/zo_localizations.dart";
-import "package:zo/base/theme/zo_style.dart";
-import "package:zo/pages/base_page.dart";
+import "package:zo/zo.dart";
+
+import "pages/base_page.dart";
 
 void main() {
   runApp(const MyApp());

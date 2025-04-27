@@ -1,5 +1,5 @@
-import "package:zo/base/local/en.dart";
-import "package:zo/base/local/zo_localizations.dart";
+import "package:zo/src/base/locale/en.dart";
+import "package:zo/src/base/locale/localizations.dart";
 
 class ZoLocalizationsZh extends ZoLocalizations
     implements ZoLocalizationsDefault {
