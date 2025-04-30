@@ -1,7 +1,7 @@
 import "dart:ui";
 
 import "package:flutter/material.dart";
-import "package:zo/src/base/types/types.dart";
+import "../types/types.dart";
 
 /// 扩展 BuildContext, 用于更方便的获取 style
 extension ZoStyleContext on BuildContext {
@@ -22,14 +22,12 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
     this.primaryColor = Colors.blue,
     this.secondaryColor = Colors.cyan,
     this.tertiaryColor = Colors.red,
-
-    this.alpha = 160,
+    // 0.45
+    this.alpha = 114,
     Color? barrierColor,
-    Color? primaryTextColor,
-    Color? hintTextColor,
+    Color? hintColor,
     Color? surfaceColor,
     Color? surfaceContainerColor,
-    Color? surfaceGrayColor,
     this.infoColor = Colors.blue,
     this.successColor = Colors.green,
     this.warningColor = Colors.orange,
@@ -41,7 +39,7 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
     Color? outlineColor,
     Color? outlineColorVariant,
     Color? shadowColor,
-    Color? shadowColorVariant,
+    this.shadowColorVariant = Colors.black87,
 
     this.elevation = 4,
     this.elevationDrawer = 8,
@@ -68,7 +66,6 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
     this.breakPointMD = 768,
     this.breakPointLG = 992,
     this.breakPointXL = 1200,
-    this.breakPointXXL = 1600,
   }) {
     var darkMode = brightness == Brightness.dark;
 
@@ -76,40 +73,22 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
     this.surfaceColor =
         surfaceColor ?? (darkMode ? Colors.grey[850]! : Colors.white);
     this.surfaceContainerColor =
-        surfaceContainerColor ??
-        surfaceGrayColor ??
-        (darkMode ? Colors.grey[900]! : Colors.white);
-    this.surfaceGrayColor =
-        (darkMode ? Colors.white.withAlpha(20) : Colors.black.withAlpha(10));
-    this.primaryTextColor =
-        primaryTextColor ??
-        (darkMode ? Colors.white.withAlpha(200) : Colors.black.withAlpha(160));
-    this.hintTextColor =
-        hintTextColor ??
-        (darkMode ? Colors.white.withAlpha(110) : Colors.black.withAlpha(90));
+        surfaceContainerColor ?? (darkMode ? Colors.grey[900]! : Colors.white);
+    this.hintColor = hintColor ?? (darkMode ? Colors.white38 : Colors.black26);
     this.outlineColor =
-        outlineColor ??
-        (darkMode ? Colors.white.withAlpha(40) : Colors.black.withAlpha(30));
+        outlineColor ?? (darkMode ? Colors.white24 : Colors.black12);
     this.outlineColorVariant =
-        outlineColorVariant ??
-        (darkMode ? Colors.white.withAlpha(76) : Colors.black.withAlpha(66));
+        outlineColorVariant ?? (darkMode ? Colors.white38 : Colors.black26);
     this.shadowColor =
-        shadowColor ?? (darkMode ? Colors.black : Colors.black.withAlpha(138));
-    this.shadowColorVariant =
-        shadowColorVariant ??
-        (darkMode ? Colors.black : Colors.black.withAlpha(168));
+        shadowColor ?? (darkMode ? Colors.black : Colors.black54);
     this.focusColor =
-        focusColor ??
-        (darkMode ? Colors.white.withAlpha(25) : Colors.black.withAlpha(20));
+        focusColor ?? (darkMode ? Colors.grey[700]! : Colors.grey[300]!);
     this.hoverColor =
-        hoverColor ??
-        (darkMode ? Colors.white.withAlpha(30) : Colors.black.withAlpha(15));
+        hoverColor ?? (darkMode ? Colors.grey[600]! : Colors.grey[200]!);
     this.highlightColor =
-        highlightColor ??
-        (darkMode ? Colors.white.withAlpha(35) : Colors.black.withAlpha(25));
+        highlightColor ?? (darkMode ? Colors.grey[600]! : Colors.grey[200]!);
     this.disabledColor =
-        disabledColor ??
-        (darkMode ? Colors.white.withAlpha(25) : Colors.black.withAlpha(20));
+        disabledColor ?? (darkMode ? Colors.grey[700]! : Colors.grey[350]!);
   }
 
   /// 控制是否为暗黑模式
@@ -135,20 +114,14 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
   /// 遮罩颜色
   late final Color barrierColor;
 
-  /// 界面中使用最大的主要文本色
-  late final Color primaryTextColor;
-
   /// 提示文本色
-  late final Color hintTextColor;
+  late final Color hintColor;
 
   /// 大范围容器表面色
   late final Color surfaceColor;
 
   /// 组件表面色 (大部分组件可能不需要表面色, 与背景一致即可)
   late final Color surfaceContainerColor;
-
-  /// 用于部分组件的浅灰色背景
-  late final Color surfaceGrayColor;
 
   /// 表示强调的信息色
   final Color infoColor;
@@ -234,9 +207,6 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
   /// 媒体查询断点: 超大屏
   final double breakPointXL;
 
-  /// 媒体查询断点: 超大屏+
-  final double breakPointXXL;
-
   /// 根据当前配置获取 ThemeData, 若传入 theme, 会复制此 theme 后覆盖生成
   ThemeData toThemeData({ThemeData? theme}) {
     theme =
@@ -255,7 +225,6 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
             outline: outlineColor,
             outlineVariant: outlineColorVariant,
           ),
-          dividerTheme: DividerThemeData(color: outlineColor),
         );
 
     return theme.copyWith(
@@ -271,12 +240,7 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
         outline: outlineColor,
         outlineVariant: outlineColorVariant,
       ),
-      textTheme: TextTheme(
-        bodyLarge: TextStyle(color: primaryTextColor),
-        bodyMedium: TextStyle(color: primaryTextColor),
-        bodySmall: TextStyle(color: primaryTextColor),
-      ),
-      hintColor: hintTextColor,
+      hintColor: hintColor,
       dividerColor: outlineColor,
       shadowColor: shadowColor,
       focusColor: focusColor,
@@ -295,11 +259,9 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
     Color? tertiaryColor,
     int? alpha,
     Color? barrierColor,
-    Color? primaryTextColor,
     Color? hintTextColor,
     Color? surfaceColor,
     Color? surfaceContainerColor,
-    Color? surfaceGrayColor,
     Color? infoColor,
     Color? successColor,
     Color? warningColor,
@@ -334,7 +296,6 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
     double? breakPointMD,
     double? breakPointLG,
     double? breakPointXL,
-    double? breakPointXXL,
   }) {
     return ZoStyle(
       brightness: brightness ?? this.brightness,
@@ -343,12 +304,10 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
       tertiaryColor: tertiaryColor ?? this.tertiaryColor,
       alpha: alpha ?? this.alpha,
       barrierColor: barrierColor ?? this.barrierColor,
-      primaryTextColor: primaryTextColor ?? this.primaryTextColor,
-      hintTextColor: hintTextColor ?? this.hintTextColor,
+      hintColor: hintTextColor ?? this.hintColor,
       surfaceColor: surfaceColor ?? this.surfaceColor,
       surfaceContainerColor:
           surfaceContainerColor ?? this.surfaceContainerColor,
-      surfaceGrayColor: surfaceGrayColor ?? this.surfaceGrayColor,
       infoColor: infoColor ?? this.infoColor,
       successColor: successColor ?? this.successColor,
       warningColor: warningColor ?? this.warningColor,
@@ -383,7 +342,6 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
       breakPointMD: breakPointMD ?? this.breakPointMD,
       breakPointLG: breakPointLG ?? this.breakPointLG,
       breakPointXL: breakPointXL ?? this.breakPointXL,
-      breakPointXXL: breakPointXXL ?? this.breakPointXXL,
     );
   }
 
@@ -397,15 +355,13 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
       tertiaryColor: Color.lerp(tertiaryColor, other.tertiaryColor, t)!,
       alpha: (alpha + (other.alpha - alpha) * t).round(),
       barrierColor: Color.lerp(barrierColor, other.barrierColor, t),
-      primaryTextColor: Color.lerp(primaryTextColor, other.primaryTextColor, t),
-      hintTextColor: Color.lerp(hintTextColor, other.hintTextColor, t),
+      hintColor: Color.lerp(hintColor, other.hintColor, t),
       surfaceColor: Color.lerp(surfaceColor, other.surfaceColor, t),
       surfaceContainerColor: Color.lerp(
         surfaceContainerColor,
         other.surfaceContainerColor,
         t,
       ),
-      surfaceGrayColor: Color.lerp(surfaceGrayColor, other.surfaceGrayColor, t),
       infoColor: Color.lerp(infoColor, other.infoColor, t)!,
       successColor: Color.lerp(successColor, other.successColor, t)!,
       warningColor: Color.lerp(warningColor, other.warningColor, t)!,
@@ -446,7 +402,6 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
       breakPointMD: lerpDouble(breakPointMD, other.breakPointMD, t)!,
       breakPointLG: lerpDouble(breakPointLG, other.breakPointLG, t)!,
       breakPointXL: lerpDouble(breakPointXL, other.breakPointXL, t)!,
-      breakPointXXL: lerpDouble(breakPointXXL, other.breakPointXXL, t)!,
     );
   }
 }

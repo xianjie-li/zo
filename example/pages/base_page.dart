@@ -31,10 +31,11 @@ class _BasePageState extends State<BasePage> {
                 Text("success", style: TextStyle(color: zoStyle.successColor)),
                 Text("warning", style: TextStyle(color: zoStyle.warningColor)),
                 Text("error", style: TextStyle(color: zoStyle.errorColor)),
-                Text("hint", style: TextStyle(color: zoStyle.hintColor)),
+                Text("hint", style: TextStyle(color: zoStyle.hintTextColor)),
               ],
             ),
             SizedBox(height: 12),
+
             Wrap(
               spacing: 8,
               runSpacing: 8,

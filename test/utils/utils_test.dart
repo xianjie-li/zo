@@ -1,5 +1,5 @@
 import "package:flutter_test/flutter_test.dart";
-import "package:zo/src/utils/utils.dart";
+import "package:zo/zo.dart";
 
 void main() {
   test("createUniqueId", () {
@@ -17,7 +17,7 @@ void main() {
   });
 
   test("EventTrigger", () {
-    var event = EventTrigger<int>();
+    var event = ZoEventTrigger<int>();
 
     int n = 0;
 
@@ -46,5 +46,27 @@ void main() {
 
     expect(n, 6);
     expect(event.length, 0);
+  });
+
+  test("isNil", () {
+    var val1 = "";
+    int? val2;
+    var val3 = 0;
+    var val4 = 0.0;
+    var val5 = false;
+    var val6 = [];
+    var val7 = {};
+    var val8 = <int>{};
+    var val9 = "1252";
+
+    expect(isNil(val1), true);
+    expect(isNil(val2), true);
+    expect(isNil(val3), true);
+    expect(isNil(val4), true);
+    expect(isNil(val5), true);
+    expect(isNil(val6), true);
+    expect(isNil(val7), true);
+    expect(isNil(val8), true);
+    expect(isNil(val9), false);
   });
 }

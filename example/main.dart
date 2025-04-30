@@ -3,6 +3,7 @@ import "package:flutter_localizations/flutter_localizations.dart";
 import "package:zo/zo.dart";
 
 import "pages/base_page.dart";
+import "pages/layout_page.dart";
 
 void main() {
   runApp(const MyApp());
@@ -82,7 +83,8 @@ class _MyAppState extends State<MyApp> {
               ),
             ],
           ),
-          body: BasePage(),
+          // body: BasePage(),
+          body: LayoutPage(),
         ),
       ),
     );

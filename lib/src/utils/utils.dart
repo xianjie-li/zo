@@ -31,8 +31,8 @@ String displayNumber(num value, [int precision = 1]) {
   }
 }
 
-/// 检测传入类型是否为空, 支持常见类型: null "" 0 false List Set Map Iterable
-bool isEmpty(dynamic value) {
+/// 检测传入类型是否为空值, 支持常见类型: null "" 0 false List Set Map Iterable
+bool isNil(dynamic value) {
   if (value == null) {
     return true;
   } else if (value is String) {

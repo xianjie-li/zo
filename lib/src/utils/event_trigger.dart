@@ -1,17 +1,17 @@
-typedef EventListener<T> = void Function(T);
-typedef VoidEventListener = void Function();
+typedef ZoEventListener<T> = void Function(T);
+typedef ZoVoidEventListener = void Function();
 
 /// 一个简单的事件实现, 用于简单快速的实现订阅机制
 ///
 /// 每个 listener 只能注册一次, 多次注册会覆盖掉之前的
-class EventTrigger<Arg> {
-  final _listeners = <EventListener<Arg>>{};
+class ZoEventTrigger<Arg> {
+  final _listeners = <ZoEventListener<Arg>>{};
 
   int get length {
     return _listeners.length;
   }
 
-  void on(EventListener<Arg> listener) {
+  void on(ZoEventListener<Arg> listener) {
     _listeners.add(listener);
   }
 
@@ -21,7 +21,7 @@ class EventTrigger<Arg> {
     }
   }
 
-  void off(EventListener<Arg> listener) {
+  void off(ZoEventListener<Arg> listener) {
     _listeners.remove(listener);
   }
 
@@ -30,15 +30,15 @@ class EventTrigger<Arg> {
   }
 }
 
-/// 与 [EventListener] 一样, 但是参数为 void
-class VoidEventTrigger {
-  final _listeners = <VoidEventListener>{};
+/// 与 [ZoEventTrigger] 一样, 但是参数为 void
+class ZoVoidEventTrigger {
+  final _listeners = <ZoVoidEventListener>{};
 
   int get length {
     return _listeners.length;
   }
 
-  void on(VoidEventListener listener) {
+  void on(ZoVoidEventListener listener) {
     _listeners.add(listener);
   }
 
@@ -48,7 +48,7 @@ class VoidEventTrigger {
     }
   }
 
-  void off(VoidEventListener listener) {
+  void off(ZoVoidEventListener listener) {
     _listeners.remove(listener);
   }
 
