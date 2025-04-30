@@ -1,5 +1,4 @@
 import "package:flutter/material.dart";
-import "package:zo/src/tile/tile.dart";
 import "package:zo/zo.dart";
 
 import "widgets/title.dart";
@@ -385,7 +384,7 @@ class _LayoutPageState extends State<LayoutPage> {
                     "这是内容区域, 显示一些内容显示一些内容显示一些内容显示一些内容显示一些内容, 显示一些内容显示一些内容",
                     style: TextStyle(color: context.zoStyle.hintTextColor),
                   ),
-                  // style: ZoTileStyle.border,
+                  style: ZoTileStyle.color,
                 ),
                 ZoTile(
                   highlight: true,

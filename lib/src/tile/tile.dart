@@ -14,7 +14,8 @@ enum ZoTileStyle {
 }
 
 /// 一个基础布局组件, 包含 header, content, footer, leading, trailing 几个内容区域, 可用于
-/// 列表 / 表单 / 卡片 等各种布局场景
+/// 列表 / 表单 / 卡片 等各种布局场景, 它也在内部使用 [ZoInteractiveBox] 提供交互反馈和简单的事件
+/// 绑定
 class ZoTile extends StatelessWidget {
   const ZoTile({
     super.key,
