@@ -136,7 +136,7 @@ class _BasePageState extends State<BasePage> {
                   decoration: BoxDecoration(
                     border: Border.all(color: zoStyle.outlineColor),
                   ),
-                  child: SizedBox.square(dimension: zoStyle.normalSize),
+                  child: SizedBox.square(dimension: zoStyle.mediumSize),
                 ),
                 Container(
                   decoration: BoxDecoration(

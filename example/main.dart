@@ -3,7 +3,10 @@ import "package:flutter_localizations/flutter_localizations.dart";
 import "package:zo/zo.dart";
 
 import "pages/base_page.dart";
+import "pages/button_page.dart";
 import "pages/layout_page.dart";
+import "pages/progress_page.dart";
+import "pages/transition_page.dart";
 
 void main() {
   runApp(const MyApp());
@@ -84,7 +87,10 @@ class _MyAppState extends State<MyApp> {
             ],
           ),
           // body: BasePage(),
-          body: LayoutPage(),
+          // body: LayoutPage(),
+          // body: TransitionPage(),
+          // body: ProgressPage(),
+          body: ButtonPage(),
         ),
       ),
     );

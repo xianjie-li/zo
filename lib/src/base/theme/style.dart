@@ -30,6 +30,7 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
     Color? surfaceColor,
     Color? surfaceContainerColor,
     Color? surfaceGrayColor,
+    Color? surfaceGrayColorVariant,
     this.infoColor = Colors.blue,
     this.successColor = Colors.green,
     this.warningColor = Colors.orange,
@@ -60,8 +61,8 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
     this.space10 = 40,
 
     this.smallSize = 28,
-    this.normalSize = 36,
-    this.largeSize = 44,
+    this.mediumSize = 34,
+    this.largeSize = 40,
     this.borderRadius = 8,
 
     this.breakPointSM = 576,
@@ -72,21 +73,28 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
   }) {
     var darkMode = brightness == Brightness.dark;
 
-    this.barrierColor = barrierColor ?? Colors.white.withAlpha(178);
+    this.barrierColor =
+        barrierColor ??
+        (darkMode ? Colors.black.withAlpha(200) : Colors.white.withAlpha(200));
     this.surfaceColor =
         surfaceColor ?? (darkMode ? Colors.grey[850]! : Colors.white);
     this.surfaceContainerColor =
-        surfaceContainerColor ??
-        surfaceGrayColor ??
-        (darkMode ? Colors.grey[900]! : Colors.white);
+        surfaceContainerColor ?? (darkMode ? Colors.grey[900]! : Colors.white);
     this.surfaceGrayColor =
+        surfaceGrayColor ??
         (darkMode ? Colors.white.withAlpha(20) : Colors.black.withAlpha(10));
+    this.surfaceGrayColorVariant =
+        surfaceGrayColorVariant ??
+        (darkMode ? Colors.white.withAlpha(40) : Colors.black.withAlpha(20));
+
     this.primaryTextColor =
         primaryTextColor ??
-        (darkMode ? Colors.white.withAlpha(200) : Colors.black.withAlpha(160));
+        (darkMode ? Colors.white.withAlpha(200) : Colors.black.withAlpha(180));
+
     this.hintTextColor =
         hintTextColor ??
         (darkMode ? Colors.white.withAlpha(110) : Colors.black.withAlpha(90));
+
     this.outlineColor =
         outlineColor ??
         (darkMode ? Colors.white.withAlpha(40) : Colors.black.withAlpha(30));
@@ -135,7 +143,7 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
   /// 遮罩颜色
   late final Color barrierColor;
 
-  /// 界面中使用最大的主要文本色
+  /// 界面中使用最多的主要文本色
   late final Color primaryTextColor;
 
   /// 提示文本色
@@ -149,6 +157,9 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
 
   /// 用于部分组件的浅灰色背景
   late final Color surfaceGrayColor;
+
+  /// 用于部分组件的浅灰色背景
+  late final Color surfaceGrayColorVariant;
 
   /// 表示强调的信息色
   final Color infoColor;
@@ -211,8 +222,8 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
   /// 对应 [ZoSize] small 的尺寸
   final double smallSize;
 
-  /// 对应 [ZoSize] normal 的尺寸
-  final double normalSize;
+  /// 对应 [ZoSize] medium 的尺寸
+  final double mediumSize;
 
   /// 对应 [ZoSize] large 的尺寸
   final double largeSize;
@@ -239,29 +250,13 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
 
   /// 根据当前配置获取 ThemeData, 若传入 theme, 会复制此 theme 后覆盖生成
   ThemeData toThemeData({ThemeData? theme}) {
-    theme =
-        theme ??
-        ThemeData(
-          useMaterial3: true,
-          colorScheme: ColorScheme.fromSeed(
-            brightness: brightness,
-            seedColor: primaryColor,
-            primary: primaryColor,
-            secondary: secondaryColor,
-            tertiary: tertiaryColor,
-            surface: surfaceColor,
-            surfaceContainer: surfaceContainerColor,
-            shadow: shadowColor,
-            outline: outlineColor,
-            outlineVariant: outlineColorVariant,
-          ),
-          dividerTheme: DividerThemeData(color: outlineColor),
-        );
+    theme = theme ?? ThemeData();
 
     return theme.copyWith(
       scaffoldBackgroundColor: surfaceColor,
-      colorScheme: theme.colorScheme.copyWith(
+      colorScheme: ColorScheme.fromSeed(
         brightness: brightness,
+        seedColor: primaryColor,
         primary: primaryColor,
         secondary: secondaryColor,
         tertiary: tertiaryColor,
@@ -271,6 +266,7 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
         outline: outlineColor,
         outlineVariant: outlineColorVariant,
       ),
+      dividerTheme: DividerThemeData(color: outlineColor),
       textTheme: TextTheme(
         bodyLarge: TextStyle(color: primaryTextColor),
         bodyMedium: TextStyle(color: primaryTextColor),
@@ -327,7 +323,7 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
     double? space9,
     double? space10,
     double? smallSize,
-    double? normalSize,
+    double? mediumSize,
     double? largeSize,
     double? borderRadius,
     double? breakPointSM,
@@ -376,7 +372,7 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
       space9: space9 ?? this.space9,
       space10: space10 ?? this.space10,
       smallSize: smallSize ?? this.smallSize,
-      normalSize: normalSize ?? this.normalSize,
+      mediumSize: mediumSize ?? this.mediumSize,
       largeSize: largeSize ?? this.largeSize,
       borderRadius: borderRadius ?? this.borderRadius,
       breakPointSM: breakPointSM ?? this.breakPointSM,
@@ -391,11 +387,11 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
   ZoStyle lerp(ThemeExtension<ZoStyle>? other, double t) {
     if (other is! ZoStyle) return this;
     return ZoStyle(
-      brightness: t < 0.5 ? brightness : other.brightness,
+      brightness: other.brightness,
       primaryColor: Color.lerp(primaryColor, other.primaryColor, t)!,
       secondaryColor: Color.lerp(secondaryColor, other.secondaryColor, t)!,
       tertiaryColor: Color.lerp(tertiaryColor, other.tertiaryColor, t)!,
-      alpha: (alpha + (other.alpha - alpha) * t).round(),
+      alpha: other.alpha,
       barrierColor: Color.lerp(barrierColor, other.barrierColor, t),
       primaryTextColor: Color.lerp(primaryTextColor, other.primaryTextColor, t),
       hintTextColor: Color.lerp(hintTextColor, other.hintTextColor, t),
@@ -439,14 +435,14 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
       space9: lerpDouble(space9, other.space9, t)!,
       space10: lerpDouble(space10, other.space10, t)!,
       smallSize: lerpDouble(smallSize, other.smallSize, t)!,
-      normalSize: lerpDouble(normalSize, other.normalSize, t)!,
+      mediumSize: lerpDouble(mediumSize, other.mediumSize, t)!,
       largeSize: lerpDouble(largeSize, other.largeSize, t)!,
       borderRadius: lerpDouble(borderRadius, other.borderRadius, t)!,
-      breakPointSM: lerpDouble(breakPointSM, other.breakPointSM, t)!,
-      breakPointMD: lerpDouble(breakPointMD, other.breakPointMD, t)!,
-      breakPointLG: lerpDouble(breakPointLG, other.breakPointLG, t)!,
-      breakPointXL: lerpDouble(breakPointXL, other.breakPointXL, t)!,
-      breakPointXXL: lerpDouble(breakPointXXL, other.breakPointXXL, t)!,
+      breakPointSM: other.breakPointSM,
+      breakPointMD: other.breakPointMD,
+      breakPointLG: other.breakPointLG,
+      breakPointXL: other.breakPointXL,
+      breakPointXXL: other.breakPointXXL,
     );
   }
 }

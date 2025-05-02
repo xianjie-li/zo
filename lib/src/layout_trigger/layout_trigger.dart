@@ -28,7 +28,7 @@ class LayoutTrigger extends SingleChildRenderObjectWidget {
   }
 }
 
-class RenderLayoutTrigger extends RenderProxyBox {
+base class RenderLayoutTrigger extends RenderProxyBox {
   RenderLayoutTrigger(this.onTrigger, this.onImmediately);
 
   ValueChanged<RenderBox>? onTrigger;
