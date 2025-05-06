@@ -21,6 +21,7 @@ class ZoProgress extends StatelessWidget {
     this.child,
     this.alignment = Alignment.center,
     this.type = ZoProgressType.circle,
+    this.borderRadius,
   });
 
   /// 是否显示
@@ -46,6 +47,9 @@ class ZoProgress extends StatelessWidget {
 
   /// 显示类型
   final ZoProgressType type;
+
+  /// 设置了 child 作为容器时, 如果子级包含圆角裁剪, 可通过此项指定容器的圆角
+  final BorderRadiusGeometry? borderRadius;
 
   Widget buildCircle(ZoStyle style) {
     BoxConstraints? constraints;
@@ -140,7 +144,11 @@ class ZoProgress extends StatelessWidget {
                       ? EdgeInsets.all(style.space2)
                       : null,
               alignment: alignment,
-              color: style.barrierColor,
+
+              decoration: BoxDecoration(
+                borderRadius: borderRadius,
+                color: style.barrierColor,
+              ),
               child: child,
             ),
           ),

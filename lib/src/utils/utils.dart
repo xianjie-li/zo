@@ -1,6 +1,11 @@
+import "package:flutter/foundation.dart";
+
 export "event_trigger.dart";
 export "action_history.dart";
 export "select_manager.dart";
+
+const int maxIntValue = kIsWeb ? 9007199254740991 : 9223372036854775807;
+const int minIntValue = kIsWeb ? -9007199254740991 : -9223372036854775808;
 
 /// Zo 中通用的异常类型
 class ZoException implements Exception {
@@ -23,11 +28,13 @@ int createTempId() {
 }
 
 /// 数值显示, 不带小数类型正常显示, 带小数时显示指定未数
-String displayNumber(num value, [int precision = 1]) {
+String displayNumber(num value, [int? precision]) {
   if (value % 1 == 0) {
     return value.toInt().toString();
   } else {
-    return value.toStringAsFixed(precision);
+    return precision == null
+        ? value.toString()
+        : value.toStringAsFixed(precision);
   }
 }
 

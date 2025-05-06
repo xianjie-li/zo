@@ -157,7 +157,7 @@ class _ZoButtonState extends State<ZoButton> {
 
       iconSize = WidgetStateProperty.fromMap({
         // 控制 small icon 最小尺寸
-        WidgetState.any: iconSizeNum - (widget.size == ZoSize.small ? 8 : 12),
+        WidgetState.any: iconSizeNum - (widget.size == ZoSize.small ? 10 : 12),
       });
     }
 
@@ -278,7 +278,7 @@ class _ZoButtonState extends State<ZoButton> {
         style: buttonStyle,
         focusNode: widget.focusNode,
         autofocus: widget.autofocus,
-        color: widget.color ?? textTheme.bodyMedium?.color,
+        color: widget.color,
       );
     }
 
@@ -331,8 +331,10 @@ class _ZoButtonState extends State<ZoButton> {
     double? height;
 
     if (isIconButton) {
-      width = standardSize;
-      height = standardSize;
+      // 小型按钮尺寸适当再缩小
+      var diff = (widget.size == ZoSize.small ? 4 : 0);
+      width = standardSize - diff;
+      height = standardSize - diff;
     } else if (widget.text) {
       height = standardSize;
       width = 0;
@@ -340,7 +342,7 @@ class _ZoButtonState extends State<ZoButton> {
       height = standardSize;
 
       // 常规按钮限制最小宽度
-      width = standardSize * 2;
+      width = standardSize * 2 + 4;
     }
 
     return ConstrainedBox(
@@ -352,6 +354,7 @@ class _ZoButtonState extends State<ZoButton> {
   /// 添加Loading状态
   Widget withLoading(Widget node) {
     if (!isLoading) return node;
+    var zoStyle = context.zoStyle;
 
     var progressType = ZoProgressType.circle;
 
@@ -359,7 +362,12 @@ class _ZoButtonState extends State<ZoButton> {
       progressType = ZoProgressType.linear;
     }
 
-    return ZoProgress(size: ZoSize.small, type: progressType, child: node);
+    return ZoProgress(
+      size: ZoSize.small,
+      type: progressType,
+      borderRadius: BorderRadius.circular(zoStyle.borderRadius),
+      child: node,
+    );
   }
 
   /// 对特定场景的按钮和文本强制应用白色文字

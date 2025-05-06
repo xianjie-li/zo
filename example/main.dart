@@ -4,6 +4,9 @@ import "package:zo/zo.dart";
 
 import "pages/base_page.dart";
 import "pages/button_page.dart";
+import "pages/form_page.dart";
+import "pages/input_page.dart";
+import "pages/input_page2.dart";
 import "pages/layout_page.dart";
 import "pages/progress_page.dart";
 import "pages/transition_page.dart";
@@ -24,9 +27,13 @@ class _MyAppState extends State<MyApp> {
 
   Locale locale = Locale("en");
 
-  var theme = ZoStyle(brightness: Brightness.light).toThemeData();
+  var style = ZoStyle(brightness: Brightness.light);
 
-  var darkTheme = ZoStyle(brightness: Brightness.dark).toThemeData();
+  late var theme = style.toThemeData();
+
+  var darkStyle = ZoStyle(brightness: Brightness.dark);
+
+  late var darkTheme = darkStyle.toThemeData();
 
   var supportedLocales = const [Locale("en"), Locale("zh")];
 
@@ -41,10 +48,13 @@ class _MyAppState extends State<MyApp> {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
+    style.connectReverse(darkStyle);
+
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: "Flutter Demo",
       themeMode: mode,
+      themeAnimationStyle: AnimationStyle.noAnimation,
       theme: theme,
       darkTheme: darkTheme,
       locale: locale,
@@ -90,7 +100,10 @@ class _MyAppState extends State<MyApp> {
           // body: LayoutPage(),
           // body: TransitionPage(),
           // body: ProgressPage(),
-          body: ButtonPage(),
+          // body: ButtonPage(),
+          // body: InputPage(),
+          // body: FormPage(),
+          body: InputPage2(),
         ),
       ),
     );

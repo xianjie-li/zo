@@ -248,8 +248,12 @@ class _LayoutPageState extends State<LayoutPage> {
                     spacing: 12,
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      FilledButton.tonal(onPressed: () {}, child: Text("取消")),
-                      FilledButton(onPressed: () {}, child: Text("确认")),
+                      ZoButton(onPressed: () {}, child: Text("取消")),
+                      ZoButton(
+                        primary: true,
+                        onPressed: () {},
+                        child: Text("确认"),
+                      ),
                     ],
                   ),
                 ),
@@ -273,7 +277,7 @@ class _LayoutPageState extends State<LayoutPage> {
                     "这是内容区域, 显示一些内容显示一些内容显示一些内容显示一些内容显示一些内容, 显示一些内容显示一些内容",
                     style: TextStyle(color: context.zoStyle.hintTextColor),
                   ),
-                  rowContent: true,
+                  horizontal: true,
                   arrow: true,
                 ),
                 ZoTile(
@@ -290,7 +294,7 @@ class _LayoutPageState extends State<LayoutPage> {
                     "操作失败, 请稍后重试",
                     style: TextStyle(color: Colors.red),
                   ),
-                  rowContent: true,
+                  horizontal: true,
                   arrow: true,
                 ),
 
@@ -331,27 +335,31 @@ class _LayoutPageState extends State<LayoutPage> {
                     spacing: 12,
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      FilledButton.tonal(onPressed: () {}, child: Text("取消")),
-                      FilledButton(onPressed: () {}, child: Text("确认")),
+                      ZoButton(onPressed: () {}, child: Text("取消")),
+                      ZoButton(
+                        primary: true,
+                        onPressed: () {},
+                        child: Text("确认"),
+                      ),
                     ],
                   ),
                   style: ZoTileStyle.border,
                 ),
 
-                ZoTile(header: Text("这是一段标题"), style: ZoTileStyle.color),
+                ZoTile(header: Text("这是一段标题"), style: ZoTileStyle.filled),
                 ZoTile(
                   header: Text("这是一段标题"),
                   content: Text(
                     "这是内容区域, 显示一些内容显示一些内容显示一些内容显示一些内容显示一些内容, 显示一些内容显示一些内容",
                     style: TextStyle(color: context.zoStyle.hintTextColor),
                   ),
-                  style: ZoTileStyle.color,
+                  style: ZoTileStyle.filled,
                 ),
                 ZoTile(
                   leading: Icon(Icons.supervised_user_circle),
                   header: Text("这是一段标题"),
                   trailing: Icon(Icons.thermostat_sharp),
-                  style: ZoTileStyle.color,
+                  style: ZoTileStyle.filled,
                 ),
                 ZoTile(
                   leading: Icon(Icons.supervised_user_circle),
@@ -365,11 +373,15 @@ class _LayoutPageState extends State<LayoutPage> {
                     spacing: 12,
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      FilledButton.tonal(onPressed: () {}, child: Text("取消")),
-                      FilledButton(onPressed: () {}, child: Text("确认")),
+                      ZoButton(onPressed: () {}, child: Text("取消")),
+                      ZoButton(
+                        primary: true,
+                        onPressed: () {},
+                        child: Text("确认"),
+                      ),
                     ],
                   ),
-                  style: ZoTileStyle.color,
+                  style: ZoTileStyle.filled,
                 ),
 
                 ZoTile(
@@ -384,7 +396,7 @@ class _LayoutPageState extends State<LayoutPage> {
                     "这是内容区域, 显示一些内容显示一些内容显示一些内容显示一些内容显示一些内容, 显示一些内容显示一些内容",
                     style: TextStyle(color: context.zoStyle.hintTextColor),
                   ),
-                  style: ZoTileStyle.color,
+                  style: ZoTileStyle.filled,
                 ),
                 ZoTile(
                   highlight: true,

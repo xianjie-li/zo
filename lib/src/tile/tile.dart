@@ -9,8 +9,8 @@ enum ZoTileStyle {
   /// 边框风格
   border,
 
-  /// 背景色快风格
-  color,
+  /// 填充背景色
+  filled,
 }
 
 /// 一个基础布局组件, 包含 header, content, footer, leading, trailing 几个内容区域, 可用于
@@ -30,7 +30,7 @@ class ZoTile extends StatelessWidget {
     this.active = false,
     this.highlight = false,
     this.enable = true,
-    this.rowContent = false,
+    this.horizontal = false,
     this.innerFoot = false,
     this.status,
     this.padding,
@@ -72,9 +72,9 @@ class ZoTile extends StatelessWidget {
   /// 控制交叉轴的对齐方式, 主要用于对齐 leader 和 trailing
   final CrossAxisAlignment crossAxisAlignment;
 
-  /// 将 content 排列到 header 后方而不是下方, 如果 [footer] 为 [innerFoot], 会移动到
+  /// 将 content 与 header 水平排列, 如果 [footer] 为 [innerFoot], 会移动到
   /// content 下方显示
-  final bool rowContent;
+  final bool horizontal;
 
   /// 将 footer 放置到 header / content 所在容器, 这会导致其位置被 leading / trailing
   /// 占用
@@ -154,7 +154,7 @@ class ZoTile extends StatelessWidget {
   List<Widget> _buildCrossContent(ZoStyle style) {
     List<Widget> list = [];
 
-    if (rowContent && header != null && content != null) {
+    if (horizontal && header != null && content != null) {
       var contentAndFooter = _buildRowContentAndFooter(style);
 
       list.add(
@@ -263,7 +263,7 @@ class ZoTile extends StatelessWidget {
       color = statusColor.withAlpha(alpha);
     }
 
-    if (color == null && style == ZoTileStyle.color) {
+    if (color == null && style == ZoTileStyle.filled) {
       return zoStyle.surfaceGrayColor;
     }
 

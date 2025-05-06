@@ -12,7 +12,7 @@ void main() {
   test("displayNumber", () {
     expect(displayNumber(123), "123");
     expect(displayNumber(0), "0");
-    expect(displayNumber(1252.05), "1252.0");
+    expect(displayNumber(1252.05), "1252.05");
     expect(displayNumber(1252.123, 2), "1252.12");
   });
 

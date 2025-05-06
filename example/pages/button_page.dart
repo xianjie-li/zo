@@ -21,9 +21,11 @@ class _ButtonPageState extends State<ButtonPage> {
       clipBehavior: Clip.none,
       padding: EdgeInsets.all(24),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Wrap(
             spacing: 4,
+            runSpacing: 4,
             children: [
               ZoButton(size: ZoSize.small, child: Text("常规")),
               ZoButton(size: ZoSize.small, icon: Icon(Icons.access_alarm)),
@@ -109,6 +111,7 @@ class _ButtonPageState extends State<ButtonPage> {
           SizedBox(height: 24),
           Wrap(
             spacing: 4,
+            runSpacing: 4,
             children: [
               ZoButton(child: Text("常规")),
               ZoButton(icon: Icon(Icons.access_alarm)),
@@ -161,6 +164,7 @@ class _ButtonPageState extends State<ButtonPage> {
           SizedBox(height: 24),
           Wrap(
             spacing: 4,
+            runSpacing: 4,
             children: [
               ZoButton(size: ZoSize.large, child: Text("常规")),
               ZoButton(size: ZoSize.large, icon: Icon(Icons.access_alarm)),
@@ -246,6 +250,7 @@ class _ButtonPageState extends State<ButtonPage> {
           SizedBox(height: 24),
           Wrap(
             spacing: 4,
+            runSpacing: 4,
             children: [
               ZoButton(
                 loading: true,
@@ -272,6 +277,7 @@ class _ButtonPageState extends State<ButtonPage> {
           SizedBox(height: 24),
           Wrap(
             spacing: 4,
+            runSpacing: 4,
             children: [
               ZoButton(
                 icon: Icon(Icons.account_circle_rounded),
@@ -303,6 +309,7 @@ class _ButtonPageState extends State<ButtonPage> {
           SizedBox(height: 24),
           Wrap(
             spacing: 4,
+            runSpacing: 4,
             children: [
               ZoButton(
                 color: Colors.red,
@@ -339,6 +346,7 @@ class _ButtonPageState extends State<ButtonPage> {
           SizedBox(height: 24),
           Wrap(
             spacing: 4,
+            runSpacing: 4,
             children: [
               ZoButton(
                 color: Colors.red,

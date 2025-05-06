@@ -128,16 +128,16 @@ class ZoCells extends StatelessWidget {
 
 /// 作为 [ZoCells] 的子项使用, 用于占用制定的栅格宽度
 class ZoCell extends StatelessWidget {
-  const ZoCell({super.key, required this.span, required this.child});
+  const ZoCell({super.key, required this.span, this.child});
 
   /// 子项占用的栅格宽度, 值范围为 1 ~ 12, 可以通过指定小数来实现更复杂的列, 比5个2.4可组成5列栅格
   final double span;
 
   /// 子项
-  final Widget child;
+  final Widget? child;
 
   @override
   Widget build(BuildContext context) {
-    return child;
+    return child ?? SizedBox.shrink();
   }
 }

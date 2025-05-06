@@ -22,7 +22,6 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
     this.primaryColor = Colors.blue,
     this.secondaryColor = Colors.cyan,
     this.tertiaryColor = Colors.red,
-
     this.alpha = 160,
     Color? barrierColor,
     Color? primaryTextColor,
@@ -100,7 +99,8 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
         (darkMode ? Colors.white.withAlpha(40) : Colors.black.withAlpha(30));
     this.outlineColorVariant =
         outlineColorVariant ??
-        (darkMode ? Colors.white.withAlpha(76) : Colors.black.withAlpha(66));
+        (darkMode ? Colors.white.withAlpha(96) : Colors.black.withAlpha(86));
+
     this.shadowColor =
         shadowColor ?? (darkMode ? Colors.black : Colors.black.withAlpha(138));
     this.shadowColorVariant =
@@ -122,6 +122,19 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
 
   /// 控制是否为暗黑模式
   Brightness brightness;
+
+  /// 与当前style的brightness相反的样式, 在亮色主题下, 它对应暗色主题
+  /// 使用者需要在初始化style实例后调用 [connectReverse] 方法来连接两者, 如果没有进行连接,
+  /// 会返回默认的反向样式
+  ZoStyle get reverseStyle {
+    _reverseStyle ??= ZoStyle(
+      brightness:
+          brightness == Brightness.dark ? Brightness.light : Brightness.dark,
+    );
+    return _reverseStyle!;
+  }
+
+  ZoStyle? _reverseStyle;
 
   // # # # # # # # widget # # # # # # #
   // emptyNode, errorNode, loadingNode,
@@ -248,6 +261,12 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
   /// 媒体查询断点: 超大屏+
   final double breakPointXXL;
 
+  /// 如果应用实现了亮/暗两种style, 需要在两者创建完成后调用一次 connectReverse 方法来进行连接
+  void connectReverse(ZoStyle reverseStyle) {
+    reverseStyle._reverseStyle = this;
+    _reverseStyle = reverseStyle;
+  }
+
   /// 根据当前配置获取 ThemeData, 若传入 theme, 会复制此 theme 后覆盖生成
   ThemeData toThemeData({ThemeData? theme}) {
     theme = theme ?? ThemeData();
@@ -272,6 +291,19 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
         bodyMedium: TextStyle(color: primaryTextColor),
         bodySmall: TextStyle(color: primaryTextColor),
       ),
+      switchTheme:
+          brightness == Brightness.dark
+              ? null
+              // 默认边框色会导致亮色下 Switch 默认状态 thumb 不可见, 需要覆盖颜色
+              : SwitchThemeData(
+                thumbColor: WidgetStateProperty.fromMap({
+                  WidgetState.selected: surfaceContainerColor,
+                  WidgetState.hovered: hoverColor,
+                  WidgetState.focused: focusColor,
+                  WidgetState.disabled: disabledColor,
+                  WidgetState.any: surfaceColor,
+                }),
+              ),
       hintColor: hintTextColor,
       dividerColor: outlineColor,
       shadowColor: shadowColor,
