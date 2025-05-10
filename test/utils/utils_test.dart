@@ -69,4 +69,40 @@ void main() {
     expect(isNil(val8), true);
     expect(isNil(val9), false);
   });
+
+  test("deepHash", () {
+    var num1 = 1;
+    var str1 = "hello";
+    var bool1 = true;
+    int? null1;
+
+    expect(deepHash(num1), deepHash(num1));
+    expect(deepHash(str1), deepHash(str1));
+    expect(deepHash(bool1), deepHash(bool1));
+    expect(deepHash(null1), deepHash(null1));
+
+    var list1 = [num1, str1, bool1, null1];
+    var list2 = [num1, str1, bool1, null1];
+    var map1 = {num1: num1, str1: str1, bool1: bool1, null1: null1};
+    var map2 = {num1: num1, str1: str1, bool1: bool1, null1: null1};
+    var set1 = {num1, str1, bool1, null1};
+    var set2 = {num1, str1, bool1, null1};
+    var record1 = (num1, str1, bool1, null1);
+    var record2 = (num1, str1, bool1, null1);
+
+    // 抽样
+    expect(
+      deepHash(list1) != deepHash(map1) &&
+          deepHash(set1) != deepHash(record1) &&
+          deepHash(list1) != deepHash(record1),
+      true,
+    );
+
+    expect(deepHash(list1), deepHash(list2));
+    expect(deepHash(map1), deepHash(map2));
+    expect(deepHash(set1), deepHash(set2));
+    expect(deepHash(record1), deepHash(record2));
+
+    expect(deepHash(null), deepHash(null));
+  });
 }

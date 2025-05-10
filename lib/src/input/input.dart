@@ -1,3 +1,5 @@
+import "dart:math" as math;
+
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
 import "package:zo/src/form/form_state.dart";
@@ -585,7 +587,8 @@ class _ZoInputState<T> extends ZoCustomFormState<T, ZoInput<T>> {
           keyboardType: getKeyboardType(),
           maxLength: widget.maxLength,
           maxLines: widget.maxLines,
-          minLines: widget.minLines,
+          // 多行输入时, 为了加以区分, 至少显示两行的高度
+          minLines: isMultipleLine ? math.max(widget.minLines!, 2) : null,
           onEditingComplete: widget.onEditingComplete,
           onSubmitted: onTextFieldSubmitted,
           onTapOutside: widget.onTapOutside,

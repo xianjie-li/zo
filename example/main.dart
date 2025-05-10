@@ -4,6 +4,7 @@ import "package:zo/zo.dart";
 
 import "pages/base_page.dart";
 import "pages/button_page.dart";
+import "pages/fetcher_page.dart";
 import "pages/form_page.dart";
 import "pages/input_page.dart";
 import "pages/input_page2.dart";
@@ -103,7 +104,8 @@ class _MyAppState extends State<MyApp> {
           // body: ButtonPage(),
           // body: InputPage(),
           // body: FormPage(),
-          body: InputPage2(),
+          // body: InputPage2(),
+          body: FetcherPage(),
         ),
       ),
     );

@@ -1,7 +1,8 @@
 typedef ZoEventListener<T> = void Function(T);
 typedef ZoVoidEventListener = void Function();
 
-/// 一个简单的事件实现, 用于简单快速的实现订阅机制
+/// 一个简单的事件实现, 用于简单快速的实现订阅机制, 不同于 Listenable, 它更倾向于通过参数进行
+/// 通知而不是实例本身, 在某些场景会更方便
 ///
 /// 每个 listener 只能注册一次, 多次注册会覆盖掉之前的
 class ZoEventTrigger<Arg> {

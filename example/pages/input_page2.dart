@@ -521,8 +521,6 @@ class _InputPage2State extends State<InputPage2> {
                   ),
                   content: ZoInput<String>(hintText: Text("请输入")),
                 ),
-                InheritedWidget(widget),
-                InheritedModel,
               ],
             ),
           ),

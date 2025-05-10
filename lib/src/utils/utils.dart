@@ -60,3 +60,27 @@ bool isNil(dynamic value) {
 
   return false;
 }
+
+/// 根据传入对象递归获取hash, 会尝试对 list / map / set 等常见结构进行递归获取, 传入对象不
+/// 可包含递归结构
+int deepHash(Object? value) {
+  if (value == null) return value.hashCode;
+
+  if (value is List) {
+    return Object.hashAll(value.map(deepHash));
+  }
+
+  if (value is Map) {
+    return Object.hashAll(
+      value.entries.map((e) => Object.hash(deepHash(e.key), deepHash(e.value))),
+    );
+  }
+
+  if (value is Set) {
+    return Object.hashAll(value.map(deepHash).toList()..sort()); // 无序处理
+  }
+
+  // 其他情况: 尝试使用 hashCode, 可能由于对象实现 hashCode 而导致不一致, 但对于大多数标准库
+  // 类型来说这是正常的
+  return value.hashCode;
+}
