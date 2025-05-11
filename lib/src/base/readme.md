@@ -63,7 +63,7 @@ ZoConfig(
 
 
 
-### i18n
+### 多语言
 
 通过 flutter 自带的 `Localizations` 提供多语言支持
 

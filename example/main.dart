@@ -10,6 +10,7 @@ import "pages/input_page.dart";
 import "pages/input_page2.dart";
 import "pages/layout_page.dart";
 import "pages/progress_page.dart";
+import "pages/result_page.dart";
 import "pages/transition_page.dart";
 
 void main() {
@@ -105,7 +106,8 @@ class _MyAppState extends State<MyApp> {
           // body: InputPage(),
           // body: FormPage(),
           // body: InputPage2(),
-          body: FetcherPage(),
+          // body: FetcherPage(),
+          body: ResultPage(),
         ),
       ),
     );

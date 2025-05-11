@@ -4,4 +4,10 @@ class ZoLocalizationsDefault extends ZoLocalizations {
   const ZoLocalizationsDefault();
 
   final msg = "hello world";
+
+  final noData = "No data";
+
+  final loadFail = "Load fail";
+
+  final retry = "Retry";
 }

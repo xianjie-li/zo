@@ -93,11 +93,12 @@ class _ZoButtonState extends State<ZoButton> {
       setState(() {
         localLoading = true;
       });
+
       ret.whenComplete(() {
         setState(() {
           localLoading = false;
         });
-      });
+      }).ignore();
     }
   }
 
@@ -110,11 +111,12 @@ class _ZoButtonState extends State<ZoButton> {
       setState(() {
         localLoading = true;
       });
+
       ret.whenComplete(() {
         setState(() {
           localLoading = false;
         });
-      });
+      }).ignore();
     }
   }
 

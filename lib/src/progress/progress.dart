@@ -19,9 +19,11 @@ class ZoProgress extends StatelessWidget {
     this.inline = false,
     this.size = ZoSize.medium,
     this.child,
+    this.barrier = true,
     this.alignment = Alignment.center,
     this.type = ZoProgressType.circle,
     this.borderRadius,
+    this.indicator,
   });
 
   /// 是否显示
@@ -42,6 +44,9 @@ class ZoProgress extends StatelessWidget {
   /// 使用此组件包裹指定节点, 作为其容器覆盖child, 实现遮挡展示加载状态
   final Widget? child;
 
+  /// 使用 child 实现覆盖加载时, 是否显示遮罩, 不显示时, 内容仍能正常交互
+  final bool barrier;
+
   /// 配置了child时的对齐方式
   final AlignmentGeometry alignment;
 
@@ -50,6 +55,9 @@ class ZoProgress extends StatelessWidget {
 
   /// 设置了 child 作为容器时, 如果子级包含圆角裁剪, 可通过此项指定容器的圆角
   final BorderRadiusGeometry? borderRadius;
+
+  /// 传入后会忽略 type, 并将其作为加载指示器显示
+  final Widget? indicator;
 
   Widget buildCircle(ZoStyle style) {
     BoxConstraints? constraints;
@@ -138,18 +146,24 @@ class ZoProgress extends StatelessWidget {
         this.child!,
         if (open)
           Positioned.fill(
-            child: Container(
-              padding:
-                  type == ZoProgressType.linear
-                      ? EdgeInsets.all(style.space2)
-                      : null,
-              alignment: alignment,
+            child: IgnorePointer(
+              ignoring: !barrier,
+              child: Container(
+                padding:
+                    type == ZoProgressType.linear
+                        ? EdgeInsets.all(style.space2)
+                        : null,
+                alignment: alignment,
 
-              decoration: BoxDecoration(
-                borderRadius: borderRadius,
-                color: style.barrierColor,
+                decoration:
+                    barrier
+                        ? BoxDecoration(
+                          borderRadius: borderRadius,
+                          color: style.barrierColor,
+                        )
+                        : null,
+                child: child,
               ),
-              child: child,
             ),
           ),
       ],
@@ -163,10 +177,12 @@ class ZoProgress extends StatelessWidget {
     var style = context.zoStyle;
     var textTheme = context.zoTextTheme;
 
-    var node = switch (type) {
-      ZoProgressType.circle => buildCircle(style),
-      ZoProgressType.linear => buildLinear(style),
-    };
+    var node =
+        indicator ??
+        switch (type) {
+          ZoProgressType.circle => buildCircle(style),
+          ZoProgressType.linear => buildLinear(style),
+        };
 
     node = withText(style, textTheme, node);
     node = withContainer(style, node);

@@ -74,7 +74,9 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
 
     this.barrierColor =
         barrierColor ??
-        (darkMode ? Colors.black.withAlpha(200) : Colors.white.withAlpha(200));
+        (darkMode
+            ? Colors.grey[900]!.withAlpha(160)
+            : Colors.white.withAlpha(200));
     this.surfaceColor =
         surfaceColor ?? (darkMode ? Colors.grey[850]! : Colors.white);
     this.surfaceContainerColor =
@@ -290,6 +292,9 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
         bodyLarge: TextStyle(color: primaryTextColor),
         bodyMedium: TextStyle(color: primaryTextColor),
         bodySmall: TextStyle(color: primaryTextColor),
+        titleLarge: TextStyle(color: primaryTextColor),
+        titleMedium: TextStyle(color: primaryTextColor),
+        titleSmall: TextStyle(color: primaryTextColor),
       ),
       switchTheme:
           brightness == Brightness.dark

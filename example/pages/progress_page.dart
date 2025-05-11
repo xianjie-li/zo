@@ -1,3 +1,5 @@
+import "package:animated_emoji/emoji.dart";
+import "package:animated_emoji/emojis.g.dart";
 import "package:flutter/material.dart";
 import "package:flutter/widgets.dart";
 import "package:zo/src/base/theme/style.dart";
@@ -25,6 +27,15 @@ class _ProgressPageState extends State<ProgressPage> {
           SizedBox(height: 24),
           ZoProgress(text: Text("加载中..."), size: ZoSize.small),
           ZoProgress(text: Text("加载中...")),
+          ZoProgress(
+            text: Text("加载中..."),
+            indicator: AnimatedEmoji(
+              AnimatedEmojis.robot,
+              size: 80,
+              repeat: true,
+            ),
+          ),
+
           ZoProgress(text: Text("加载中..."), size: ZoSize.large),
           ZoProgress(text: Text("加载中..."), inline: true),
           SizedBox(height: 24),
