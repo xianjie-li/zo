@@ -153,9 +153,8 @@ class ZoAsyncResult<Data> extends StatelessWidget {
     return [
       ZoButton(
         onPressed: retry,
-        primary: true,
         text: isCompact,
-        size: isCompact ? ZoSize.small : ZoSize.medium,
+        size: ZoSize.small,
         child: Text(context.zoLocal.retry),
       ),
     ];

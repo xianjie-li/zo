@@ -555,8 +555,8 @@ class _CacheBucket {
 
   /// 用于实现缓存同步功能, fetcher在请求完成后会通过此事件派发通知, 其他 fetcher 可在监听
   /// 到相同 hashKey 的事件后同步自身的数据
-  final ZoEventTrigger<({int hashKey, Object? data, Fetcher fetcher})>
-  cacheSyncEvent = ZoEventTrigger();
+  final EventTrigger<({int hashKey, Object? data, Fetcher fetcher})>
+  cacheSyncEvent = EventTrigger();
 
   /// 数据缓存表，key 为唯一标识
   final HashMap<Object, _CacheItem> cache = HashMap();

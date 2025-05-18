@@ -27,9 +27,11 @@ class ZoTransition extends StatelessWidget {
     this.changeVisible = true,
     this.autoAlpha = true,
     this.curve = Curves.ease,
-    this.duration = Durations.medium4,
+    this.duration = ZoTransition.defaultDuration,
     this.controller,
   });
+
+  static const Duration defaultDuration = Durations.medium1;
 
   /// 动画类型
   final ZoTransitionType type;
@@ -108,13 +110,13 @@ class ZoTransition extends StatelessWidget {
     Tween<Offset> tween;
 
     if (type == ZoTransitionType.slideRight) {
-      tween = Tween(begin: Offset(1, 0), end: Offset(0, 0));
+      tween = Tween(begin: const Offset(1, 0), end: const Offset(0, 0));
     } else if (type == ZoTransitionType.slideLeft) {
-      tween = Tween(begin: Offset(-1, 0), end: Offset(0, 0));
+      tween = Tween(begin: const Offset(-1, 0), end: const Offset(0, 0));
     } else if (type == ZoTransitionType.slideTop) {
-      tween = Tween(begin: Offset(0, -1), end: Offset(0, 0));
+      tween = Tween(begin: const Offset(0, -1), end: const Offset(0, 0));
     } else {
-      tween = Tween(begin: Offset(0, 1), end: Offset(0, 0));
+      tween = Tween(begin: const Offset(0, 1), end: const Offset(0, 0));
     }
 
     return ZoTransitionBase<Offset>(

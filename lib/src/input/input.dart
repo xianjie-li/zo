@@ -222,12 +222,13 @@ class _ZoInputState<T> extends ZoCustomFormState<T, ZoInput<T>> {
 
   @override
   void dispose() {
-    super.dispose();
     if (innerController != null) {
       innerController!.dispose();
     }
 
     widgetStatesController.dispose();
+
+    super.dispose();
   }
 
   /// widget.value 变更, 同步到 controller

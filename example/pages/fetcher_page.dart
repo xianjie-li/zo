@@ -39,20 +39,22 @@ class _FetcherPageState extends State<FetcherPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        if (show) _RequestTest(),
-        // if (show) _RequestTest(),
-        if (show) _PageFetchTest(),
-        ZoButton(
-          child: Text("切换"),
-          onPressed: () {
-            setState(() {
-              show = !show;
-            });
-          },
-        ),
-      ],
+    return Scaffold(
+      body: Row(
+        children: [
+          if (show) _RequestTest(),
+          // if (show) _RequestTest(),
+          if (show) _PageFetchTest(),
+          ZoButton(
+            child: Text("切换"),
+            onPressed: () {
+              setState(() {
+                show = !show;
+              });
+            },
+          ),
+        ],
+      ),
     );
   }
 }

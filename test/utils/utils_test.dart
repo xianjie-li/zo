@@ -17,7 +17,7 @@ void main() {
   });
 
   test("EventTrigger", () {
-    var event = ZoEventTrigger<int>();
+    var event = EventTrigger<int>();
 
     int n = 0;
 

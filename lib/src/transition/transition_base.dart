@@ -20,8 +20,8 @@ typedef ZoTransitionBuilderArgs<T> =
 typedef ZoTransitionBuilder<T> =
     Widget Function(ZoTransitionBuilderArgs<T> animate);
 
-/// 用于方便的实现开关/补间类型的显式动画, 它内置了 [AnimationController] 并提供 tween, curve 等
-/// 常用动画配置, 可以结合现有显式动画组件或普通组件来实现动画效果
+/// 用于方便的实现开关/补间类型的显式动画, 它内置了 [AnimationController] 并提供 tween, \
+/// curve 等常用动画配置, 可以结合现有显式动画组件或普通组件来实现动画效果
 class ZoTransitionBase<T> extends StatefulWidget {
   const ZoTransitionBase({
     super.key,
@@ -149,8 +149,10 @@ class _ZoTransitionBaseState<T> extends State<ZoTransitionBase<T>>
 
   @override
   void dispose() {
+    if (controller != widget.controller) {
+      controller.dispose();
+    }
     super.dispose();
-    controller.dispose();
   }
 
   // 根据当前参数更新 Animation
@@ -196,7 +198,7 @@ class _ZoTransitionBaseState<T> extends State<ZoTransitionBase<T>>
       return const SizedBox.shrink();
     }
 
-    var args = (
+    final args = (
       context: context,
       animation: animation,
       controller: controller,

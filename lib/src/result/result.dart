@@ -36,14 +36,14 @@ class ZoResult extends StatelessWidget {
   final bool simpleResult;
 
   Widget buildSimpleResult(BuildContext context) {
-    var style = context.zoStyle;
+    final style = context.zoStyle;
 
     return Row(
       spacing: style.space1,
       children: [
         if (icon != null) icon!,
         if (title != null) title!,
-        if (title != null && desc != null) Text(": "),
+        if (title != null && desc != null) const Text(": "),
         if (desc != null)
           DefaultTextStyle(
             style: TextStyle(color: style.hintTextColor),
@@ -58,8 +58,8 @@ class ZoResult extends StatelessWidget {
   Widget build(BuildContext context) {
     if (simpleResult) return buildSimpleResult(context);
 
-    var style = context.zoStyle;
-    var textTheme = context.zoTextTheme;
+    final style = context.zoStyle;
+    final textTheme = context.zoTextTheme;
 
     var space = style.space2;
     var actionButtonSpace = style.space4;
@@ -84,7 +84,7 @@ class ZoResult extends StatelessWidget {
       descFontSize = textTheme.bodyMedium!.fontSize!;
     }
 
-    List<Widget> list = [];
+    final List<Widget> list = [];
 
     if (icon != null) {
       list.add(
