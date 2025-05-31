@@ -1,7 +1,7 @@
-import "package:flutter/material.dart";
+import "package:flutter/widgets.dart";
 import "package:flutter/rendering.dart";
 
-/// 用于在 child 完成布局获取它的 RenderBox, 使用者需要保证 child 的渲染对象为 RenderBox
+/// 用于在 child 完成布局后获取它的 RenderBox, 使用者需要保证 child 的渲染对象为 RenderBox
 class LayoutTrigger extends SingleChildRenderObjectWidget {
   const LayoutTrigger({
     super.key,

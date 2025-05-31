@@ -1,11 +1,9 @@
-import "package:flutter/foundation.dart";
-
-export "event_trigger.dart";
+export "../trigger/event_trigger.dart";
 export "action_history.dart";
 export "select_manager.dart";
 
-const int maxIntValue = kIsWeb ? 9007199254740991 : 9223372036854775807;
-const int minIntValue = kIsWeb ? -9007199254740991 : -9223372036854775808;
+// const int maxIntValue = kIsWeb ? 9007199254740991 : 9223372036854775807;
+// const int minIntValue = kIsWeb ? -9007199254740991 : -9223372036854775808;
 
 /// Zo 中通用的异常类型
 class ZoException implements Exception {

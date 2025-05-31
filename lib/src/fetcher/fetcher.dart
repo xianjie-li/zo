@@ -192,7 +192,7 @@ class Fetcher<Data, Payload> extends ChangeNotifier {
 
   /// 如果当前存在异步任务, 等待其完成
   Future<void> wait() async {
-    var curFuture = _future;
+    final curFuture = _future;
 
     await curFuture;
 
@@ -269,7 +269,7 @@ class Fetcher<Data, Payload> extends ChangeNotifier {
 
     // 尝试获取已有缓存
     if (!action && cacheTime > Duration.zero) {
-      var cachePayload = _cache.get(fetchFn ?? fetchVoidFn!, true);
+      final cachePayload = _cache.get(fetchFn ?? fetchVoidFn!, true);
 
       // 获取 data, null也可能是有效缓存
       if (cachePayload != null &&
@@ -278,7 +278,7 @@ class Fetcher<Data, Payload> extends ChangeNotifier {
         _updateHash();
       }
 
-      var cacheData = _cache.get(_hashKey);
+      final cacheData = _cache.get(_hashKey);
 
       // 获取 payload, null也可能是有效缓存
       if (cacheData != null &&
@@ -291,7 +291,7 @@ class Fetcher<Data, Payload> extends ChangeNotifier {
 
         // 处理 staleTime
         if (this.staleTime > Duration.zero) {
-          var diff = DateTime.now().difference(cacheData.time);
+          final diff = DateTime.now().difference(cacheData.time);
 
           if (diff > this.staleTime) {
             needInitialLoad = true;
@@ -321,7 +321,7 @@ class Fetcher<Data, Payload> extends ChangeNotifier {
 
     var isError = false;
 
-    var completer = Completer<void>();
+    final completer = Completer<void>();
     _future = completer.future;
 
     if (_loading != true) {
@@ -337,15 +337,15 @@ class Fetcher<Data, Payload> extends ChangeNotifier {
     }
 
     if (!action) {
-      var task = _cache.getTask(_hashKey);
+      final task = _cache.getTask(_hashKey);
       if (task is Future<Data>) {
         cacheTask = task;
       }
     }
 
-    var curTask = (cacheTask ?? _fetchFnCall());
+    final curTask = (cacheTask ?? _fetchFnCall());
 
-    var isCacheTask = cacheTask != null;
+    final isCacheTask = cacheTask != null;
 
     if (!isCacheTask) {
       _cache.setTask(_hashKey, curTask);
@@ -417,7 +417,7 @@ class Fetcher<Data, Payload> extends ChangeNotifier {
         /// 由于在 completer.future == future 内执行, retry可以随时被新发起的请求中断
         /// 这是符合预期的
         if (isError && retry > 0) {
-          var count = retryCount != null ? retryCount + 1 : 0;
+          final count = retryCount != null ? retryCount + 1 : 0;
 
           if (count < retry) {
             isRetry = true;
@@ -479,10 +479,9 @@ class Fetcher<Data, Payload> extends ChangeNotifier {
 
   /// 根据当前 fetchFn + fetchVoidFn + payload + payloadHash 更新 hashKey
   void _updateHash() {
-    var payloadHashSeed =
-        payloadHash != null && payload != null
-            ? payloadHash!(payload as Payload)
-            : deepHash(payload);
+    final payloadHashSeed = payloadHash != null && payload != null
+        ? payloadHash!(payload as Payload)
+        : deepHash(payload);
     _hashKey = Object.hash(fetchFn, fetchVoidFn, payloadHashSeed);
   }
 
@@ -514,12 +513,12 @@ mixin FetcherHelper<T extends StatefulWidget> on State<T> {
     super.initState();
 
     for (var i = 0; i < fetchers.length; i++) {
-      var cur = fetchers[i];
+      final cur = fetchers[i];
       cur.addListener(_changeHandle);
     }
 
     for (var i = 0; i < globalFetchers.length; i++) {
-      var cur = globalFetchers[i];
+      final cur = globalFetchers[i];
       cur.addListener(_changeHandle);
     }
   }
@@ -531,12 +530,12 @@ mixin FetcherHelper<T extends StatefulWidget> on State<T> {
   @override
   void dispose() {
     for (var i = 0; i < fetchers.length; i++) {
-      var cur = fetchers[i];
+      final cur = fetchers[i];
       cur.dispose();
     }
 
     for (var i = 0; i < globalFetchers.length; i++) {
-      var cur = globalFetchers[i];
+      final cur = globalFetchers[i];
       cur.removeListener(_changeHandle);
     }
 
@@ -616,25 +615,25 @@ class _CacheBucket {
     Duration validPeriod, [
     bool isPayload = false,
   ]) {
-    var cur = isPayload ? payloadCache : cache;
+    final cur = isPayload ? payloadCache : cache;
     cur[key] = (data: data, time: DateTime.now(), validPeriod: validPeriod);
   }
 
   /// 删除指定的缓存
   void remove(Object key, [bool isPayload = false]) {
-    var cur = isPayload ? payloadCache : cache;
+    final cur = isPayload ? payloadCache : cache;
     cur.remove(key);
   }
 
   /// 获取缓存项，如果已过期则返回 null
   _CacheItem? get(Object key, [bool isPayload = false]) {
-    var cur = isPayload ? payloadCache : cache;
+    final cur = isPayload ? payloadCache : cache;
 
     final entry = cur[key];
 
     if (entry == null) return null;
 
-    var diff = DateTime.now().difference(entry.time);
+    final diff = DateTime.now().difference(entry.time);
 
     if (diff > entry.validPeriod) {
       cur.remove(key);

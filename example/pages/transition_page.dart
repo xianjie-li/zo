@@ -1,7 +1,7 @@
 import "package:flutter/material.dart";
 import "package:flutter/widgets.dart";
-import "package:zo/src/transition/transition.dart";
-import "package:zo/src/transition/transition_base.dart";
+import "package:zo/src/animation/transition.dart";
+import "package:zo/src/animation/transition_base.dart";
 
 class TransitionPage extends StatefulWidget {
   const TransitionPage({super.key});
@@ -38,18 +38,16 @@ class _TransitionPageState extends State<TransitionPage> {
             FilledButton(
               onPressed: () {
                 setState(() {
-                  duration =
-                      duration == Duration(milliseconds: 500)
-                          ? Duration(milliseconds: 1000)
-                          : Duration(milliseconds: 500);
+                  duration = duration == Duration(milliseconds: 500)
+                      ? Duration(milliseconds: 1000)
+                      : Duration(milliseconds: 500);
                   // curve =
                   //     curve == Curves.easeInOut
                   //         ? Curves.easeInOutCubicEmphasized
                   //         : Curves.easeInOut;
-                  tween =
-                      duration == Duration(milliseconds: 500)
-                          ? Tween(begin: Offset(0.2, 0.2), end: Offset(0, 0))
-                          : Tween(begin: Offset(1, 1), end: Offset(0, 0));
+                  tween = duration == Duration(milliseconds: 500)
+                      ? Tween(begin: Offset(0.2, 0.2), end: Offset(0, 0))
+                      : Tween(begin: Offset(1, 1), end: Offset(0, 0));
                 });
               },
               child: Text("toggle Config"),
@@ -90,6 +88,9 @@ class _TransitionPageState extends State<TransitionPage> {
                             position: args.animation,
                             child: args.child,
                           );
+                        },
+                        onStatusChange: (status) {
+                          print(status);
                         },
                       ),
                       ZoTransitionBase<double>(
@@ -174,7 +175,7 @@ class _CounterState extends State<Counter> {
 
   @override
   Widget build(BuildContext context) {
-    print("counter build");
+    // print("counter build");
 
     return GestureDetector(
       onTap: () {

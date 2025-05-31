@@ -390,7 +390,7 @@ class _LayoutPageState extends State<LayoutPage> {
                     header: Text(
                       "disabled 这是一段标题",
                       style: TextStyle(
-                        fontSize: context.zoTextTheme.bodyLarge?.fontSize,
+                        fontSize: context.zoStyle.fontSizeMD,
                       ),
                     ),
                     content: Text(
@@ -404,7 +404,7 @@ class _LayoutPageState extends State<LayoutPage> {
                     header: Text(
                       "highlight 这是一段标题",
                       style: TextStyle(
-                        fontSize: context.zoTextTheme.bodyLarge?.fontSize,
+                        fontSize: context.zoStyle.fontSizeMD,
                       ),
                     ),
                     content: Text(
@@ -418,7 +418,7 @@ class _LayoutPageState extends State<LayoutPage> {
                     header: Text(
                       "active 这是一段标题",
                       style: TextStyle(
-                        fontSize: context.zoTextTheme.bodyLarge?.fontSize,
+                        fontSize: context.zoStyle.fontSizeMD,
                       ),
                     ),
                     content: Text(
@@ -433,7 +433,7 @@ class _LayoutPageState extends State<LayoutPage> {
                     header: Text(
                       "这是一段标题",
                       style: TextStyle(
-                        fontSize: context.zoTextTheme.bodyLarge?.fontSize,
+                        fontSize: context.zoStyle.fontSizeMD,
                       ),
                     ),
                     content: Text(
@@ -448,7 +448,7 @@ class _LayoutPageState extends State<LayoutPage> {
                     header: Text(
                       "这是一段标题",
                       style: TextStyle(
-                        fontSize: context.zoTextTheme.bodyLarge?.fontSize,
+                        fontSize: context.zoStyle.fontSizeMD,
                       ),
                     ),
                     content: Text(
@@ -463,7 +463,7 @@ class _LayoutPageState extends State<LayoutPage> {
                     header: Text(
                       "这是一段标题",
                       style: TextStyle(
-                        fontSize: context.zoTextTheme.bodyLarge?.fontSize,
+                        fontSize: context.zoStyle.fontSizeMD,
                       ),
                     ),
                     content: Text(
@@ -478,7 +478,7 @@ class _LayoutPageState extends State<LayoutPage> {
                     header: Text(
                       "这是一段标题",
                       style: TextStyle(
-                        fontSize: context.zoTextTheme.bodyLarge?.fontSize,
+                        fontSize: context.zoStyle.fontSizeMD,
                       ),
                     ),
                     content: Text(

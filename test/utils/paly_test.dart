@@ -56,4 +56,11 @@ void main() {
       print(v);
     });
   });
+
+  test("paly3", () async {
+    final list = [1, 2, 3, 4];
+
+    list.insert(4, 5);
+    print(list);
+  });
 }

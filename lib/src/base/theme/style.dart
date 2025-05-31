@@ -1,5 +1,3 @@
-import "dart:ui";
-
 import "package:flutter/material.dart";
 import "package:zo/src/base/types/types.dart";
 
@@ -7,29 +5,32 @@ import "package:zo/src/base/types/types.dart";
 extension ZoStyleContext on BuildContext {
   ZoStyle get zoStyle => Theme.of(this).extension<ZoStyle>()!;
   ThemeData get zoTheme => Theme.of(this);
-  TextTheme get zoTextTheme => Theme.of(this).textTheme;
 }
 
 /// Zo 基础样式配置
 ///
-/// 除了 textTheme 外的大部分 material3 样式都做了覆盖, 通过 context.zoStyle 使用, 对于未覆盖的样式仍可通过 context.zoTheme 或 context.zoTextTheme 原样访问
+/// 有两种使用方式:
+/// - 通过 [toThemeData] 转换为 ThemeData 直接使用, 它会将相关样式覆盖为 ZoStyle 提供的样式,
+/// 并将 ZoStyle 设置为 extensions
+/// - 直接将 ZoStyle 作为 ThemeData 的 extensions 来使用
 ///
 /// 约定:
 /// - *Variant 后缀: 特定样式的变体, 可能用于改样式某种状态下的样式
 class ZoStyle extends ThemeExtension<ZoStyle> {
   ZoStyle({
     required this.brightness,
+    this.alpha = 160,
     this.primaryColor = Colors.blue,
     this.secondaryColor = Colors.cyan,
     this.tertiaryColor = Colors.red,
-    this.alpha = 160,
     Color? barrierColor,
-    Color? primaryTextColor,
-    Color? hintTextColor,
     Color? surfaceColor,
     Color? surfaceContainerColor,
     Color? surfaceGrayColor,
     Color? surfaceGrayColorVariant,
+    Color? titleTextColor,
+    Color? textColor,
+    Color? hintTextColor,
     this.infoColor = Colors.blue,
     this.successColor = Colors.green,
     this.warningColor = Colors.orange,
@@ -42,11 +43,18 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
     Color? outlineColorVariant,
     Color? shadowColor,
     Color? shadowColorVariant,
+    BoxShadow? shadow,
+    BoxShadow? shadowVariant,
+    BoxShadow? overlayShadow,
+    BoxShadow? overlayShadowVariant,
+    BoxShadow? modalShadow,
+    BoxShadow? modalShadowVariant,
 
-    this.elevation = 4,
-    this.elevationDrawer = 8,
-    this.elevationModal = 12,
-    this.elevationMessage = 16,
+    this.fontSizeSM = 12,
+    this.fontSize = 14,
+    this.fontSizeMD = 16,
+    this.fontSizeLG = 20,
+    this.fontSizeXL = 24,
 
     this.space1 = 4,
     this.space2 = 8,
@@ -59,10 +67,11 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
     this.space9 = 36,
     this.space10 = 40,
 
-    this.smallSize = 28,
-    this.mediumSize = 34,
-    this.largeSize = 40,
-    this.borderRadius = 8,
+    this.sizeSM = 28,
+    this.sizeMD = 34,
+    this.sizeLG = 40,
+    this.borderRadius = 10,
+    this.borderRadiusLG = 18,
 
     this.breakPointSM = 576,
     this.breakPointMD = 768,
@@ -70,12 +79,12 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
     this.breakPointXL = 1200,
     this.breakPointXXL = 1600,
   }) {
-    var darkMode = brightness == Brightness.dark;
+    final darkMode = brightness == Brightness.dark;
 
     this.barrierColor =
         barrierColor ??
         (darkMode
-            ? Colors.grey[900]!.withAlpha(160)
+            ? Colors.grey[900]!.withAlpha(200)
             : Colors.white.withAlpha(200));
     this.surfaceColor =
         surfaceColor ?? (darkMode ? Colors.grey[850]! : Colors.white);
@@ -87,27 +96,58 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
     this.surfaceGrayColorVariant =
         surfaceGrayColorVariant ??
         (darkMode ? Colors.white.withAlpha(40) : Colors.black.withAlpha(20));
-
-    this.primaryTextColor =
-        primaryTextColor ??
-        (darkMode ? Colors.white.withAlpha(200) : Colors.black.withAlpha(180));
-
+    this.titleTextColor =
+        titleTextColor ??
+        (darkMode ? Colors.white.withAlpha(220) : Colors.black.withAlpha(200));
+    this.textColor =
+        textColor ??
+        (darkMode ? Colors.white.withAlpha(180) : Colors.black.withAlpha(160));
     this.hintTextColor =
         hintTextColor ??
         (darkMode ? Colors.white.withAlpha(110) : Colors.black.withAlpha(90));
-
     this.outlineColor =
         outlineColor ??
-        (darkMode ? Colors.white.withAlpha(40) : Colors.black.withAlpha(30));
+        (darkMode ? const Color(0xFF464646) : Colors.grey[300]!);
     this.outlineColorVariant =
         outlineColorVariant ??
-        (darkMode ? Colors.white.withAlpha(96) : Colors.black.withAlpha(86));
-
+        (darkMode ? Colors.grey[700]! : Colors.grey[400]!);
     this.shadowColor =
-        shadowColor ?? (darkMode ? Colors.black : Colors.black.withAlpha(138));
+        shadowColor ?? (darkMode ? Colors.black : Colors.black.withAlpha(36));
     this.shadowColorVariant =
         shadowColorVariant ??
-        (darkMode ? Colors.black : Colors.black.withAlpha(168));
+        (darkMode ? Colors.black : Colors.black.withAlpha(56));
+
+    this.shadow = BoxShadow(
+      color: this.shadowColor,
+      blurRadius: 8,
+      offset: const Offset(1, 1),
+    );
+    this.shadowVariant = BoxShadow(
+      color: this.shadowColorVariant,
+      blurRadius: 8,
+      offset: const Offset(1, 1),
+    );
+    this.overlayShadow = BoxShadow(
+      color: this.shadowColor,
+      blurRadius: 16,
+      offset: const Offset(2, 2),
+    );
+    this.overlayShadowVariant = BoxShadow(
+      color: this.shadowColorVariant,
+      blurRadius: 16,
+      offset: const Offset(2, 2),
+    );
+    this.modalShadow = BoxShadow(
+      color: this.shadowColor,
+      blurRadius: 24,
+      offset: const Offset(3, 3),
+    );
+    this.modalShadowVariant = BoxShadow(
+      color: this.shadowColorVariant,
+      blurRadius: 24,
+      offset: const Offset(3, 3),
+    );
+
     this.focusColor =
         focusColor ??
         (darkMode ? Colors.white.withAlpha(25) : Colors.black.withAlpha(20));
@@ -130,16 +170,14 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
   /// 会返回默认的反向样式
   ZoStyle get reverseStyle {
     _reverseStyle ??= ZoStyle(
-      brightness:
-          brightness == Brightness.dark ? Brightness.light : Brightness.dark,
+      brightness: brightness == Brightness.dark
+          ? Brightness.light
+          : Brightness.dark,
     );
     return _reverseStyle!;
   }
 
   ZoStyle? _reverseStyle;
-
-  // # # # # # # # widget # # # # # # #
-  // emptyNode, errorNode, loadingNode,
 
   // # # # # # # # 颜色 # # # # # # #
 
@@ -155,14 +193,17 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
   /// 第三色
   final Color tertiaryColor;
 
-  /// 遮罩颜色
-  late final Color barrierColor;
+  /// 标题文本色
+  late final Color titleTextColor;
 
-  /// 界面中使用最多的主要文本色
-  late final Color primaryTextColor;
+  /// 界面中最常见的主要文本色
+  late final Color textColor;
 
   /// 提示文本色
   late final Color hintTextColor;
+
+  /// 遮罩颜色
+  late final Color barrierColor;
 
   /// 大范围容器表面色
   late final Color surfaceColor;
@@ -208,18 +249,34 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
   late final Color shadowColor;
   late final Color shadowColorVariant;
 
-  // # # # # # # # 层级 # # # # # # #
-  /// 用于高于常规层的普通装饰
-  final double elevation;
+  /// 用于高于常规层的阴影
+  late final BoxShadow shadow;
+  late final BoxShadow shadowVariant;
 
-  /// 用于 drawer / sheet / popover 类组件的层级
-  final double elevationDrawer;
+  /// 用于 drawer / sheet / popover 类组件的阴影
+  late final BoxShadow overlayShadow;
+  late final BoxShadow overlayShadowVariant;
 
-  /// 用于模态类组件的层级
-  final double elevationModal;
+  /// 用于模态框类组件的阴影
+  late final BoxShadow modalShadow;
+  late final BoxShadow modalShadowVariant;
 
-  /// 用于消息类的层级
-  final double elevationMessage;
+  // # # # # # # # 文字尺寸 # # # # # # #
+
+  /// 小号文本
+  final double fontSizeSM;
+
+  /// 常规文本
+  final double fontSize;
+
+  /// 中号文本
+  final double fontSizeMD;
+
+  /// 大号文本
+  final double fontSizeLG;
+
+  /// 超大号文本
+  final double fontSizeXL;
 
   // # # # # # # # 尺寸 & 距离 # # # # # # #
 
@@ -235,16 +292,19 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
   final double space10;
 
   /// 对应 [ZoSize] small 的尺寸
-  final double smallSize;
+  final double sizeSM;
 
   /// 对应 [ZoSize] medium 的尺寸
-  final double mediumSize;
+  final double sizeMD;
 
   /// 对应 [ZoSize] large 的尺寸
-  final double largeSize;
+  final double sizeLG;
 
   /// 圆角
   final double borderRadius;
+
+  /// 更大的圆角
+  final double borderRadiusLG;
 
   // # # # # # # # 媒体查询断点: # # # # # # #
 
@@ -283,35 +343,35 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
         tertiary: tertiaryColor,
         surface: surfaceColor,
         surfaceContainer: surfaceContainerColor,
-        shadow: shadowColor,
+        // shadow: shadowColor, 不改写预置组件阴影色
         outline: outlineColor,
         outlineVariant: outlineColorVariant,
       ),
+      iconTheme: IconThemeData(color: textColor),
       dividerTheme: DividerThemeData(color: outlineColor),
       textTheme: TextTheme(
-        bodyLarge: TextStyle(color: primaryTextColor),
-        bodyMedium: TextStyle(color: primaryTextColor),
-        bodySmall: TextStyle(color: primaryTextColor),
-        titleLarge: TextStyle(color: primaryTextColor),
-        titleMedium: TextStyle(color: primaryTextColor),
-        titleSmall: TextStyle(color: primaryTextColor),
+        bodyLarge: TextStyle(color: textColor, fontSize: fontSizeMD),
+        bodyMedium: TextStyle(color: textColor, fontSize: fontSize),
+        bodySmall: TextStyle(color: textColor, fontSize: fontSizeSM),
+        titleLarge: TextStyle(color: titleTextColor, fontSize: fontSizeMD),
+        titleMedium: TextStyle(color: titleTextColor, fontSize: fontSizeMD),
+        titleSmall: TextStyle(color: titleTextColor, fontSize: fontSizeMD),
       ),
-      switchTheme:
-          brightness == Brightness.dark
-              ? null
-              // 默认边框色会导致亮色下 Switch 默认状态 thumb 不可见, 需要覆盖颜色
-              : SwitchThemeData(
-                thumbColor: WidgetStateProperty.fromMap({
-                  WidgetState.selected: surfaceContainerColor,
-                  WidgetState.hovered: hoverColor,
-                  WidgetState.focused: focusColor,
-                  WidgetState.disabled: disabledColor,
-                  WidgetState.any: surfaceColor,
-                }),
-              ),
+      switchTheme: brightness == Brightness.dark
+          ? null
+          // 默认边框色会导致亮色下 Switch 默认状态 thumb 不可见, 需要覆盖颜色
+          : SwitchThemeData(
+              thumbColor: WidgetStateProperty.fromMap({
+                WidgetState.selected: surfaceContainerColor,
+                WidgetState.hovered: hoverColor,
+                WidgetState.focused: focusColor,
+                WidgetState.disabled: disabledColor,
+                WidgetState.any: surfaceColor,
+              }),
+            ),
       hintColor: hintTextColor,
       dividerColor: outlineColor,
-      shadowColor: shadowColor,
+      // shadowColor: shadowColor, 不改写预置组件阴影色
       focusColor: focusColor,
       hoverColor: hoverColor,
       highlightColor: highlightColor,
@@ -328,7 +388,8 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
     Color? tertiaryColor,
     int? alpha,
     Color? barrierColor,
-    Color? primaryTextColor,
+    Color? titleTextColor,
+    Color? textColor,
     Color? hintTextColor,
     Color? surfaceColor,
     Color? surfaceContainerColor,
@@ -345,10 +406,17 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
     Color? outlineColorVariant,
     Color? shadowColor,
     Color? shadowColorVariant,
-    double? elevation,
-    double? elevationDrawer,
-    double? elevationModal,
-    double? elevationMessage,
+    BoxShadow? shadow,
+    BoxShadow? shadowVariant,
+    BoxShadow? overlayShadow,
+    BoxShadow? overlayShadowVariant,
+    BoxShadow? modalShadow,
+    BoxShadow? modalShadowVariant,
+    double? fontSizeSM,
+    double? fontSize,
+    double? fontSizeMD,
+    double? fontSizeLG,
+    double? fontSizeXL,
     double? space1,
     double? space2,
     double? space3,
@@ -359,10 +427,11 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
     double? space8,
     double? space9,
     double? space10,
-    double? smallSize,
-    double? mediumSize,
-    double? largeSize,
+    double? sizeSM,
+    double? sizeMD,
+    double? sizeLG,
     double? borderRadius,
+    double? borderRadiusLG,
     double? breakPointSM,
     double? breakPointMD,
     double? breakPointLG,
@@ -376,7 +445,8 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
       tertiaryColor: tertiaryColor ?? this.tertiaryColor,
       alpha: alpha ?? this.alpha,
       barrierColor: barrierColor ?? this.barrierColor,
-      primaryTextColor: primaryTextColor ?? this.primaryTextColor,
+      titleTextColor: titleTextColor ?? this.titleTextColor,
+      textColor: textColor ?? this.textColor,
       hintTextColor: hintTextColor ?? this.hintTextColor,
       surfaceColor: surfaceColor ?? this.surfaceColor,
       surfaceContainerColor:
@@ -394,10 +464,17 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
       outlineColorVariant: outlineColorVariant ?? this.outlineColorVariant,
       shadowColor: shadowColor ?? this.shadowColor,
       shadowColorVariant: shadowColorVariant ?? this.shadowColorVariant,
-      elevation: elevation ?? this.elevation,
-      elevationDrawer: elevationDrawer ?? this.elevationDrawer,
-      elevationModal: elevationModal ?? this.elevationModal,
-      elevationMessage: elevationMessage ?? this.elevationMessage,
+      shadow: shadow ?? this.shadow,
+      shadowVariant: shadowVariant ?? this.shadowVariant,
+      overlayShadow: overlayShadow ?? this.overlayShadow,
+      overlayShadowVariant: overlayShadowVariant ?? this.overlayShadowVariant,
+      modalShadow: modalShadow ?? this.modalShadow,
+      modalShadowVariant: modalShadowVariant ?? this.modalShadowVariant,
+      fontSizeSM: fontSizeSM ?? this.fontSizeSM,
+      fontSize: fontSize ?? this.fontSize,
+      fontSizeMD: fontSizeMD ?? this.fontSizeMD,
+      fontSizeLG: fontSizeLG ?? this.fontSizeLG,
+      fontSizeXL: fontSizeXL ?? this.fontSizeXL,
       space1: space1 ?? this.space1,
       space2: space2 ?? this.space2,
       space3: space3 ?? this.space3,
@@ -408,10 +485,11 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
       space8: space8 ?? this.space8,
       space9: space9 ?? this.space9,
       space10: space10 ?? this.space10,
-      smallSize: smallSize ?? this.smallSize,
-      mediumSize: mediumSize ?? this.mediumSize,
-      largeSize: largeSize ?? this.largeSize,
+      sizeSM: sizeSM ?? this.sizeSM,
+      sizeMD: sizeMD ?? this.sizeMD,
+      sizeLG: sizeLG ?? this.sizeLG,
       borderRadius: borderRadius ?? this.borderRadius,
+      borderRadiusLG: borderRadiusLG ?? this.borderRadiusLG,
       breakPointSM: breakPointSM ?? this.breakPointSM,
       breakPointMD: breakPointMD ?? this.breakPointMD,
       breakPointLG: breakPointLG ?? this.breakPointLG,
@@ -423,6 +501,8 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
   @override
   ZoStyle lerp(ThemeExtension<ZoStyle>? other, double t) {
     if (other is! ZoStyle) return this;
+
+    // 通常只有颜色类的需要添加线性插值, 其他内容在切换主题时是不需要动画的
     return ZoStyle(
       brightness: other.brightness,
       primaryColor: Color.lerp(primaryColor, other.primaryColor, t)!,
@@ -430,7 +510,8 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
       tertiaryColor: Color.lerp(tertiaryColor, other.tertiaryColor, t)!,
       alpha: other.alpha,
       barrierColor: Color.lerp(barrierColor, other.barrierColor, t),
-      primaryTextColor: Color.lerp(primaryTextColor, other.primaryTextColor, t),
+      titleTextColor: Color.lerp(titleTextColor, other.titleTextColor, t),
+      textColor: Color.lerp(textColor, other.textColor, t),
       hintTextColor: Color.lerp(hintTextColor, other.hintTextColor, t),
       surfaceColor: Color.lerp(surfaceColor, other.surfaceColor, t),
       surfaceContainerColor: Color.lerp(
@@ -453,28 +534,34 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
         other.outlineColorVariant,
         t,
       ),
-      shadowColor: Color.lerp(shadowColor, other.shadowColor, t),
-      shadowColorVariant:
-          Color.lerp(shadowColorVariant, other.shadowColorVariant, t)!,
-      elevation: lerpDouble(elevation, other.elevation, t)!,
-      elevationDrawer: lerpDouble(elevationDrawer, other.elevationDrawer, t)!,
-      elevationModal: lerpDouble(elevationModal, other.elevationModal, t)!,
-      elevationMessage:
-          lerpDouble(elevationMessage, other.elevationMessage, t)!,
-      space1: lerpDouble(space1, other.space1, t)!,
-      space2: lerpDouble(space2, other.space2, t)!,
-      space3: lerpDouble(space3, other.space3, t)!,
-      space4: lerpDouble(space4, other.space4, t)!,
-      space5: lerpDouble(space5, other.space5, t)!,
-      space6: lerpDouble(space6, other.space6, t)!,
-      space7: lerpDouble(space7, other.space7, t)!,
-      space8: lerpDouble(space8, other.space8, t)!,
-      space9: lerpDouble(space9, other.space9, t)!,
-      space10: lerpDouble(space10, other.space10, t)!,
-      smallSize: lerpDouble(smallSize, other.smallSize, t)!,
-      mediumSize: lerpDouble(mediumSize, other.mediumSize, t)!,
-      largeSize: lerpDouble(largeSize, other.largeSize, t)!,
-      borderRadius: lerpDouble(borderRadius, other.borderRadius, t)!,
+      shadowColor: other.shadowColor,
+      shadowColorVariant: other.shadowColorVariant,
+      shadow: other.shadow,
+      shadowVariant: other.shadowVariant,
+      overlayShadow: other.overlayShadow,
+      overlayShadowVariant: other.overlayShadowVariant,
+      modalShadow: other.modalShadow,
+      modalShadowVariant: other.modalShadowVariant,
+      fontSizeSM: other.fontSizeSM,
+      fontSize: other.fontSize,
+      fontSizeMD: other.fontSizeMD,
+      fontSizeLG: other.fontSizeLG,
+      fontSizeXL: other.fontSizeXL,
+      space1: other.space1,
+      space2: other.space2,
+      space3: other.space3,
+      space4: other.space4,
+      space5: other.space5,
+      space6: other.space6,
+      space7: other.space7,
+      space8: other.space8,
+      space9: other.space9,
+      space10: other.space10,
+      sizeSM: other.sizeSM,
+      sizeMD: other.sizeMD,
+      sizeLG: other.sizeLG,
+      borderRadius: other.borderRadius,
+      borderRadiusLG: other.borderRadiusLG,
       breakPointSM: other.breakPointSM,
       breakPointMD: other.breakPointMD,
       breakPointLG: other.breakPointLG,

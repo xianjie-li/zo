@@ -1,7 +1,5 @@
 import "package:flutter/material.dart";
-import "package:zo/src/transition/transition_base.dart";
-
-export "transition_base.dart";
+import "package:zo/src/animation/transition_base.dart";
 
 /// 预置动画类型
 enum ZoTransitionType {
@@ -26,12 +24,16 @@ class ZoTransition extends StatelessWidget {
     this.unmountOnExit = false,
     this.changeVisible = true,
     this.autoAlpha = true,
-    this.curve = Curves.ease,
+    this.curve = ZoTransition.defaultCurve,
     this.duration = ZoTransition.defaultDuration,
     this.controller,
+    this.controllerRef,
+    this.onStatusChange,
   });
 
   static const Duration defaultDuration = Durations.medium1;
+
+  static const Curve defaultCurve = Curves.ease;
 
   /// 动画类型
   final ZoTransitionType type;
@@ -66,6 +68,13 @@ class ZoTransition extends StatelessWidget {
   /// 自行传入控制器, 仅在需要进一步手动控制动画时使用
   final AnimationController? controller;
 
+  /// 在内部动画 controller 变更时调用, 用于便捷获取和使用 controller,
+  /// 该 controller 由组件内部管理, 不可在外部调用 dispose
+  final ValueChanged<AnimationController?>? controllerRef;
+
+  /// 动画状态变更时进行通知
+  final AnimationStatusListener? onStatusChange;
+
   Widget buildFade() {
     return ZoTransitionBase<double>(
       open: open,
@@ -78,6 +87,9 @@ class ZoTransition extends StatelessWidget {
       curve: curve,
       tween: Tween(begin: 1, end: 0),
       builder: (animate) => child,
+      controller: controller,
+      controllerRef: controllerRef,
+      onStatusChange: onStatusChange,
     );
   }
 
@@ -103,6 +115,9 @@ class ZoTransition extends StatelessWidget {
       builder: (animate) {
         return ScaleTransition(scale: animate.animation, child: child);
       },
+      controller: controller,
+      controllerRef: controllerRef,
+      onStatusChange: onStatusChange,
     );
   }
 
@@ -132,6 +147,9 @@ class ZoTransition extends StatelessWidget {
       builder: (animate) {
         return SlideTransition(position: animate.animation, child: child);
       },
+      controller: controller,
+      controllerRef: controllerRef,
+      onStatusChange: onStatusChange,
     );
   }
 

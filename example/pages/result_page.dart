@@ -2,8 +2,8 @@ import "dart:math" as math;
 
 import "package:animated_emoji/animated_emoji.dart";
 import "package:flutter/material.dart";
-import "package:zo/src/transition/transition.dart";
-import "package:zo/src/transition/transition_base.dart";
+import "package:zo/src/animation/transition.dart";
+import "package:zo/src/animation/transition_base.dart";
 import "package:zo/zo.dart";
 
 class ResultPage extends StatefulWidget {

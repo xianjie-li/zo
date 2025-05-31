@@ -18,12 +18,12 @@ class _BasePageState extends State<BasePage> {
     return Scaffold(
       body: SingleChildScrollView(
         child: Padding(
-          padding: EdgeInsets.all(24),
+          padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(locale.msg),
-              PageTitle("Color"),
+              const PageTitle("Color"),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -41,27 +41,27 @@ class _BasePageState extends State<BasePage> {
                   Text("hint", style: TextStyle(color: zoStyle.hintTextColor)),
                 ],
               ),
-              SizedBox(height: 12),
+              const SizedBox(height: 12),
 
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  Text("primary:"),
+                  const Text("primary:"),
                   Container(width: 30, height: 30, color: zoStyle.primaryColor),
-                  Text("secondary:"),
+                  const Text("secondary:"),
                   Container(
                     width: 30,
                     height: 30,
                     color: zoStyle.secondaryColor,
                   ),
-                  Text("tertiary:"),
+                  const Text("tertiary:"),
                   Container(
                     width: 30,
                     height: 30,
                     color: zoStyle.tertiaryColor,
                   ),
-                  Text("surface:"),
+                  const Text("surface:"),
                   Container(
                     width: 30,
                     height: 30,
@@ -70,7 +70,7 @@ class _BasePageState extends State<BasePage> {
                       border: Border.all(color: zoStyle.outlineColor),
                     ),
                   ),
-                  Text("surfaceContainer:"),
+                  const Text("surfaceContainer:"),
                   Container(
                     width: 30,
                     height: 30,
@@ -79,23 +79,23 @@ class _BasePageState extends State<BasePage> {
                       border: Border.all(color: zoStyle.outlineColor),
                     ),
                   ),
-                  Text("focusColor:"),
+                  const Text("focusColor:"),
                   Container(width: 30, height: 30, color: zoStyle.focusColor),
-                  Text("hoverColor:"),
+                  const Text("hoverColor:"),
                   Container(width: 30, height: 30, color: zoStyle.hoverColor),
-                  Text("highlightColor:"),
+                  const Text("highlightColor:"),
                   Container(
                     width: 30,
                     height: 30,
                     color: zoStyle.highlightColor,
                   ),
-                  Text("disabledColor:"),
+                  const Text("disabledColor:"),
                   Container(
                     width: 30,
                     height: 30,
                     color: zoStyle.disabledColor,
                   ),
-                  Text("outline:"),
+                  const Text("outline:"),
                   Container(
                     width: 30,
                     height: 30,
@@ -113,59 +113,121 @@ class _BasePageState extends State<BasePage> {
                       ),
                     ),
                   ),
+                  Text(
+                    "titleTextColor",
+                    style: TextStyle(color: zoStyle.titleTextColor),
+                  ),
+                  Text(
+                    "textColor",
+                    style: TextStyle(color: zoStyle.textColor),
+                  ),
+                  Text(
+                    "hintTextColor",
+                    style: TextStyle(color: zoStyle.hintTextColor),
+                  ),
+                  Text(
+                    "fontSizeSM",
+                    style: TextStyle(fontSize: zoStyle.fontSizeSM),
+                  ),
+                  Text(
+                    "fontSizeSM",
+                    style: TextStyle(fontSize: zoStyle.fontSize),
+                  ),
+                  Text(
+                    "fontSizeSM",
+                    style: TextStyle(fontSize: zoStyle.fontSizeMD),
+                  ),
+                  Text(
+                    "fontSizeSM",
+                    style: TextStyle(fontSize: zoStyle.fontSizeLG),
+                  ),
+                  Text(
+                    "fontSizeSM",
+                    style: TextStyle(fontSize: zoStyle.fontSizeXL),
+                  ),
                 ],
               ),
 
-              PageTitle("Elevation"),
+              const PageTitle("Elevation"),
+              Wrap(
+                spacing: 80,
+                runSpacing: 30,
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      color: zoStyle.surfaceContainerColor,
+                      boxShadow: [zoStyle.shadow],
+                    ),
+                    child: const SizedBox.square(dimension: 60),
+                  ),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: zoStyle.surfaceContainerColor,
+                      boxShadow: [zoStyle.overlayShadow],
+                    ),
+                    child: const SizedBox.square(dimension: 60),
+                  ),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: zoStyle.surfaceContainerColor,
+                      boxShadow: [zoStyle.modalShadow],
+                    ),
+                    child: const SizedBox.square(dimension: 60),
+                  ),
+                ],
+              ),
+
+              const PageTitle("Elevation2"),
+              Wrap(
+                spacing: 80,
+                runSpacing: 30,
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      color: zoStyle.surfaceContainerColor,
+                      boxShadow: [zoStyle.shadowVariant],
+                    ),
+                    child: const SizedBox.square(dimension: 60),
+                  ),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: zoStyle.surfaceContainerColor,
+                      boxShadow: [zoStyle.overlayShadowVariant],
+                    ),
+                    child: const SizedBox.square(dimension: 60),
+                  ),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: zoStyle.surfaceContainerColor,
+                      boxShadow: [zoStyle.modalShadowVariant],
+                    ),
+                    child: const SizedBox.square(dimension: 60),
+                  ),
+                ],
+              ),
+
+              const PageTitle("Size"),
               Wrap(
                 spacing: 30,
                 runSpacing: 30,
                 children: [
-                  Material(
-                    elevation: zoStyle.elevation,
-                    color: zoStyle.surfaceContainerColor,
-                    child: SizedBox.square(dimension: 60),
-                  ),
-                  Material(
-                    elevation: zoStyle.elevationDrawer,
-                    color: zoStyle.surfaceContainerColor,
-                    child: SizedBox.square(dimension: 60),
-                  ),
-                  Material(
-                    elevation: zoStyle.elevationModal,
-                    color: zoStyle.surfaceContainerColor,
-                    child: SizedBox.square(dimension: 60),
-                  ),
-                  Material(
-                    elevation: zoStyle.elevationMessage,
-                    color: zoStyle.surfaceContainerColor,
-                    child: SizedBox.square(dimension: 60),
-                  ),
-                ],
-              ),
-
-              PageTitle("Size"),
-              Wrap(
-                spacing: 30,
-                runSpacing: 30,
-                children: [
                   Container(
                     decoration: BoxDecoration(
                       border: Border.all(color: zoStyle.outlineColor),
                     ),
-                    child: SizedBox.square(dimension: zoStyle.smallSize),
+                    child: SizedBox.square(dimension: zoStyle.sizeSM),
                   ),
                   Container(
                     decoration: BoxDecoration(
                       border: Border.all(color: zoStyle.outlineColor),
                     ),
-                    child: SizedBox.square(dimension: zoStyle.mediumSize),
+                    child: SizedBox.square(dimension: zoStyle.sizeMD),
                   ),
                   Container(
                     decoration: BoxDecoration(
                       border: Border.all(color: zoStyle.outlineColor),
                     ),
-                    child: SizedBox.square(dimension: zoStyle.largeSize),
+                    child: SizedBox.square(dimension: zoStyle.sizeLG),
                   ),
                 ],
               ),

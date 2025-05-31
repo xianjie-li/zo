@@ -1,21 +1,20 @@
 import "package:flutter/material.dart";
 
-typedef ZoTransitionBuilderArgs<T> =
-    ({
-      BuildContext context,
+typedef ZoTransitionBuilderArgs<T> = ({
+  BuildContext context,
 
-      /// 动画对象, 它结合了参数中配置的 curve 和 tween
-      Animation<T> animation,
+  /// 动画对象, 它结合了参数中配置的 curve 和 tween
+  Animation<T> animation,
 
-      /// 动画控制器
-      AnimationController controller,
+  /// 动画控制器
+  AnimationController controller,
 
-      /// 不带 tween 的曲线动画
-      Animation<double> curveAnimation,
+  /// 不带 tween 的曲线动画
+  Animation<double> curveAnimation,
 
-      /// 同组件接收的 child
-      Widget? child,
-    });
+  /// 同组件接收的 child
+  Widget? child,
+});
 
 typedef ZoTransitionBuilder<T> =
     Widget Function(ZoTransitionBuilderArgs<T> animate);
@@ -38,6 +37,8 @@ class ZoTransitionBase<T> extends StatefulWidget {
     this.builder,
     this.animationBuilder,
     this.controller,
+    this.controllerRef,
+    this.onStatusChange,
   });
 
   /// 控制动画切换
@@ -76,8 +77,16 @@ class ZoTransitionBase<T> extends StatefulWidget {
   /// 需要根据动画值绑定到常规组件实现动画时使用
   final ZoTransitionBuilder<T>? animationBuilder;
 
-  /// 自行传入控制器, 仅在需要进一步手动控制动画时使用
+  /// 自行传入控制器, 仅在需要进一步手动控制动画或监听相关行为时使用, 使用 [controllerRef]
+  /// 获取内部的 controller 会更方便
   final AnimationController? controller;
+
+  /// 在内部动画 controller 变更时调用, 用于便捷获取和使用 controller,
+  /// 该 controller 由组件内部管理, 不可在外部调用 dispose
+  final ValueChanged<AnimationController?>? controllerRef;
+
+  /// 动画状态变更时进行通知
+  final AnimationStatusListener? onStatusChange;
 
   @override
   State<ZoTransitionBase> createState() => _ZoTransitionBaseState<T>();
@@ -103,8 +112,9 @@ class _ZoTransitionBaseState<T> extends State<ZoTransitionBase<T>>
   void initState() {
     super.initState();
 
-    status =
-        widget.appear ? AnimationStatus.dismissed : AnimationStatus.completed;
+    status = widget.appear
+        ? AnimationStatus.dismissed
+        : AnimationStatus.completed;
 
     controller =
         widget.controller ??
@@ -113,6 +123,11 @@ class _ZoTransitionBaseState<T> extends State<ZoTransitionBase<T>>
           vsync: this,
           duration: widget.duration,
         );
+
+    if (widget.controller != null) {
+      controller.value = widget.appear ? 0 : 1;
+      controller.duration = widget.duration;
+    }
 
     if (widget.mountOnEnter && !widget.open) {
       breakBuild = true;
@@ -150,6 +165,7 @@ class _ZoTransitionBaseState<T> extends State<ZoTransitionBase<T>>
   @override
   void dispose() {
     if (controller != widget.controller) {
+      widget.controllerRef?.call(null);
       controller.dispose();
     }
     super.dispose();
@@ -174,6 +190,7 @@ class _ZoTransitionBaseState<T> extends State<ZoTransitionBase<T>>
       oldController.removeStatusListener(onStatusChange);
     }
     controller.addStatusListener(onStatusChange);
+    widget.controllerRef?.call(controller);
   }
 
   void syncOpen() {
@@ -185,6 +202,7 @@ class _ZoTransitionBaseState<T> extends State<ZoTransitionBase<T>>
   }
 
   void onStatusChange(AnimationStatus status) {
+    widget.onStatusChange?.call(status);
     setState(() {
       this.status = status;
     });
@@ -226,8 +244,9 @@ class _ZoTransitionBaseState<T> extends State<ZoTransitionBase<T>>
     }
 
     return Visibility(
-      visible:
-          widget.changeVisible ? status != AnimationStatus.dismissed : true,
+      visible: widget.changeVisible
+          ? status != AnimationStatus.dismissed
+          : true,
       maintainState: !widget.unmountOnExit,
       child: node!,
     );

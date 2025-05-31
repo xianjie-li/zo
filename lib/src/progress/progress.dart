@@ -64,7 +64,7 @@ class ZoProgress extends StatelessWidget {
     double strokeWidth = 8;
 
     if (size == ZoSize.small) {
-      constraints = BoxConstraints(
+      constraints = const BoxConstraints(
         minWidth: 24,
         minHeight: 24,
         maxWidth: 24,
@@ -72,7 +72,7 @@ class ZoProgress extends StatelessWidget {
       );
       strokeWidth = 5;
     } else if (size == ZoSize.large) {
-      constraints = BoxConstraints(
+      constraints = const BoxConstraints(
         minWidth: 60,
         minHeight: 60,
         maxWidth: 60,
@@ -92,7 +92,7 @@ class ZoProgress extends StatelessWidget {
   }
 
   Widget buildLinear(ZoStyle style) {
-    double minHeight = switch (size) {
+    final double minHeight = switch (size) {
       ZoSize.small => 4,
       ZoSize.medium => 8,
       ZoSize.large => 12,
@@ -109,16 +109,16 @@ class ZoProgress extends StatelessWidget {
     );
   }
 
-  Widget withText(ZoStyle style, TextTheme textTheme, Widget child) {
+  Widget withText(ZoStyle style, Widget child) {
     if (text == null || type != ZoProgressType.circle) return child;
 
-    double? fontSize = switch (size) {
-      ZoSize.small => textTheme.bodySmall!.fontSize!,
+    final double? fontSize = switch (size) {
+      ZoSize.small => style.fontSizeSM,
       ZoSize.medium => null,
-      ZoSize.large => textTheme.bodyLarge!.fontSize!,
+      ZoSize.large => style.fontSizeMD,
     };
 
-    var styledText = DefaultTextStyle(
+    final styledText = DefaultTextStyle(
       style: TextStyle(color: style.hintTextColor, fontSize: fontSize),
       child: text!,
     );
@@ -149,19 +149,17 @@ class ZoProgress extends StatelessWidget {
             child: IgnorePointer(
               ignoring: !barrier,
               child: Container(
-                padding:
-                    type == ZoProgressType.linear
-                        ? EdgeInsets.all(style.space2)
-                        : null,
+                padding: type == ZoProgressType.linear
+                    ? EdgeInsets.all(style.space2)
+                    : null,
                 alignment: alignment,
 
-                decoration:
-                    barrier
-                        ? BoxDecoration(
-                          borderRadius: borderRadius,
-                          color: style.barrierColor,
-                        )
-                        : null,
+                decoration: barrier
+                    ? BoxDecoration(
+                        borderRadius: borderRadius,
+                        color: style.barrierColor,
+                      )
+                    : null,
                 child: child,
               ),
             ),
@@ -174,8 +172,7 @@ class ZoProgress extends StatelessWidget {
   Widget build(BuildContext context) {
     if (!open) return child ?? const SizedBox();
 
-    var style = context.zoStyle;
-    var textTheme = context.zoTextTheme;
+    final style = context.zoStyle;
 
     var node =
         indicator ??
@@ -184,7 +181,7 @@ class ZoProgress extends StatelessWidget {
           ZoProgressType.linear => buildLinear(style),
         };
 
-    node = withText(style, textTheme, node);
+    node = withText(style, node);
     node = withContainer(style, node);
 
     return node;

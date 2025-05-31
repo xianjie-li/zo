@@ -59,29 +59,37 @@ class ZoResult extends StatelessWidget {
     if (simpleResult) return buildSimpleResult(context);
 
     final style = context.zoStyle;
-    final textTheme = context.zoTextTheme;
 
     var space = style.space2;
     var actionButtonSpace = style.space4;
     var extraPadding = style.space4;
     var iconSize = 60.0;
-    var titleStyle = textTheme.bodyLarge!;
-    var descFontSize = textTheme.bodyMedium!.fontSize!;
+    var titleStyle = TextStyle(
+      fontSize: style.fontSizeMD,
+      color: style.titleTextColor,
+    );
+    var descFontSize = style.fontSize;
 
     if (size == ZoSize.small) {
       space = style.space1;
       actionButtonSpace = style.space3;
       extraPadding = style.space3;
       iconSize = 40;
-      titleStyle = textTheme.bodyMedium!;
-      descFontSize = textTheme.bodySmall!.fontSize!;
+      titleStyle = TextStyle(
+        fontSize: style.fontSize,
+        color: style.titleTextColor,
+      );
+      descFontSize = style.fontSizeSM;
     } else if (size == ZoSize.large) {
       space = style.space3;
       actionButtonSpace = style.space5;
       extraPadding = style.space3;
       iconSize = 80;
-      titleStyle = textTheme.titleLarge!;
-      descFontSize = textTheme.bodyMedium!.fontSize!;
+      titleStyle = TextStyle(
+        fontSize: style.fontSizeLG,
+        color: style.titleTextColor,
+      );
+      descFontSize = style.fontSizeMD;
     }
 
     final List<Widget> list = [];

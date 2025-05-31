@@ -14,4 +14,10 @@ class ZoLocalizationsZh extends ZoLocalizations
 
   @override
   final retry = "重试";
+
+  @override
+  final cancel = "取消";
+
+  @override
+  final confirm = "确定";
 }

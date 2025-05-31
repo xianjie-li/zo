@@ -197,7 +197,7 @@ class _ZoInputState<T> extends ZoCustomFormState<T, ZoInput<T>> {
   void initState() {
     super.initState();
 
-    var val = valueToString();
+    final val = valueToString();
 
     if (val != null) {
       controller.text = val;
@@ -234,7 +234,7 @@ class _ZoInputState<T> extends ZoCustomFormState<T, ZoInput<T>> {
   /// widget.value 变更, 同步到 controller
   @override
   void onPropValueChanged() {
-    var val = value == null ? "" : valueToString();
+    final val = value == null ? "" : valueToString();
 
     if (val != controller.text) {
       if (val == null || val == "") {
@@ -285,7 +285,7 @@ class _ZoInputState<T> extends ZoCustomFormState<T, ZoInput<T>> {
       // 如果是尚未输入完成的数值字符串, 先不设置和通知, 在输入完成后需要再进行一次处理
       if (!skipIncompleteNum && isIncompleteNum(val)) return;
 
-      var num = double.tryParse(val);
+      final num = double.tryParse(val);
 
       if (num == null) {
         value = null;
@@ -318,7 +318,7 @@ class _ZoInputState<T> extends ZoCustomFormState<T, ZoInput<T>> {
 
   /// 焦点变更时进行特殊处理
   void onFocusChanged() {
-    var text = controller.text;
+    final text = controller.text;
 
     // 如果是数值输入, 由于 isIncompleteNum 可能会存在输入未完成且未调用onChanged的情况
     // 对这些情况进行处理
@@ -336,11 +336,11 @@ class _ZoInputState<T> extends ZoCustomFormState<T, ZoInput<T>> {
   /// 状态变更处理
   void inputStateChangeHandle() {
     widgetStatesController.addListener(() {
-      var f = widgetStatesController.value.contains(WidgetState.focused);
-      var h = widgetStatesController.value.contains(WidgetState.hovered);
+      final f = widgetStatesController.value.contains(WidgetState.focused);
+      final h = widgetStatesController.value.contains(WidgetState.hovered);
 
-      var focusChanged = f != focused;
-      var hoverChanged = h != hovered;
+      final focusChanged = f != focused;
+      final hoverChanged = h != hovered;
 
       if (hoverChanged || focusChanged) {
         setState(() {
@@ -391,7 +391,7 @@ class _ZoInputState<T> extends ZoCustomFormState<T, ZoInput<T>> {
 
   /// 构造输入框右侧内容
   List<Widget> buildTrailing() {
-    List<Widget> list = [];
+    final List<Widget> list = [];
 
     if (widget.clear && widget.enabled && !widget.readOnly) {
       if (!isEmpty) {
@@ -430,7 +430,7 @@ class _ZoInputState<T> extends ZoCustomFormState<T, ZoInput<T>> {
 
   /// 构造输入框左侧内容
   List<Widget> buildLeading() {
-    List<Widget> list = [];
+    final List<Widget> list = [];
 
     if (widget.leading != null) {
       list.add(widget.leading!);
@@ -442,7 +442,7 @@ class _ZoInputState<T> extends ZoCustomFormState<T, ZoInput<T>> {
   Widget? buildHintNode() {
     if (widget.hintText == null || !isEmpty) return null;
 
-    var style = context.zoStyle;
+    final style = context.zoStyle;
 
     return Positioned.fill(
       child: IgnorePointer(
@@ -458,11 +458,11 @@ class _ZoInputState<T> extends ZoCustomFormState<T, ZoInput<T>> {
   }
 
   double getStandardSize() {
-    var style = context.zoStyle;
+    final style = context.zoStyle;
     return switch (widget.size) {
-      ZoSize.small => style.smallSize,
-      ZoSize.medium => style.mediumSize,
-      ZoSize.large => style.largeSize,
+      ZoSize.small => style.sizeSM,
+      ZoSize.medium => style.sizeMD,
+      ZoSize.large => style.sizeLG,
     };
   }
 
@@ -470,21 +470,21 @@ class _ZoInputState<T> extends ZoCustomFormState<T, ZoInput<T>> {
   EdgeInsetsGeometry getPadding(List<Widget> leading, List<Widget> trailing) {
     if (widget.padding != null) return widget.padding!;
 
-    var style = context.zoStyle;
+    final style = context.zoStyle;
 
     double left = style.space2;
     double right = style.space2;
-    double verticalSpace = isMultipleLine ? style.space2 : 0;
+    final double verticalSpace = isMultipleLine ? style.space2 : 0;
 
     if (leading.isNotEmpty) {
-      var first = leading.first;
+      final first = leading.first;
       if (first is ZoButton && first.icon != null && first.child == null) {
         left = style.space1;
       }
     }
 
     if (trailing.isNotEmpty) {
-      var last = trailing.last;
+      final last = trailing.last;
       if (last is ZoButton && last.icon != null && last.child == null) {
         right = style.space1;
       }
@@ -500,7 +500,7 @@ class _ZoInputState<T> extends ZoCustomFormState<T, ZoInput<T>> {
 
   /// 获取当前边框
   BoxBorder? getBorder() {
-    var style = context.zoStyle;
+    final style = context.zoStyle;
 
     if (widget.border != null) return widget.border;
 
@@ -517,7 +517,7 @@ class _ZoInputState<T> extends ZoCustomFormState<T, ZoInput<T>> {
   Color? getColor() {
     if (widget.color != null) return widget.color;
 
-    var style = context.zoStyle;
+    final style = context.zoStyle;
 
     if (!widget.enabled || widget.readOnly) {
       return style.disabledColor;
@@ -537,24 +537,22 @@ class _ZoInputState<T> extends ZoCustomFormState<T, ZoInput<T>> {
     List<Widget> leading,
     List<Widget> trailing,
   ) {
-    var style = context.zoStyle;
+    final style = context.zoStyle;
 
-    double left = leading.isEmpty ? 0 : style.space1;
-    double right = trailing.isEmpty ? 0 : style.space1;
+    final double left = leading.isEmpty ? 0 : style.space1;
+    final double right = trailing.isEmpty ? 0 : style.space1;
 
     return Container(
       margin: EdgeInsets.only(left: left, right: right),
       padding: EdgeInsets.only(left: left, right: right),
       decoration: BoxDecoration(
         border: Border(
-          left:
-              (left == 0 || widget.borderless)
-                  ? BorderSide.none
-                  : BorderSide(color: style.outlineColor),
-          right:
-              (right == 0 || widget.borderless)
-                  ? BorderSide.none
-                  : BorderSide(color: style.outlineColor),
+          left: (left == 0 || widget.borderless)
+              ? BorderSide.none
+              : BorderSide(color: style.outlineColor),
+          right: (right == 0 || widget.borderless)
+              ? BorderSide.none
+              : BorderSide(color: style.outlineColor),
         ),
       ),
       child: child,
@@ -563,14 +561,13 @@ class _ZoInputState<T> extends ZoCustomFormState<T, ZoInput<T>> {
 
   @override
   Widget build(BuildContext context) {
-    var hintNode = buildHintNode();
-    var style = context.zoStyle;
-    var textTheme = context.zoTextTheme;
+    final hintNode = buildHintNode();
+    final style = context.zoStyle;
 
-    var leading = buildLeading();
-    var trailing = buildTrailing();
+    final leading = buildLeading();
+    final trailing = buildTrailing();
 
-    var mainContent = Stack(
+    final mainContent = Stack(
       children: [
         if (hintNode != null) hintNode,
         TextField(
@@ -597,7 +594,7 @@ class _ZoInputState<T> extends ZoCustomFormState<T, ZoInput<T>> {
           restorationId: widget.restorationId,
           selectionControls: widget.selectionControls,
           // style: widget.style,
-          style: TextStyle(fontSize: textTheme.bodyMedium!.fontSize),
+          style: TextStyle(fontSize: style.fontSize),
           textAlign: widget.textAlign,
           textDirection: widget.textDirection,
           textInputAction: widget.textInputAction,
@@ -624,10 +621,9 @@ class _ZoInputState<T> extends ZoCustomFormState<T, ZoInput<T>> {
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment:
-              isMultipleLine
-                  ? CrossAxisAlignment.start
-                  : CrossAxisAlignment.center,
+          crossAxisAlignment: isMultipleLine
+              ? CrossAxisAlignment.start
+              : CrossAxisAlignment.center,
           children: [
             ...leading,
             Expanded(child: withDivider(mainContent, leading, trailing)),

@@ -3,7 +3,7 @@ import "package:zo/src/base/locale/en.dart";
 
 /// 扩展 BuildContext, 用于更方便的获取 ZoLocalizations
 extension ZoLocalizationsContext on BuildContext {
-  ZoLocalizationsDefault get zoLocal => ZoLocalizations.of(this);
+  ZoLocalizationsDefault get zoLocale => ZoLocalizations.of(this);
 }
 
 /// Zo 多语言支持, 它通过 静态的 Map\<Locale, ZoLocalizations> 来进行多语言配置, ZoLocalizations
@@ -18,9 +18,9 @@ class ZoLocalizations {
 
   /// 从当前 context 获取 local 配置,
   static ZoLocalizationsDefault of(BuildContext context) {
-    var locale = Localizations.of<ZoLocalizations>(context, ZoLocalizations);
+    final locale = Localizations.of<ZoLocalizations>(context, ZoLocalizations);
     return locale == null
-        ? ZoLocalizationsDefault()
+        ? const ZoLocalizationsDefault()
         : locale as ZoLocalizationsDefault;
   }
 
@@ -63,7 +63,7 @@ class _ZoLocalizationsDelegate extends LocalizationsDelegate<ZoLocalizations> {
 
   @override
   Future<ZoLocalizations> load(Locale locale) async {
-    var res = resourceMap[locale];
+    final res = resourceMap[locale];
 
     if (res != null) return res;
 

@@ -94,7 +94,7 @@ class ZoAsyncResult<Data> extends StatelessWidget {
        );
 
   Widget buildParallel(BuildContext context) {
-    var errorNode = buildError(context, true);
+    final errorNode = buildError(context, true);
 
     Widget? emptyNode;
 
@@ -131,7 +131,7 @@ class ZoAsyncResult<Data> extends StatelessWidget {
       icon:
           errorIcon ??
           Icon(Icons.cancel_rounded, color: context.zoStyle.errorColor),
-      title: errorTitle ?? Text(context.zoLocal.loadFail),
+      title: errorTitle ?? Text(context.zoLocale.loadFail),
       desc: errorDesc ?? Text(error.toString()),
       actions: buildActions(context, isCompact),
     );
@@ -143,7 +143,7 @@ class ZoAsyncResult<Data> extends StatelessWidget {
     return ZoResult(
       icon:
           emptyIcon ?? Icon(Icons.inbox, color: context.zoStyle.hintTextColor),
-      title: emptyText ?? Text(context.zoLocal.noData),
+      title: emptyText ?? Text(context.zoLocale.noData),
       actions: buildActions(context),
     );
   }
@@ -155,7 +155,7 @@ class ZoAsyncResult<Data> extends StatelessWidget {
         onPressed: retry,
         text: isCompact,
         size: ZoSize.small,
-        child: Text(context.zoLocal.retry),
+        child: Text(context.zoLocale.retry),
       ),
     ];
   }
@@ -164,7 +164,7 @@ class ZoAsyncResult<Data> extends StatelessWidget {
   Widget build(BuildContext context) {
     if (parallelData) return buildParallel(context);
 
-    var style = context.zoStyle;
+    final style = context.zoStyle;
 
     Widget? statusNode;
 

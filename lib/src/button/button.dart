@@ -87,7 +87,7 @@ class _ZoButtonState extends State<ZoButton> {
   void onPressed() {
     if (widget.onPressed == null) return;
 
-    var ret = widget.onPressed!();
+    final ret = widget.onPressed!();
 
     if (ret is Future) {
       setState(() {
@@ -105,7 +105,7 @@ class _ZoButtonState extends State<ZoButton> {
   void onLongPress() {
     if (widget.onLongPress == null) return;
 
-    var ret = widget.onLongPress!();
+    final ret = widget.onLongPress!();
 
     if (ret is Future) {
       setState(() {
@@ -122,10 +122,9 @@ class _ZoButtonState extends State<ZoButton> {
 
   /// 获取定制按钮样式
   ButtonStyle getStyle(bool lighterText) {
-    var zoStyle = context.zoStyle;
-    var textTheme = context.zoTextTheme;
-    var theme = context.zoTheme;
-    var style = widget.style ?? ButtonStyle();
+    final zoStyle = context.zoStyle;
+    final theme = context.zoTheme;
+    final style = widget.style ?? ButtonStyle();
 
     EdgeInsets padding;
     WidgetStateProperty<double?>? iconSize;
@@ -134,7 +133,7 @@ class _ZoButtonState extends State<ZoButton> {
     WidgetStateProperty<Color?>? backgroundColor;
     WidgetStateProperty<Color?>? iconColor;
 
-    double space = switch (widget.size) {
+    final double space = switch (widget.size) {
       ZoSize.small => zoStyle.space2,
       ZoSize.medium => zoStyle.space3,
       ZoSize.large => zoStyle.space4,
@@ -151,10 +150,10 @@ class _ZoButtonState extends State<ZoButton> {
 
     // 图标尺寸 调整
     if (isIconButton) {
-      double iconSizeNum = switch (widget.size) {
-        ZoSize.small => zoStyle.smallSize,
-        ZoSize.medium => zoStyle.mediumSize,
-        ZoSize.large => zoStyle.largeSize,
+      final double iconSizeNum = switch (widget.size) {
+        ZoSize.small => zoStyle.sizeSM,
+        ZoSize.medium => zoStyle.sizeMD,
+        ZoSize.large => zoStyle.sizeLG,
       };
 
       iconSize = WidgetStateProperty.fromMap({
@@ -173,7 +172,9 @@ class _ZoButtonState extends State<ZoButton> {
     }
 
     if (widget.size == ZoSize.large) {
-      textStyle = textTheme.bodyLarge;
+      textStyle = TextStyle(
+        fontSize: zoStyle.fontSizeMD,
+      );
     }
 
     if (widget.color != null && !(isIconButton || widget.text)) {
@@ -186,10 +187,9 @@ class _ZoButtonState extends State<ZoButton> {
     // 特定场景下强制按钮为白色
     if (lighterText) {
       iconColor = WidgetStateProperty.fromMap({
-        WidgetState.any:
-            theme.brightness == Brightness.light
-                ? Colors.white
-                : zoStyle.primaryTextColor,
+        WidgetState.any: theme.brightness == Brightness.light
+            ? Colors.white
+            : zoStyle.textColor,
       });
     }
 
@@ -199,10 +199,9 @@ class _ZoButtonState extends State<ZoButton> {
       iconSize: iconSize,
       padding: WidgetStateProperty.fromMap({WidgetState.any: padding}),
       shape: shape,
-      textStyle:
-          textStyle == null
-              ? null
-              : WidgetStateProperty.fromMap({WidgetState.any: textStyle}),
+      textStyle: textStyle == null
+          ? null
+          : WidgetStateProperty.fromMap({WidgetState.any: textStyle}),
       backgroundColor: backgroundColor,
       iconColor: iconColor,
     );
@@ -212,10 +211,9 @@ class _ZoButtonState extends State<ZoButton> {
   Widget buildButton(bool lighterText) {
     assert(widget.icon != null || widget.child != null);
 
-    var zoStyle = context.zoStyle;
-    var buttonStyle = getStyle(lighterText);
-    var textTheme = context.zoTextTheme;
-    var theme = context.zoTheme;
+    final zoStyle = context.zoStyle;
+    final buttonStyle = getStyle(lighterText);
+    final theme = context.zoTheme;
     var child = widget.child;
 
     VoidCallback? onPressed = this.onPressed;
@@ -233,14 +231,10 @@ class _ZoButtonState extends State<ZoButton> {
     if (lighterText && child != null) {
       child = DefaultTextStyle(
         style: TextStyle(
-          fontSize:
-              widget.size == ZoSize.large
-                  ? textTheme.bodyLarge!.fontSize
-                  : null,
-          color:
-              theme.brightness == Brightness.light
-                  ? Colors.white
-                  : zoStyle.primaryTextColor,
+          fontSize: widget.size == ZoSize.large ? zoStyle.fontSizeMD : null,
+          color: theme.brightness == Brightness.light
+              ? Colors.white
+              : zoStyle.textColor,
         ),
         child: child,
       );
@@ -321,12 +315,12 @@ class _ZoButtonState extends State<ZoButton> {
 
   /// 控制尺寸
   Widget withConstrained(Widget node) {
-    var zoStyle = context.zoStyle;
+    final zoStyle = context.zoStyle;
 
-    var standardSize = switch (widget.size) {
-      ZoSize.small => zoStyle.smallSize,
-      ZoSize.medium => zoStyle.mediumSize,
-      ZoSize.large => zoStyle.largeSize,
+    final standardSize = switch (widget.size) {
+      ZoSize.small => zoStyle.sizeSM,
+      ZoSize.medium => zoStyle.sizeMD,
+      ZoSize.large => zoStyle.sizeLG,
     };
 
     double? width;
@@ -334,7 +328,7 @@ class _ZoButtonState extends State<ZoButton> {
 
     if (isIconButton) {
       // 小型按钮尺寸适当再缩小
-      var diff = (widget.size == ZoSize.small ? 4 : 0);
+      final diff = (widget.size == ZoSize.small ? 4 : 0);
       width = standardSize - diff;
       height = standardSize - diff;
     } else if (widget.text) {
@@ -356,7 +350,7 @@ class _ZoButtonState extends State<ZoButton> {
   /// 添加Loading状态
   Widget withLoading(Widget node) {
     if (!isLoading) return node;
-    var zoStyle = context.zoStyle;
+    final zoStyle = context.zoStyle;
 
     var progressType = ZoProgressType.circle;
 
@@ -379,15 +373,15 @@ class _ZoButtonState extends State<ZoButton> {
     // 配置了颜色或为primary按钮
     if (!widget.primary && widget.color == null) return false;
 
-    var curColor = widget.color ?? context.zoStyle.primaryColor;
-    var lum = curColor.computeLuminance();
+    final curColor = widget.color ?? context.zoStyle.primaryColor;
+    final lum = curColor.computeLuminance();
 
     return lum > 0.2;
   }
 
   @override
   Widget build(BuildContext context) {
-    var lighterText = useLighterText();
+    final lighterText = useLighterText();
     return withLoading(withConstrained(buildButton(lighterText)));
   }
 }

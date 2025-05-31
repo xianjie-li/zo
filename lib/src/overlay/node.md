@@ -21,15 +21,18 @@ TODO: 通过后续api实现
 mountOnEnter / unmountOnExit
 支持绑定到多个 Trigger 事件源
 canPop - 是否通过 PopScope 等组件能直接实现
+drag支持和drag关闭特定层
 
 - [x] route
 - [x] api 简化
 - [x] entry 添加各种场景的事件通知
-- [] popper
-- [] modal
-- [] drawer
-- [] draggable
-- [] notice
+- [x] popper
+- [x] dialog
+- [x] drawer
+- [ ] 2 trigger
+- [ ] 3 popper = trigger + popperEntry
+- [x] 1 notice 支持固定显示顶部
+- [ ] draggable + drawer 拖拽关闭
 
 路由层实现:
 - ZoOverlay 每次open为true开启时, 推送其路由对象到路由栈中
@@ -58,6 +61,10 @@ transitionType + 进阶动画配置
 
 click / active - 鼠标hover或手指按住一段时间 / hover / focus / contextMenu / move - 持续派发位置
 
+滚动位置变更 / 窗口尺寸变更导致位置变更等综合为一个 positionChanged 事件
+
+提供 onToggle / onDispose 事件, type 属性, 内部通过以上方法触发, 以上事件也需要一并提供
+
 ## Popper 气泡提示
 
 overlay: 每个实例都是一个 entry, 不绑定路由
@@ -77,18 +84,12 @@ Popper(
 
 overlay: 每个实例都是一个 entry, 绑定路由
 
-支持 alter / confirm / prompt 等便捷用法
-
 loading / status / icon / maxWidth / onClose - 任意途径关闭时调用, 可返回future
 cancel / confirm / closeButton / draggable / header / content / footer
 
 ## Drawer + BottomSheet 抽屉
 
-支持手势和手柄关闭
-
-overlay: 每个实例都是一个 entry, 绑定路由
-
-position / header / footer / draggable
+通过
 
 ## Notice 轻提示
 
