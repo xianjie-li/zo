@@ -4,7 +4,8 @@ import "package:flutter/material.dart";
 import "package:zo/src/result/status_icon.dart";
 import "package:zo/zo.dart";
 
-/// [ZoOverlayEntry] 的 dialog 实现, 支持各种场景 dialog 场景及 drawer 实现
+/// [ZoOverlayEntry] 的 dialog 实现, 支持各种常见的 dialog 用法, 同时还支持通过 [drawer]
+/// 实现抽屉功能
 class ZoDialog extends ZoOverlayEntry {
   ZoDialog({
     Widget? content,
@@ -23,6 +24,7 @@ class ZoDialog extends ZoOverlayEntry {
     double? width,
     double? height,
     EdgeInsets? padding,
+    super.groupId,
     super.builder,
     super.offset,
     super.rect,
@@ -204,7 +206,8 @@ class ZoDialog extends ZoOverlayEntry {
 
   bool _draggable;
 
-  /// 是否可拖拽移动, 设置后 [title] 区域可进行拖拽, 需要同时设置 [title]
+  /// 是否可拖拽移动, 设置后常规对话框的 [title] 区域可进行拖拽, 需要同时设置 [title],
+  /// drawer 则是层整体可拖动
   bool get draggable => _draggable;
 
   set draggable(bool value) {
@@ -266,7 +269,7 @@ class ZoDialog extends ZoOverlayEntry {
 
   void _cancel() {
     if (overlay == null) return;
-    dismissMode == ZoOverlayDismissMode.dispose ? dispose() : close();
+    dismiss();
   }
 
   Timer? delayCloseLoadingTimer;
@@ -278,7 +281,9 @@ class ZoDialog extends ZoOverlayEntry {
     if (res is Future) {
       _localLoading = true;
       res.whenComplete(() {
-        dismissMode == ZoOverlayDismissMode.dispose ? dispose() : close();
+        overlay!.skipDismissCheck(() {
+          dismiss();
+        });
         // 延迟一点关闭 loading 状态, 防止和关闭动画同时进行造成闪烁
         delayCloseLoadingTimer = Timer(duration, () {
           if (!_localLoading) return;
@@ -286,7 +291,9 @@ class ZoDialog extends ZoOverlayEntry {
         });
       });
     } else {
-      dismissMode == ZoOverlayDismissMode.dispose ? dispose() : close();
+      overlay!.skipDismissCheck(() {
+        dismiss();
+      });
     }
   }
 
@@ -330,6 +337,10 @@ class ZoDialog extends ZoOverlayEntry {
       child: child,
     );
 
+    if (draggable && drawer != null) {
+      child = _buildDragTrigger(context, child);
+    }
+
     // drawer 模式如果未主动关闭, 则显示关闭按钮
     if (showCloseButton) {
       child = _buildCloseButton(context, child);
@@ -354,11 +365,11 @@ class ZoDialog extends ZoOverlayEntry {
         children: [
           if (cancelButton)
             ZoButton(
-              onPressed: _cancel,
+              onTap: _cancel,
               child: Text(cancelText ?? locale.cancel),
             ),
           ZoButton(
-            onPressed: _confirm,
+            onTap: _confirm,
             primary: true,
             child: Text(confirmText ?? locale.confirm),
           ),
@@ -378,14 +389,17 @@ class ZoDialog extends ZoOverlayEntry {
           top: style.space2,
           right: style.space2,
           child: ZoButton(
-            onPressed: _cancel,
-            // size: ZoSize.small,
+            onTap: _cancel,
+            plain: true,
             icon: const Icon(Icons.close),
           ),
         ),
       ],
     );
   }
+
+  // 一个空的 drag handle, 用于强制启用 ZoTrigger
+  void _onDrag(ZoTriggerDragEvent event) {}
 
   Widget _buildDragTrigger(BuildContext context, Widget child) {
     if (!draggable) return child;
@@ -396,7 +410,13 @@ class ZoDialog extends ZoOverlayEntry {
       _ => null,
     };
 
-    return ZoDragTrigger(changeCursor: true, axis: axis, child: child);
+    return ZoTrigger(
+      changeCursor: drawer == null,
+      dragAxis: axis,
+      onDrag: _onDrag,
+      behavior: HitTestBehavior.opaque,
+      child: child,
+    );
   }
 
   (double?, double?) _calcSize(BuildContext context) {
@@ -583,9 +603,17 @@ class ZoDialog extends ZoOverlayEntry {
 
     final iconNode = status == null ? icon : ZoStatusIcon(status: status);
 
+    final mainNode = Row(
+      spacing: style.space2,
+      children: [
+        ?iconNode,
+        Flexible(child: title!),
+      ],
+    );
+
     final List<Widget> children = [
       if (title != null)
-        DefaultTextStyle(
+        DefaultTextStyle.merge(
           style: TextStyle(
             fontSize: style.fontSizeMD,
             color: style.titleTextColor,
@@ -594,16 +622,12 @@ class ZoDialog extends ZoOverlayEntry {
             padding: EdgeInsets.only(
               right: showCloseButton ? style.space5 : 0,
             ),
-            child: _buildDragTrigger(
-              context,
-              Row(
-                spacing: style.space2,
-                children: [
-                  ?iconNode,
-                  Flexible(child: title!),
-                ],
-              ),
-            ),
+            child: draggable && drawer == null
+                ? _buildDragTrigger(
+                    context,
+                    mainNode,
+                  )
+                : mainNode,
           ),
         ),
       if (content != null)

@@ -45,7 +45,7 @@ class ZoResult extends StatelessWidget {
         if (title != null) title!,
         if (title != null && desc != null) const Text(": "),
         if (desc != null)
-          DefaultTextStyle(
+          DefaultTextStyle.merge(
             style: TextStyle(color: style.hintTextColor),
             child: desc!,
           ),
@@ -96,7 +96,7 @@ class ZoResult extends StatelessWidget {
 
     if (icon != null) {
       list.add(
-        IconTheme(
+        IconTheme.merge(
           data: IconThemeData(size: iconSize, color: style.hintTextColor),
           child: icon!,
         ),

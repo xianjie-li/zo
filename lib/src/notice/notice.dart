@@ -6,10 +6,6 @@ import "package:flutter/services.dart";
 import "package:zo/src/result/status_icon.dart";
 import "package:zo/zo.dart";
 
-/// - [ZoNotice] 关系消息的核心类, 也是提供给用户使用的直接接口
-/// - [_NoticeView] 负责监听 [ZoNotice] 当前状态被绘制消息
-/// - [ZoNoticeCard] 内置的消息UI实现
-
 /// 消息显示位置
 enum ZoNoticePosition {
   top,
@@ -28,7 +24,7 @@ class ZoNoticeEntry {
     this.content,
     this.actions,
     this.status,
-    this.position = ZoNoticePosition.center,
+    this.position = ZoNoticePosition.top,
     this.duration = const Duration(milliseconds: 1500),
     this.closeButton = false,
     this.barrier = false,
@@ -147,7 +143,7 @@ class ZoNotice extends ChangeNotifier {
     String message, {
     String? title,
     ZoStatus? status,
-    ZoNoticePosition position = ZoNoticePosition.center,
+    ZoNoticePosition position = ZoNoticePosition.top,
   }) {
     final entry = ZoNoticeEntry(
       content: Text(message),
@@ -169,6 +165,7 @@ class ZoNotice extends ChangeNotifier {
         duration: const Duration(days: 365),
         barrier: barrier,
         interactive: false,
+        position: ZoNoticePosition.center,
         builder: (context) =>
             ZoProgress(text: message == null ? null : Text(message)),
       ),
@@ -198,9 +195,9 @@ class ZoNotice extends ChangeNotifier {
 final _noticeOverlay = ZoOverlayEntry(
   alignment: Alignment.center,
   builder: (context) => const _NoticeView(),
-  tapAwayClosable: false,
-  escapeClosable: false,
-  requestFocus: false,
+  // tapAwayClosable: false,
+  // escapeClosable: false,
+  // requestFocus: false,
   alwaysOnTop: true,
   persistentInBatch: true,
   dismissMode: ZoOverlayDismissMode.close,
@@ -377,11 +374,12 @@ class _ZoNoticeCardState extends State<ZoNoticeCard> {
   Widget? buildCloseButton(ZoStyle style) {
     if (!widget.entry.closeButton) return null;
     return ZoButton(
+      plain: true,
       size: ZoSize.small,
       icon: const Icon(
         Icons.close,
       ),
-      onPressed: onClose,
+      onTap: onClose,
     );
   }
 
@@ -509,7 +507,7 @@ class _ZoNoticeCardState extends State<ZoNoticeCard> {
     var content = widget.entry.content;
 
     if (widget.entry.title != null) {
-      titleNode = DefaultTextStyle(
+      titleNode = DefaultTextStyle.merge(
         style: TextStyle(
           color: style.titleTextColor,
           fontSize: style.fontSizeMD,

@@ -2,7 +2,7 @@ import "package:animated_emoji/emoji.dart";
 import "package:animated_emoji/emojis.g.dart";
 import "package:flutter/material.dart";
 import "package:flutter/widgets.dart";
-import "package:zo/src/base/theme/style.dart";
+import "package:zo/src/base/style/style.dart";
 import "package:zo/src/progress/progress.dart";
 import "package:zo/zo.dart";
 

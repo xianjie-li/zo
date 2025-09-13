@@ -66,13 +66,13 @@ class _ResultPageState extends State<ResultPage> {
                   ZoButton(
                     size: ZoSize.small,
                     child: Text("取消"),
-                    onPressed: () {},
+                    onTap: () {},
                   ),
                   ZoButton(
                     size: ZoSize.small,
                     primary: true,
                     child: Text("重试"),
-                    onPressed: () {},
+                    onTap: () {},
                   ),
                 ],
               ),
@@ -81,8 +81,8 @@ class _ResultPageState extends State<ResultPage> {
                 title: Text("没有数据"),
                 desc: Text("当时数据为空, 请稍后重试请稍后重试请稍后重试请稍后重试请稍后重试请稍"),
                 actions: [
-                  ZoButton(child: Text("取消"), onPressed: () {}),
-                  ZoButton(primary: true, child: Text("重试"), onPressed: () {}),
+                  ZoButton(child: Text("取消"), onTap: () {}),
+                  ZoButton(primary: true, child: Text("重试"), onTap: () {}),
                 ],
               ),
               ZoResult(
@@ -94,13 +94,13 @@ class _ResultPageState extends State<ResultPage> {
                   ZoButton(
                     size: ZoSize.large,
                     child: Text("取消"),
-                    onPressed: () {},
+                    onTap: () {},
                   ),
                   ZoButton(
                     size: ZoSize.large,
                     primary: true,
                     child: Text("重试"),
-                    onPressed: () {},
+                    onTap: () {},
                   ),
                 ],
               ),
@@ -109,8 +109,8 @@ class _ResultPageState extends State<ResultPage> {
                 title: Text("没有数据"),
                 desc: Text("当时数据为空, 请稍后重试请稍后重试请稍后重试请稍后重试请稍后重试请稍"),
                 actions: [
-                  ZoButton(child: Text("取消"), onPressed: () {}),
-                  ZoButton(primary: true, child: Text("重试"), onPressed: () {}),
+                  ZoButton(child: Text("取消"), onTap: () {}),
+                  ZoButton(primary: true, child: Text("重试"), onTap: () {}),
                 ],
                 extra: Column(
                   spacing: style.space2,
@@ -155,8 +155,8 @@ class _ResultPageState extends State<ResultPage> {
                 desc: Text("当时数据为空, 请稍后重试"),
                 actions: [
                   ZoButton(
-                    onPressed: () {},
-                    text: true,
+                    onTap: () {},
+                    plain: true,
                     size: ZoSize.small,
                     child: Text("重试"),
                   ),
@@ -356,7 +356,7 @@ class _FetchResultState extends State<_FetchResult> with FetcherHelper {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        ZoButton(child: Text("fetch"), onPressed: fetcher.fetch),
+        ZoButton(child: Text("fetch"), onTap: fetcher.fetch),
         ZoAsyncResult.fetcher(
           fetcher: fetcher,
           builder: (context, data) {

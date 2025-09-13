@@ -45,7 +45,7 @@ class _FormPageState extends State<FormPage> {
                 ZoButton(
                   size: ZoSize.small,
                   child: Text("变更"),
-                  onPressed: () {
+                  onTap: () {
                     setState(() {
                       value = value + 1;
                     });
@@ -63,7 +63,7 @@ class _FormPageState extends State<FormPage> {
                 ZoButton(
                   size: ZoSize.small,
                   child: Text("变更"),
-                  onPressed: () {
+                  onTap: () {
                     setState(() {
                       checkValue = !checkValue!;
                     });
@@ -87,7 +87,7 @@ class _FormPageState extends State<FormPage> {
                 ZoButton(
                   size: ZoSize.small,
                   child: Text("变更"),
-                  onPressed: () {
+                  onTap: () {
                     setState(() {
                       radioValue = radioValue == "type1" ? "type2" : "type1";
                     });
@@ -106,7 +106,7 @@ class _FormPageState extends State<FormPage> {
                 ZoButton(
                   size: ZoSize.small,
                   child: Text("变更"),
-                  onPressed: () {
+                  onTap: () {
                     setState(() {
                       switchValue = !switchValue;
                     });
@@ -137,7 +137,7 @@ class _FormPageState extends State<FormPage> {
                 ZoButton(
                   size: ZoSize.small,
                   child: Text("变更"),
-                  onPressed: () {
+                  onTap: () {
                     setState(() {
                       selectedValue = "type3";
                     });
@@ -159,7 +159,7 @@ class _FormPageState extends State<FormPage> {
                 ZoButton(
                   size: ZoSize.small,
                   child: Text("变更"),
-                  onPressed: () {
+                  onTap: () {
                     setState(() {
                       dateTime = dateTime.add(Duration(days: 1));
                     });

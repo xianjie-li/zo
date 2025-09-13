@@ -1,4 +1,5 @@
 import "package:flutter/material.dart";
+import "package:zo/zo.dart";
 
 typedef ZoTransitionBuilderArgs<T> = ({
   BuildContext context,
@@ -32,8 +33,9 @@ class ZoTransitionBase<T> extends StatefulWidget {
     this.autoAlpha = true,
     this.child,
     this.tween,
-    this.curve = Curves.ease,
-    this.duration = Durations.medium4,
+    this.curve = ZoTransition.defaultCurve,
+    this.duration = ZoTransition.defaultDuration,
+    this.reverseDuration,
     this.builder,
     this.animationBuilder,
     this.controller,
@@ -70,6 +72,9 @@ class ZoTransitionBase<T> extends StatefulWidget {
 
   /// 动画持续时间
   final Duration? duration;
+
+  /// 反向动画的持续时间
+  final Duration? reverseDuration;
 
   /// 根据现有显式动画组件(比如 [SlideTransition]) 实现动画时使用
   final ZoTransitionBuilder<T>? builder;
@@ -116,17 +121,23 @@ class _ZoTransitionBaseState<T> extends State<ZoTransitionBase<T>>
         ? AnimationStatus.dismissed
         : AnimationStatus.completed;
 
+    final double initOpenValue = widget.open ? 1 : 0;
+
+    final double initCloseValue = widget.open ? 0 : 1;
+
     controller =
         widget.controller ??
         AnimationController(
-          value: widget.appear ? 0 : 1,
+          value: widget.appear ? initCloseValue : initOpenValue,
           vsync: this,
           duration: widget.duration,
+          reverseDuration: widget.reverseDuration,
         );
 
     if (widget.controller != null) {
-      controller.value = widget.appear ? 0 : 1;
+      controller.value = widget.appear ? initCloseValue : initOpenValue;
       controller.duration = widget.duration;
+      controller.reverseDuration = widget.reverseDuration;
     }
 
     if (widget.mountOnEnter && !widget.open) {
@@ -136,7 +147,7 @@ class _ZoTransitionBaseState<T> extends State<ZoTransitionBase<T>>
     updateController(null);
     updateAnimation();
 
-    syncOpen();
+    if (widget.appear) syncOpen();
   }
 
   @override
@@ -152,6 +163,7 @@ class _ZoTransitionBaseState<T> extends State<ZoTransitionBase<T>>
 
     if (oldWidget.duration != widget.duration) {
       controller.duration = widget.duration;
+      controller.reverseDuration = widget.duration;
     }
 
     if (oldWidget.open != widget.open) {

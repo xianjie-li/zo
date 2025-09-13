@@ -64,11 +64,13 @@ class ZoProgress extends StatelessWidget {
     double strokeWidth = 8;
 
     if (size == ZoSize.small) {
-      constraints = const BoxConstraints(
-        minWidth: 24,
-        minHeight: 24,
-        maxWidth: 24,
-        maxHeight: 24,
+      final size = style.sizeSM - style.space2;
+
+      constraints = BoxConstraints(
+        minWidth: size,
+        minHeight: size,
+        maxWidth: size,
+        maxHeight: size,
       );
       strokeWidth = 5;
     } else if (size == ZoSize.large) {
@@ -118,7 +120,7 @@ class ZoProgress extends StatelessWidget {
       ZoSize.large => style.fontSizeMD,
     };
 
-    final styledText = DefaultTextStyle(
+    final styledText = DefaultTextStyle.merge(
       style: TextStyle(color: style.hintTextColor, fontSize: fontSize),
       child: text!,
     );
@@ -170,8 +172,6 @@ class ZoProgress extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!open) return child ?? const SizedBox();
-
     final style = context.zoStyle;
 
     var node =

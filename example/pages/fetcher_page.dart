@@ -47,7 +47,7 @@ class _FetcherPageState extends State<FetcherPage> {
           if (show) _PageFetchTest(),
           ZoButton(
             child: Text("切换"),
-            onPressed: () {
+            onTap: () {
               setState(() {
                 show = !show;
               });
@@ -113,26 +113,26 @@ class _RequestTestState extends State<_RequestTest> with FetcherHelper {
               Text("retryCount: ${fetcher1.retryCount}"),
               ZoButton(
                 child: Text("set Data"),
-                onPressed: () {
+                onTap: () {
                   fetcher1.data = "Hello World custom";
                 },
               ),
               ZoButton(
                 child: Text("set Error"),
-                onPressed: () {
+                onTap: () {
                   fetcher1.error = ZoException("fetch error");
                 },
               ),
               ZoButton(
                 child: Text("set Loading"),
-                onPressed: () {
+                onTap: () {
                   fetcher1.loading = !fetcher1.loading;
                 },
               ),
-              ZoButton(child: Text("refresh"), onPressed: fetcher1.fetch),
+              ZoButton(child: Text("refresh"), onTap: fetcher1.fetch),
               ZoButton(
                 child: Text("fetch"),
-                onPressed: () {
+                onTap: () {
                   var n = math.Random().nextInt(100);
                   return fetcher1
                       .fetch(n)
@@ -146,7 +146,7 @@ class _RequestTestState extends State<_RequestTest> with FetcherHelper {
               ),
               ZoButton(
                 child: Text("global fetch"),
-                onPressed: globalFetcher.fetch,
+                onTap: globalFetcher.fetch,
               ),
             ],
           ),
@@ -199,7 +199,7 @@ class __PageFetchTestState extends State<_PageFetchTest> with FetcherHelper {
         Text("fetchAt: ${fetcher.fetchAt}"),
         ZoButton(
           child: Text("load"),
-          onPressed: () {
+          onTap: () {
             fetcher.payload = fetcher.payload! + 1;
           },
         ),

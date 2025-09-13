@@ -152,8 +152,8 @@ class ZoAsyncResult<Data> extends StatelessWidget {
     if (retry == null) return [];
     return [
       ZoButton(
-        onPressed: retry,
-        text: isCompact,
+        onTap: retry,
+        plain: isCompact,
         size: ZoSize.small,
         child: Text(context.zoLocale.retry),
       ),

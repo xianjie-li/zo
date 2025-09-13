@@ -16,7 +16,7 @@ enum ZoPopperDirection {
   leftTop,
 }
 
-/// 控制层在通过内部 tapAway / escape / Navigator.pop 等行为触发关闭时, 应该销毁还是仅关闭层
+/// 控制层在通过 dismiss 或 tapAway / escape / Navigator.pop 等行为触发关闭时, 应该销毁还是仅关闭层
 enum ZoOverlayDismissMode {
   close, // 仅关闭弹层，保留资源
   dispose, // 销毁弹层，释放资源
@@ -71,7 +71,7 @@ class ZoOverlayDragEndData {
   });
 
   /// 事件对象本身
-  final ZoDragTriggerEvent event;
+  final ZoTriggerDragEvent event;
 
   /// 位置
   final Offset position;

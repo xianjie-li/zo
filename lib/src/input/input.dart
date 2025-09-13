@@ -397,10 +397,10 @@ class _ZoInputState<T> extends ZoCustomFormState<T, ZoInput<T>> {
       if (!isEmpty) {
         list.add(
           ZoButton(
-            icon: Icon(Icons.clear),
-            size: ZoSize.small,
-            square: true,
-            onPressed: onClear,
+            icon: const Icon(Icons.clear),
+            plain: true,
+            size: widget.size == ZoSize.large ? ZoSize.medium : ZoSize.small,
+            onTap: onClear,
           ),
         );
       }
@@ -414,9 +414,9 @@ class _ZoInputState<T> extends ZoCustomFormState<T, ZoInput<T>> {
                 ? Icons.visibility_outlined
                 : Icons.visibility_off_rounded,
           ),
-          size: ZoSize.small,
-          square: true,
-          onPressed: onObscureTextEnableChange,
+          plain: true,
+          size: widget.size == ZoSize.large ? ZoSize.medium : ZoSize.small,
+          onTap: onObscureTextEnableChange,
         ),
       );
     }
@@ -448,7 +448,7 @@ class _ZoInputState<T> extends ZoCustomFormState<T, ZoInput<T>> {
       child: IgnorePointer(
         child: Align(
           alignment: isMultipleLine ? Alignment.topLeft : Alignment.centerLeft,
-          child: DefaultTextStyle(
+          child: DefaultTextStyle.merge(
             style: TextStyle(color: style.hintTextColor),
             child: widget.hintText!,
           ),
@@ -604,7 +604,7 @@ class _ZoInputState<T> extends ZoCustomFormState<T, ZoInput<T>> {
       ],
     );
 
-    return IconTheme(
+    return IconTheme.merge(
       data: IconThemeData(color: style.hintTextColor),
       child: Container(
         constraints:

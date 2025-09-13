@@ -1,6 +1,6 @@
 export "../trigger/event_trigger.dart";
 export "action_history.dart";
-export "select_manager.dart";
+export "selector.dart";
 
 // const int maxIntValue = kIsWeb ? 9007199254740991 : 9223372036854775807;
 // const int minIntValue = kIsWeb ? -9007199254740991 : -9223372036854775808;
@@ -20,9 +20,9 @@ class ZoException implements Exception {
 var _uniqueId = 0;
 
 /// 返回一个相对于应用生命周期唯一的id
-int createTempId() {
+String createTempId() {
   _uniqueId++;
-  return _uniqueId;
+  return _uniqueId.toString();
 }
 
 /// 数值显示, 不带小数类型正常显示, 带小数时显示指定未数

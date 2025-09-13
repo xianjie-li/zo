@@ -1,74 +1,87 @@
 import "package:flutter/material.dart";
 import "package:zo/zo.dart";
 
-/// 一个通用容器, 它创建一个矩形区域, 并在 focus / hover / 点击时触发特定的交互样式, 它在内部
-/// 包装了 Container 和 InkWell, 支持它们的大部分属性
-///
-/// 包含背景色 / 边框 / 水波三种交互效果, 默认使用背景色交互, 可以同事启用多种效果
+/// 一个预置了交互样式和回调的通用容器, 用于为 按钮 / 列表项 / 卡片 等提供通用的交互反馈行为,
+/// 它会在用户进行 点击 / 按下 / hover 等操作时自动添加适当的样式
 class ZoInteractiveBox extends StatefulWidget {
   const ZoInteractiveBox({
     super.key,
     this.child,
-    this.colorEffect = true,
-    this.borderEffect = false,
-    this.splashEffect = false,
-    this.borderRadius,
+    this.loading = false,
+    this.enabled = true,
+    this.color,
+    this.radius,
     this.border,
     this.activeBorder,
+    this.onTap,
+    this.onContextAction,
+    this.onActiveChanged,
+    this.onFocusChanged,
+    this.data,
+    this.focusNode,
+    this.autofocus = false,
+    this.canRequestFocus = true,
     this.alignment,
     this.padding,
     this.width,
     this.height,
     this.constraints,
     this.decoration,
-    this.foregroundDecoration,
-    this.onTap,
-    this.onTapDown,
-    this.onTapUp,
-    this.onTapCancel,
-    this.onSecondaryTap,
-    this.onSecondaryTapUp,
-    this.onSecondaryTapDown,
-    this.onSecondaryTapCancel,
-    this.onDoubleTap,
-    this.onLongPress,
-    this.onHighlightChanged,
-    this.onHover,
-    this.focusColor,
-    this.hoverColor,
-    this.highlightColor,
-    this.splashColor,
-    this.enableFeedback = true,
-    this.focusNode,
-    this.canRequestFocus = true,
-    this.onFocusChange,
-    this.autofocus = false,
+    this.interactive = true,
+    this.progressType = ZoProgressType.circle,
+    this.plain = false,
+    this.textColorAdjust = true,
+    this.disabledColor,
+    this.iconTheme,
+    this.textStyle,
   });
 
-  // # # # # # # # 定制属性 # # # # # # #
-
-  /// 子级
+  /// 按钮主要内容
   final Widget? child;
 
-  /// 是否显示背景色效果
-  final bool colorEffect;
+  /// 是否显示加载状态
+  final bool loading;
 
-  /// 是否显示边框效果, 可通过 [border] 和 [activeBorder] 定制边框样式
-  final bool borderEffect;
+  /// 是否启用
+  final bool enabled;
 
-  /// 是否显示点击水波效果
-  final bool splashEffect;
+  /// 自定义颜色
+  final Color? color;
 
   /// 圆角
-  final BorderRadius? borderRadius;
+  final BorderRadius? radius;
 
   /// 边框
   final BoxBorder? border;
 
-  /// 高亮边框, 会在聚焦 / hover 时显示
+  /// 处于活动状态下显示的边框
   final BoxBorder? activeBorder;
 
-  // # # # # # # # Container 属性 # # # # # # #
+  /// 点击, 若返回一个 future, 可使按钮进入loading状态
+  final dynamic Function(ZoTriggerEvent event)? onTap;
+
+  /// 是否活动状态
+  /// - 鼠标: 表示位于组件上方
+  /// - 触摸设备: 按下触发, 松开或移动时关闭
+  final ZoTriggerListener<ZoTriggerToggleEvent>? onActiveChanged;
+
+  /// 焦点变更, 传入此项后会自动启用 focus 功能
+  final ZoTriggerListener<ZoTriggerToggleEvent>? onFocusChanged;
+
+  /// 触发上下文操作, 在鼠标操作中表示右键点击, 在触摸操作中表示长按
+  final void Function(ZoTriggerEvent event)? onContextAction;
+
+  /// 传递到事件对象的额外信息, 可在事件回调中通过 event.data 访问
+  final dynamic data;
+
+  /// 焦点控制
+  final FocusNode? focusNode;
+
+  /// 自动聚焦
+  final bool autofocus;
+
+  /// 是否可获取焦点
+  final bool canRequestFocus;
 
   /// 控制子级对齐
   final AlignmentGeometry? alignment;
@@ -88,152 +101,336 @@ class ZoInteractiveBox extends StatefulWidget {
   /// 应用盒子装饰
   final BoxDecoration? decoration;
 
-  /// 应用盒子前景装饰
-  final BoxDecoration? foregroundDecoration;
+  /// 常规状态下隐藏边框 / 填充等, 仅在交互中显示
+  final bool plain;
 
-  // # # # # # # # InkWell 属性 # # # # # # #
+  /// 是否可进行交互, 与 enabled = false 不同的是它不设置禁用样式, 只是阻止交互行为
+  final bool interactive;
 
-  /// 点击
-  final void Function()? onTap;
-  final void Function(TapDownDetails)? onTapDown;
-  final void Function(TapUpDetails)? onTapUp;
-  final void Function()? onTapCancel;
-  final void Function()? onSecondaryTap;
-  final void Function(TapUpDetails)? onSecondaryTapUp;
-  final void Function(TapDownDetails)? onSecondaryTapDown;
-  final void Function()? onSecondaryTapCancel;
+  /// 加载指示器的样式
+  final ZoProgressType progressType;
 
-  /// 双击
-  final void Function()? onDoubleTap;
+  /// 根据 color 使用合适的文本色, 设置为 false 或 color 为 null 时使用默认文本色
+  final bool textColorAdjust;
 
-  /// 长按
-  final void Function()? onLongPress;
+  /// 禁用状态的背景色
+  final Color? disabledColor;
 
-  /// 高亮状态变更
-  final void Function(bool)? onHighlightChanged;
+  /// 调整图标样式
+  final IconThemeData? iconTheme;
 
-  /// hover状态变更
-  final void Function(bool)? onHover;
-
-  /// 颜色配置
-  final Color? focusColor;
-  final Color? hoverColor;
-  final Color? highlightColor;
-  final Color? splashColor;
-
-  /// 应用交互反馈
-  final bool enableFeedback;
-
-  /// 焦点控制
-  final FocusNode? focusNode;
-
-  /// 可聚焦
-  final bool canRequestFocus;
-
-  /// 聚焦状态变更
-  final void Function(bool)? onFocusChange;
-
-  /// 自动聚焦
-  final bool autofocus;
+  /// 文本样式
+  final TextStyle? textStyle;
 
   @override
   State<ZoInteractiveBox> createState() => _ZoInteractiveBoxState();
 }
 
 class _ZoInteractiveBoxState extends State<ZoInteractiveBox> {
-  bool highlight = false;
-  bool hover = false;
+  bool active = false;
+
   bool focus = false;
 
-  void onHighlightChanged(bool val) {
-    widget.onHighlightChanged?.call(val);
+  bool localLoading = false;
+
+  bool get isLoading {
+    return widget.loading || localLoading;
+  }
+
+  AnimationController? controller;
+
+  /// 判断指定颜色是否应使用浅色文本
+  bool useLighterText(Color? color) {
+    // 无颜色 或 plain 按钮跳过
+    if (color == null || widget.plain) return false;
+    final curColor = widget.color ?? context.zoStyle.primaryColor;
+    final lum = curColor.computeLuminance();
+    return lum < 0.5;
+  }
+
+  void onActiveChanged(ZoTriggerToggleEvent event) {
+    widget.onActiveChanged?.call(event);
+
     setState(() {
-      highlight = val;
+      active = event.toggle;
     });
   }
 
-  void onHover(bool val) {
-    widget.onHover?.call(val);
+  void onContextAction(ZoTriggerEvent event) {
+    if (isLoading) return;
+
+    widget.onContextAction?.call(event);
+  }
+
+  void onFocusChanged(ZoTriggerToggleEvent event) {
+    widget.onFocusChanged?.call(event);
+
     setState(() {
-      hover = val;
+      focus = event.toggle;
     });
   }
 
-  void onFocusChange(bool val) {
-    widget.onFocusChange?.call(val);
+  void onTap(ZoTriggerEvent event) {
+    if (isLoading) return;
 
-    setState(() {
-      focus = val;
-    });
+    closeEffect();
+
+    if (widget.onTap == null) return;
+
+    final ret = widget.onTap!(event);
+
+    if (ret is Future) {
+      setState(() {
+        localLoading = true;
+      });
+
+      ret.whenComplete(() {
+        setState(() {
+          localLoading = false;
+        });
+      }).ignore();
+    }
   }
 
-  // 根据状态获取当前 border
-  BoxBorder? getBorder() {
-    var border = widget.border;
-    var activeBorder = widget.activeBorder;
+  void onTapDown(ZoTriggerEvent event) {
+    triggerEffect();
+  }
 
-    if (!widget.borderEffect) {
-      return widget.border;
+  void onTapCancel(ZoTriggerEvent event) {
+    closeEffect();
+  }
+
+  void controllerRef(AnimationController? controller) {
+    this.controller = controller;
+  }
+
+  void triggerEffect() {
+    if (controller == null || !widget.interactive) return;
+    controller!.forward(from: 0);
+  }
+
+  void closeEffect() {
+    if (controller == null || !widget.interactive) return;
+    controller!.reverse(from: 1);
+  }
+
+  Widget buildTapEffect(ZoStyle style, Color maskColor) {
+    return ZoTransitionBase<double>(
+      controllerRef: controllerRef,
+      open: false,
+      changeVisible: false,
+      appear: false,
+      autoAlpha: false,
+      mountOnEnter: false,
+      duration: const Duration(milliseconds: 40),
+      reverseDuration: const Duration(milliseconds: 400),
+      builder: (animate) {
+        return FadeTransition(
+          opacity: animate.animation,
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(
+                style.borderRadius,
+              ),
+              color: maskColor,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Color? getBgColor(ZoStyle style) {
+    // 背景色
+    Color? color;
+
+    if (widget.plain) {
+      color = null;
+    } else if (!widget.enabled) {
+      color = widget.disabledColor ?? style.disabledColor;
+    } else if (widget.color != null) {
+      color = widget.color;
     }
 
-    if (border == null || activeBorder == null) {
-      var style = context.zoStyle;
-      var zBorder = style.outlineColor;
-      var zBorderVariant = style.outlineColorVariant;
+    return color;
+  }
 
-      border = border ?? Border.all(color: zBorder);
-      activeBorder = activeBorder ?? Border.all(color: zBorderVariant);
+  Color? getTextColor(ZoStyle style, Color? color) {
+    // 文本和图标颜色
+    Color? textColor;
+
+    if (widget.enabled && widget.textColorAdjust) {
+      if (color != null) {
+        if (useLighterText(color)) {
+          // 固定使用白色
+          textColor = Colors.white;
+        } else {
+          // 固定取黑色文本
+          textColor = style.brightness == Brightness.light
+              ? style.textColor
+              : style.reverseStyle.textColor;
+        }
+      } else if (widget.color != null) {
+        // 无背景色的带主色按钮, 使用主色
+        textColor = widget.color;
+      } else {
+        // 其他情况使用默认文本色
+        textColor = style.textColor;
+      }
+    } else if (!widget.enabled) {
+      textColor = style.disabledTextColor;
+    } else {
+      textColor = style.textColor;
     }
 
-    if (highlight || hover || focus) {
-      return activeBorder;
+    return textColor;
+  }
+
+  (Color? maskColor, Color tapMaskColor) getMaskColor(
+    ZoStyle style,
+    Color? color,
+  ) {
+    // 按钮交互时显示的遮罩色
+    Color? maskColor;
+
+    if (color != null) {
+      // 有背景色使用白色遮罩
+      maskColor = Colors.white.withAlpha(80);
+    } else if (widget.color != null) {
+      // 有主色, 使用主色的浅色版本
+      maskColor = widget.color!.withAlpha(20);
+    } else {
+      // 使用hover色
+      maskColor = style.hoverColor;
     }
 
-    return border;
+    // 点击时显示的遮罩色, 大部分情况与 maskColor 一致, 在带背景色时改为使用黑色加强对比
+    var tapMaskColor = maskColor;
+
+    if (color != null) {
+      tapMaskColor = Colors.black.withAlpha(40);
+    }
+
+    return (maskColor, tapMaskColor);
+  }
+
+  /// 按需添加文本和图标色
+  Widget withTextAndIconColor(Widget child, Color? textColor) {
+    if (textColor == null) return child;
+
+    final iconTheme = widget.iconTheme ?? const IconThemeData();
+    final textStyle = widget.textStyle ?? const TextStyle();
+
+    return IconTheme.merge(
+      data: iconTheme.copyWith(color: textColor),
+      child: DefaultTextStyle.merge(
+        style: textStyle.copyWith(
+          color: textColor,
+        ),
+        child: child,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    var decoration = widget.decoration ?? BoxDecoration();
+    // 优化builder函数
+    final style = context.zoStyle;
 
-    return InkWell(
-      borderRadius: widget.borderRadius,
-      onTap: widget.onTap,
-      onTapDown: widget.onTapDown,
-      onTapUp: widget.onTapUp,
-      onTapCancel: widget.onTapCancel,
-      onSecondaryTap: widget.onSecondaryTap,
-      onSecondaryTapUp: widget.onSecondaryTapUp,
-      onSecondaryTapDown: widget.onSecondaryTapDown,
-      onSecondaryTapCancel: widget.onSecondaryTapCancel,
-      onDoubleTap: widget.onDoubleTap,
-      onLongPress: widget.onLongPress,
-      onHighlightChanged: onHighlightChanged,
-      onHover: onHover,
-      onFocusChange: onFocusChange,
-      focusColor: widget.colorEffect ? widget.focusColor : Colors.transparent,
-      hoverColor: widget.colorEffect ? widget.hoverColor : Colors.transparent,
-      highlightColor:
-          widget.colorEffect ? widget.highlightColor : Colors.transparent,
-      splashColor:
-          widget.splashEffect ? widget.splashColor : Colors.transparent,
-      enableFeedback: widget.enableFeedback,
-      focusNode: widget.focusNode,
-      canRequestFocus: widget.canRequestFocus,
-      autofocus: widget.autofocus,
-      child: Container(
-        decoration: decoration.copyWith(
-          borderRadius: widget.borderRadius,
-          border: getBorder(),
+    // 背景色
+    final color = getBgColor(style);
+
+    // 文本和图标颜色
+    final textColor = getTextColor(style, color);
+
+    // 交互反馈的遮罩色
+    final (maskColor, tapMaskColor) = getMaskColor(style, color);
+
+    // 圆角
+    final radius = widget.radius ?? BorderRadius.circular(style.borderRadius);
+
+    // 添加高亮样式
+    final needHighlight = focus || active;
+
+    final decoration = widget.decoration ?? const BoxDecoration();
+
+    return withTextAndIconColor(
+      ZoTrigger(
+        enabled: widget.enabled && widget.interactive,
+        changeCursor: widget.interactive,
+        canRequestFocus:
+            widget.interactive && widget.canRequestFocus && !isLoading,
+        onActiveChanged: onActiveChanged,
+        onFocusChanged: onFocusChanged,
+        onContextAction: onContextAction,
+        onTap: onTap,
+        onTapDown: onTapDown,
+        onTapCancel: onTapCancel,
+        focusNode: widget.focusNode,
+        autofocus: widget.autofocus,
+        data: widget.data,
+        child: ZoProgress(
+          open: isLoading,
+          size: ZoSize.small,
+          type: widget.progressType,
+          borderRadius: radius,
+          child: Stack(
+            children: [
+              // 背景层, 和内容分开, 防止被遮罩反馈影响显示
+              Positioned.fill(
+                key: const ValueKey("BG"),
+                child: Container(
+                  decoration: decoration.copyWith(
+                    color: color,
+                    borderRadius: radius,
+                    border: needHighlight
+                        ? (widget.activeBorder ?? widget.border)
+                        : widget.border,
+                  ),
+                ),
+              ),
+              // 活动或聚焦时显示的遮罩层
+              if (widget.interactive)
+                Positioned.fill(
+                  key: const ValueKey("ACTIVE"),
+                  child: IgnorePointer(
+                    child: Opacity(
+                      opacity: !isLoading && needHighlight ? 1 : 0,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: radius,
+                          color: maskColor,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              // 点按反馈层
+              if (widget.interactive)
+                Positioned.fill(
+                  key: const ValueKey("FEEDBACK"),
+                  child: IgnorePointer(
+                    child: Opacity(
+                      opacity: isLoading ? 0 : 1,
+                      child: buildTapEffect(style, tapMaskColor),
+                    ),
+                  ),
+                ),
+              // 按钮主要内容
+              Container(
+                key: const ValueKey("CONTENT"),
+                alignment: widget.alignment,
+                padding: widget.padding,
+                width: widget.width,
+                height: widget.height,
+                constraints: widget.constraints,
+                child: widget.child,
+              ),
+            ],
+          ),
         ),
-        alignment: widget.alignment,
-        padding: widget.padding,
-        width: widget.width,
-        height: widget.height,
-        constraints: widget.constraints,
-        foregroundDecoration: widget.foregroundDecoration,
-        child: widget.child,
       ),
+      textColor,
     );
   }
 }

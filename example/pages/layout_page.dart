@@ -222,6 +222,24 @@ class _LayoutPageState extends State<LayoutPage> {
                       "这是内容区域, 显示一些内容显示一些内容显示一些内容显示一些内容显示一些内容, 显示一些内容显示一些内容",
                       style: TextStyle(color: context.zoStyle.hintTextColor),
                     ),
+                    style: ZoTileStyle.border,
+                    onTap: (e) {},
+                  ),
+                  ZoTile(
+                    header: Text("这是一段标题"),
+                    content: Text(
+                      "这是内容区域, 显示一些内容显示一些内容显示一些内容显示一些内容显示一些内容, 显示一些内容显示一些内容",
+                      style: TextStyle(color: context.zoStyle.hintTextColor),
+                    ),
+                    onTap: (e) {},
+                  ),
+                  ZoTile(
+                    header: Text("这是一段标题"),
+                    content: Text(
+                      "这是内容区域, 显示一些内容显示一些内容显示一些内容显示一些内容显示一些内容, 显示一些内容显示一些内容",
+                      style: TextStyle(color: context.zoStyle.hintTextColor),
+                    ),
+                    onTap: (e) {},
                   ),
                   ZoTile(
                     leading: Text("前置文本"),
@@ -249,10 +267,10 @@ class _LayoutPageState extends State<LayoutPage> {
                       spacing: 12,
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        ZoButton(onPressed: () {}, child: Text("取消")),
+                        ZoButton(onTap: () {}, child: Text("取消")),
                         ZoButton(
                           primary: true,
-                          onPressed: () {},
+                          onTap: () {},
                           child: Text("确认"),
                         ),
                       ],
@@ -325,6 +343,7 @@ class _LayoutPageState extends State<LayoutPage> {
                     style: ZoTileStyle.border,
                   ),
                   ZoTile(
+                    interactive: false,
                     leading: Icon(Icons.supervised_user_circle),
                     header: Text("这是一段标题"),
                     content: Text(
@@ -336,10 +355,10 @@ class _LayoutPageState extends State<LayoutPage> {
                       spacing: 12,
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        ZoButton(onPressed: () {}, child: Text("取消")),
+                        ZoButton(onTap: () {}, child: Text("取消")),
                         ZoButton(
                           primary: true,
-                          onPressed: () {},
+                          onTap: () {},
                           child: Text("确认"),
                         ),
                       ],
@@ -363,6 +382,7 @@ class _LayoutPageState extends State<LayoutPage> {
                     style: ZoTileStyle.filled,
                   ),
                   ZoTile(
+                    interactive: false,
                     leading: Icon(Icons.supervised_user_circle),
                     header: Text("这是一段标题"),
                     content: Text(
@@ -374,10 +394,10 @@ class _LayoutPageState extends State<LayoutPage> {
                       spacing: 12,
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        ZoButton(onPressed: () {}, child: Text("取消")),
+                        ZoButton(onTap: () {}, child: Text("取消")),
                         ZoButton(
                           primary: true,
-                          onPressed: () {},
+                          onTap: () {},
                           child: Text("确认"),
                         ),
                       ],
@@ -386,7 +406,7 @@ class _LayoutPageState extends State<LayoutPage> {
                   ),
 
                   ZoTile(
-                    enable: false,
+                    enabled: false,
                     header: Text(
                       "disabled 这是一段标题",
                       style: TextStyle(
@@ -395,7 +415,6 @@ class _LayoutPageState extends State<LayoutPage> {
                     ),
                     content: Text(
                       "这是内容区域, 显示一些内容显示一些内容显示一些内容显示一些内容显示一些内容, 显示一些内容显示一些内容",
-                      style: TextStyle(color: context.zoStyle.hintTextColor),
                     ),
                     style: ZoTileStyle.filled,
                   ),
@@ -423,7 +442,6 @@ class _LayoutPageState extends State<LayoutPage> {
                     ),
                     content: Text(
                       "这是内容区域, 显示一些内容显示一些内容显示一些内容显示一些内容显示一些内容, 显示一些内容显示一些内容",
-                      style: TextStyle(color: context.zoStyle.hintTextColor),
                     ),
                     // style: ZoTileStyle.border,
                   ),
@@ -438,7 +456,6 @@ class _LayoutPageState extends State<LayoutPage> {
                     ),
                     content: Text(
                       "这是内容区域, 显示一些内容显示一些内容显示一些内容显示一些内容显示一些内容, 显示一些内容显示一些内容",
-                      style: TextStyle(color: context.zoStyle.hintTextColor),
                     ),
                     style: ZoTileStyle.border,
                   ),
@@ -453,7 +470,6 @@ class _LayoutPageState extends State<LayoutPage> {
                     ),
                     content: Text(
                       "这是内容区域, 显示一些内容显示一些内容显示一些内容显示一些内容显示一些内容, 显示一些内容显示一些内容",
-                      style: TextStyle(color: context.zoStyle.hintTextColor),
                     ),
                     style: ZoTileStyle.border,
                   ),
@@ -468,7 +484,6 @@ class _LayoutPageState extends State<LayoutPage> {
                     ),
                     content: Text(
                       "这是内容区域, 显示一些内容显示一些内容显示一些内容显示一些内容显示一些内容, 显示一些内容显示一些内容",
-                      style: TextStyle(color: context.zoStyle.hintTextColor),
                     ),
                     // style: ZoTileStyle.border,
                   ),
@@ -483,7 +498,6 @@ class _LayoutPageState extends State<LayoutPage> {
                     ),
                     content: Text(
                       "这是内容区域, 显示一些内容显示一些内容显示一些内容显示一些内容显示一些内容, 显示一些内容显示一些内容",
-                      style: TextStyle(color: context.zoStyle.hintTextColor),
                     ),
                     // style: ZoTileStyle.border,
                   ),

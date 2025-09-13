@@ -86,6 +86,9 @@ class OverlayPositionedRenderObject extends RenderBox
   /// 最后一次绘制时的层尺寸
   Rect? overlayRect;
 
+  /// 最后一次方向布局中使用的方向
+  ZoPopperDirection? direction;
+
   Offset? _manualPosition;
 
   /// 手动指定布局位置, 设置后, 后续布局会优先使用此位置进行布局
@@ -151,7 +154,7 @@ class OverlayPositionedRenderObject extends RenderBox
     Offset layoutOffset;
     ZoDirectionLayoutData? directionLayoutData;
 
-    // 由于 _regularLayout 等方法使用了 globalToLocal, 所以只能在绘制阶段进行相应,
+    // 由于 _regularLayout 等方法使用了 globalToLocal, 所以只能在绘制阶段进行响应,
     // 因为布局阶段对象位置还未确定
     if (manualPosition != null) {
       layoutOffset = manualPosition!;
@@ -159,13 +162,13 @@ class OverlayPositionedRenderObject extends RenderBox
       layoutOffset = _regularLayout();
     } else {
       (layoutOffset, directionLayoutData) = _directionLayout(context, offset);
+      direction = directionLayoutData.direction;
     }
 
     final BoxParentData childParentData = child!.parentData as BoxParentData;
 
     childParentData.offset = layoutOffset;
 
-    /// 如果不可见则不进行渲染
     containerRect = Rect.fromLTWH(
       offset.dx,
       offset.dy,
@@ -180,6 +183,7 @@ class OverlayPositionedRenderObject extends RenderBox
       overlaySize.height,
     );
 
+    /// 如果不可见则不进行渲染
     if (!containerRect!.overlaps(overlayRect!)) return;
 
     // 裁剪不可见部分

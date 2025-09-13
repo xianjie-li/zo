@@ -57,10 +57,23 @@ void main() {
     });
   });
 
-  test("paly3", () async {
-    final list = [1, 2, 3, 4];
+  test("paly3", () {
+    assert(Symbol.empty == Symbol.empty);
+    assert(Symbol("abc") == Symbol("abc"));
+  });
 
-    list.insert(4, 5);
-    print(list);
+  test("paly4", () {
+    var set1 = {1, 2, 3};
+    var set2 = set1.toSet();
+
+    set2.add(4);
+
+    print(set1);
+    print(set2);
+  });
+
+  test("play5", () {
+    final String str = "Abc";
+    expect(str.contains("Abc"), true);
   });
 }

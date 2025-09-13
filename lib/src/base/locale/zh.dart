@@ -13,6 +13,9 @@ class ZoLocalizationsZh extends ZoLocalizations
   final loadFail = "加载失败";
 
   @override
+  final loading = "加载中...";
+
+  @override
   final retry = "重试";
 
   @override

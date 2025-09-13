@@ -9,6 +9,8 @@ class ZoLocalizationsDefault extends ZoLocalizations {
 
   final loadFail = "Load fail";
 
+  final loading = "Loading...";
+
   final retry = "Retry";
 
   final cancel = "Cancel";

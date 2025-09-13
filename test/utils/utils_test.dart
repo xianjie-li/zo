@@ -17,7 +17,7 @@ void main() {
   });
 
   test("EventTrigger", () {
-    var event = EventTrigger<int>();
+    final event = EventTrigger<int>();
 
     int n = 0;
 
@@ -49,15 +49,15 @@ void main() {
   });
 
   test("isNil", () {
-    var val1 = "";
+    const val1 = "";
     int? val2;
-    var val3 = 0;
-    var val4 = 0.0;
-    var val5 = false;
-    var val6 = [];
-    var val7 = {};
-    var val8 = <int>{};
-    var val9 = "1252";
+    const val3 = 0;
+    const val4 = 0.0;
+    const val5 = false;
+    final val6 = [];
+    final val7 = {};
+    final val8 = <int>{};
+    const val9 = "1252";
 
     expect(isNil(val1), true);
     expect(isNil(val2), true);
@@ -71,9 +71,9 @@ void main() {
   });
 
   test("deepHash", () {
-    var num1 = 1;
-    var str1 = "hello";
-    var bool1 = true;
+    const num1 = 1;
+    const str1 = "hello";
+    const bool1 = true;
     int? null1;
 
     expect(deepHash(num1), deepHash(num1));
@@ -81,14 +81,14 @@ void main() {
     expect(deepHash(bool1), deepHash(bool1));
     expect(deepHash(null1), deepHash(null1));
 
-    var list1 = [num1, str1, bool1, null1];
-    var list2 = [num1, str1, bool1, null1];
-    var map1 = {num1: num1, str1: str1, bool1: bool1, null1: null1};
-    var map2 = {num1: num1, str1: str1, bool1: bool1, null1: null1};
-    var set1 = {num1, str1, bool1, null1};
-    var set2 = {num1, str1, bool1, null1};
-    var record1 = (num1, str1, bool1, null1);
-    var record2 = (num1, str1, bool1, null1);
+    final list1 = [num1, str1, bool1, null1];
+    final list2 = [num1, str1, bool1, null1];
+    final map1 = {num1: num1, str1: str1, bool1: bool1, null1: null1};
+    final map2 = {num1: num1, str1: str1, bool1: bool1, null1: null1};
+    final set1 = {num1, str1, bool1, null1};
+    final set2 = {num1, str1, bool1, null1};
+    final record1 = (num1, str1, bool1, null1);
+    final record2 = (num1, str1, bool1, null1);
 
     // 抽样
     expect(
@@ -104,5 +104,66 @@ void main() {
     expect(deepHash(record1), deepHash(record2));
 
     expect(deepHash(null), deepHash(null));
+  });
+
+  test("Selector", () {
+    final options1 = [1, 2, 3];
+
+    final Selector<int, int> selector = Selector();
+
+    expect(selector.hasSelected(), false);
+    expect(selector.isPartialSelected(options1), false);
+
+    selector.select(1);
+    selector.select(2);
+
+    expect(selector.hasSelected(), true);
+    expect(selector.isPartialSelected(options1), true);
+    expect(selector.isAllSelected(options1), false);
+    expect(selector.isSelected(1), true);
+    expect(selector.isSelected(3), false);
+    expect(selector.getSelected(), {1, 2});
+
+    selector.select(3);
+
+    expect(selector.isPartialSelected(options1), false);
+    expect(selector.isAllSelected(options1), true);
+
+    selector.unselect(2);
+
+    expect(selector.isSelected(2), false);
+
+    selector.unselectList([1, 2, 3]);
+
+    expect(selector.getSelected().isEmpty, true);
+
+    selector.selectList([1, 2]);
+
+    expect(selector.getSelected(), {1, 2});
+
+    selector.unselectAll();
+
+    expect(selector.getSelected().isEmpty, true);
+
+    selector.selectAll(options1);
+
+    expect(selector.getSelected(), {1, 2, 3});
+
+    selector.toggle(2);
+
+    expect(selector.getSelected(), {1, 3});
+
+    selector.toggle(2);
+
+    expect(selector.getSelected(), {1, 2, 3});
+
+    selector.toggle(2);
+    selector.toggleAll(options1);
+
+    expect(selector.getSelected(), {2});
+
+    selector.setSelected([1, 3]);
+
+    expect(selector.getSelected(), {1, 3});
   });
 }

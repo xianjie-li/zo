@@ -2,7 +2,10 @@ import "package:flutter/material.dart";
 import "package:flutter_localizations/flutter_localizations.dart";
 import "package:zo/zo.dart";
 
+import "pages/button_page.dart";
+import "pages/menus_page.dart";
 import "pages/overlay_page2.dart";
+import "pages/play_page.dart";
 import "pages/router_links.dart";
 
 void main() {
@@ -82,61 +85,51 @@ class _MyAppState extends State<MyApp> {
                           ),
                         ),
                       ),
-                      child: Column(
-                        spacing: 12,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              IconButton(
-                                icon: locale == const Locale("en")
-                                    ? const Text("ZH")
-                                    : const Text("CN"),
-                                onPressed: () {
-                                  setState(() {
-                                    locale = locale == const Locale("en")
-                                        ? const Locale("zh")
-                                        : const Locale("en");
-                                  });
-                                },
-                              ),
-                              IconButton(
-                                icon: Icon(
-                                  mode == ThemeMode.light
-                                      ? Icons.dark_mode
-                                      : Icons.light_mode,
+                      child: SafeArea(
+                        child: Column(
+                          spacing: 12,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                IconButton(
+                                  icon: locale == const Locale("en")
+                                      ? const Text("ZH")
+                                      : const Text("CN"),
+                                  onPressed: () {
+                                    setState(() {
+                                      locale = locale == const Locale("en")
+                                          ? const Locale("zh")
+                                          : const Locale("en");
+                                    });
+                                  },
                                 ),
-                                color: mode == ThemeMode.light
-                                    ? Colors.black
-                                    : Colors.white,
-                                onPressed: () {
-                                  setState(() {
-                                    mode = mode == ThemeMode.light
-                                        ? ThemeMode.dark
-                                        : ThemeMode.light;
-                                  });
-                                },
-                              ),
-                            ],
-                          ),
-                          Expanded(
-                            child: RouterLinks(
-                              navigatorKey: navigatorKey,
+                                IconButton(
+                                  icon: Icon(
+                                    mode == ThemeMode.light
+                                        ? Icons.dark_mode
+                                        : Icons.light_mode,
+                                  ),
+                                  color: mode == ThemeMode.light
+                                      ? Colors.black
+                                      : Colors.white,
+                                  onPressed: () {
+                                    setState(() {
+                                      mode = mode == ThemeMode.light
+                                          ? ThemeMode.dark
+                                          : ThemeMode.light;
+                                    });
+                                  },
+                                ),
+                              ],
                             ),
-                          ),
-                          ZoButton(
-                            child: Text("timepicker"),
-                            onPressed: () {
-                              showDatePicker(
-                                useRootNavigator: false,
-                                context: context,
-                                initialDate: DateTime(2021, 7, 25),
-                                firstDate: DateTime(2021),
-                                lastDate: DateTime(2022),
-                              );
-                            },
-                          ),
-                        ],
+                            Expanded(
+                              child: RouterLinks(
+                                navigatorKey: navigatorKey,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     );
                   },
@@ -147,8 +140,8 @@ class _MyAppState extends State<MyApp> {
           ),
         );
       },
-      home: const OverlayPage2(),
-      // home: OverlayPage1(),
+      // home: const PlayPage(),
+      home: MenusPage(),
     );
   }
 }

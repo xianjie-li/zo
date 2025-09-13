@@ -1,3 +1,12 @@
+/// # 实现概要，核心类：
+/// - [ZoOverlay] - 层的总控制中心，也是用户操作的主要api，它在内部维护原生的 [Overlay] 来渲染覆盖层
+/// - [ZoOverlayEntry] - 层配置，每一项对应一个显示的层组件，它提供了若干可读写的配置，[ZoOverlayView]
+/// 根据这些配置进行层的渲染，并监听层配置变更进行渲染更新，它提供了很多扩展接口， 使用者可以继承此类来实现自己高度定制化的层
+/// - [ZoOverlayView] - 一个widget，负责根据 entry 配置对其进行渲染， 每个 view 对应一个 entry
+/// - [ZoOverlayPositioned] - 对层进行定位的 renderObject，在渲染对象中定位是为了更好的布局性能，
+/// 如果使用传统组合 + 状态更新的方式会出现布局闪烁、低效等（布局 -> 检测位置 -> 更新状态 -> 布局）问题
+library;
+
 import "dart:async";
 import "dart:collection";
 import "dart:math" as math;
@@ -13,39 +22,48 @@ part "package:zo/src/overlay/overlay_entry.dart";
 part "package:zo/src/overlay/overlay_route.dart";
 part "package:zo/src/overlay/positioned.dart";
 
-/// 管理若干个 [ZoOverlayEntry], 它们是悬浮在常规 UI 之上的特殊层, 可用于实现 Modal, Drawer,
-/// Popper 等弹层类组件, 它提供了实现弹层类组件需要的绝大多数功能, 比如:
+/// [ZoOverlay] 是一个完整的覆盖层解决方案, 它管理若干个 [ZoOverlayEntry],
+/// 它们是悬浮在常规 UI 之上的特殊层, 可用于实现 Modal, Drawer, Popper, Notice
+/// 等弹层类组件, 它提供了实现弹层类组件需要的绝大多数功能, 比如:
 ///
 /// - 层管理
 /// - 定位
 /// - popper 定位, 防遮挡等
-/// - 路由层, 可搭配原始路由 api 使用
+/// - 路由层, 可搭配路由 api 使用
 /// - 遮罩
 /// - 外部点击关闭和 esc 健关闭
 /// - 可拖动
 /// - 动画
 /// - 弹出阻止
 ///
+/// 该库为大部分场景提供了默认实现, 见: [ZoPopper], [ZoDialog], [ZoNotice]
+///
 /// 使用前必须将 ZoOverlayProvider 挂载到 widget 树尽量上方的位置, 并为其传入 navigatorKey
 ///
 /// 层管理: [ZoOverlay] 主要职责是管理 [ZoOverlayEntry] 的添加, 删除, 销毁等,
 /// 如果需要更改 [ZoOverlayEntry] 的状态, 通常是直接变更其提供的属性
 ///
-/// 状态控制: 相比原始 [Overlay], [ZoOverlay] 能更细粒度的控制何时开启 / 关闭 / 销毁层,
-/// 你可以在某个层暂时关闭, 并在稍后重新开启它而不会丢失状态, 这甚至能作用于路由层
+/// 状态控制: 相比 [Overlay], [ZoOverlay] 能更细粒度的控制何时开启 / 关闭 / 销毁层,
+/// 你可以将某个层暂时关闭, 并在稍后重新开启它而不会丢失状态, 这甚至能作用于路由层
+///
+/// 与其他层组件的兼容性: [ZoOverlay] 提供了一种统一管理所有层的方式, 无论是 dialog 还是 popper,
+/// 都以它加入层的时间作为依据控制重叠关系, 这避免了 flutter 或第三方层组件的各种层级冲突导致的遮盖问题,
+/// 而 [ZoOverlay] 的引入也是破坏性的, 它们总是会覆盖在其他层组件的上方, 处理这种兼容性会为实现带来复杂度和不稳定性,
+/// 所以建议一旦使用了 [ZoOverlay], 所有层都应以它作为基础来实现, 对于已有的层组件, 例如 [showDatePicker],
+/// 可通过简单的封装其内部的 [CalendarDatePicker] 组件来实现适配
 final zoOverlay = ZoOverlay();
 
 /// 动画包装器
 typedef ZoOverlayAnimationWrap =
     Widget Function(Widget child, ZoOverlayEntry entry);
 
-/// ZoOverlayView 组件件发送的通知类型
+/// ZoOverlayView 组件发送的通知类型
 enum _ViewTriggerType {
-  /// 包含 barrier 的层显示或隐藏, 其他层应作为响应显示或隐藏自身的 barrier
+  /// 包含 barrier 的层显示或隐藏, 其他层应可响应事件并显示或隐藏自身的 barrier
   barrierChanged,
 }
 
-/// _ViewTriggerType 通知参数
+/// _ViewTriggerType 事件通知参数
 typedef _ViewTriggerArgs = ({
   _ViewTriggerType type,
   _ZoOverlayViewState state,
@@ -57,7 +75,7 @@ var _instanceCount = 0;
 /// 管理若干个 [ZoOverlayEntry], 它们是悬浮在常规 UI 之上的特殊层, 比如 Modal, Drawer,
 /// Popper 等
 ///
-/// 不需要自行创建实例, 而是始终使用全局实例 [zoOverlay]
+/// 不要自行创建实例, 而是始终使用全局实例 [zoOverlay]
 class ZoOverlay {
   ZoOverlay() {
     assert(
@@ -82,13 +100,20 @@ class ZoOverlay {
     return _overlayKey!.currentState!;
   }
 
-  /// 原始 OverlayEntry, 与 overlays 一一对应
+  /// 禁用所有层的 tapAwayClosable, 在某些场景很有用, 比如当前层通过 onDismiss 弹出确认关闭的 Modal,
+  /// 可以临时通过此项禁用范围外点击关闭来避免错误触发
+  bool disableAllTapAwayClosable = false;
+
+  /// 禁用所有层的 escapeClosable
+  bool disableAllEscapeClosable = false;
+
+  /// 原始 OverlayEntry, 与 [overlays] 对应
   final HashMap<ZoOverlayEntry, OverlayEntry> _originalOverlays = HashMap();
 
   /// 用于路由层进行导航, 由 connect 设置
   GlobalKey<NavigatorState>? _navigatorKey;
 
-  /// 当前显示内容的 Overlay 对象
+  /// 用于显示内容的 [Overlay] 组件，组件内自行挂载了新的 [Overlay] 组件而不是直接使用 [NavigatorState.overlay]
   GlobalKey<OverlayState>? _overlayKey;
 
   /// 以 entry 为 key 存放延迟销毁计时器
@@ -97,9 +122,9 @@ class ZoOverlay {
   /// 以 entry 为 key 存放延迟关闭计时器
   final HashMap<ZoOverlayEntry, Timer> _closeTimers = HashMap();
 
-  /// 一个空的 entry, 用于更准确的在 overlay 中排列我们自定义的层,
+  /// 一个空的 entry, 用于作为参照节点来更准确的在 overlay 中排列我们自定义的层,
   /// 因为我们的层需要始终显示在默认层的上方, 但框架没有提供一中机制来遍历/对比它们,
-  /// 所以需要一个参照层, 在通过 rearrange 同步前, 将参照层添加到最上方, 然后再插入我们自定义的层
+  /// 所以需要一个参照层, 在通过 rearrange 同步前, 将参照层添加到最上方, 然后再插入我们自定义的层到其后方
   final OverlayEntry _emptyEntry = OverlayEntry(
     builder: (context) => const SizedBox.shrink(),
   );
@@ -107,14 +132,7 @@ class ZoOverlay {
   /// 用于 [ZoOverlayView] 组件之间发送特定的通知
   final _viewTrigger = EventTrigger<_ViewTriggerArgs>();
 
-  /// 禁用所有层的 tapAwayClosable, 在某些场景很有用, 比如当前层通过 onDismiss 弹出关闭了确认 Modal,
-  /// 可以临时通过此项禁用范围外点击关闭来避免错误触发
-  bool disableAllTapAwayClosable = false;
-
-  /// 禁用所有层的 escapeClosable
-  bool disableAllEscapeClosable = false;
-
-  /// 记录最后触发 tapAway 的时间, 用于防止单词点击一次性关闭所有层
+  /// 记录最后触发 tapAway 的时间, 用于防止单次点击一次性关闭所有层
   DateTime? _lastTapAwayTime;
 
   /// 一个开关状态, 可控制 dispose 是否忽略关闭动画延迟立即完成
@@ -142,7 +160,7 @@ class ZoOverlay {
 
   /// 连接 navigatorKey / overlayKey, 必须在执行其他 api 前先进行连接,
   /// 此方法可多次调用
-  void connect(
+  void _connect(
     GlobalKey<NavigatorState> navigatorKey,
     GlobalKey<OverlayState> overlayKey,
   ) {
@@ -162,7 +180,7 @@ class ZoOverlay {
     }
   }
 
-  /// 开启层并将其其移动到顶部
+  /// 开启层并将其移动到顶部
   void open(ZoOverlayEntry entry) {
     _assertConnected();
     if (entry.currentOpen) return;
@@ -188,12 +206,12 @@ class ZoOverlay {
 
     if (!isActive(entry)) return;
 
+    if (!_mayDismissCheck(entry)) return;
+
     // 移除 closeTimers
     _clearEntryTimers(entry);
 
     _preventReuseEntry(entry);
-
-    if (!_mayDismissCheck(entry)) return;
 
     entry._open = false;
 
@@ -208,6 +226,7 @@ class ZoOverlay {
     if (entry.duration == Duration.zero) {
       return;
     }
+
     _closeTimers[entry] = Timer(entry.duration, () {
       _closeTimers.remove(entry);
       entry.delayClosed();
@@ -218,6 +237,7 @@ class ZoOverlay {
   void dispose(ZoOverlayEntry entry) {
     _assertConnected();
     if (!overlays.contains(entry)) return;
+
     if (isDelayDisposing(entry) && !_disposeImmediately) return;
 
     if (!_mayDismissCheck(entry)) return;
@@ -288,11 +308,10 @@ class ZoOverlay {
   void closeAll() {
     _assertConnected();
 
-    // 转为list是为了反正遍历时变更导致报错
+    // 转为list是为了防止遍历时变更导致报错
     for (final element in overlays.reversed.toList()) {
-      if (!_mayDismissCheck(element) || element.persistentInBatch) continue;
+      if (element.persistentInBatch) continue;
       close(element);
-      _onClose(element);
     }
   }
 
@@ -312,11 +331,18 @@ class ZoOverlay {
   void disposeAll() {
     _assertConnected();
 
-    // 转为list是为了反正遍历时变更导致报错
+    // 转为list是为了防止遍历时变更导致报错
     for (final element in overlays.reversed.toList()) {
-      if (!_mayDismissCheck(element) || element.persistentInBatch) continue;
+      if (element.persistentInBatch) continue;
       dispose(element);
     }
+  }
+
+  /// 根据 dismissMode 配置决定销毁还是关闭层
+  void dismiss(ZoOverlayEntry entry) {
+    entry.dismissMode == ZoOverlayDismissMode.close
+        ? close(entry)
+        : dispose(entry);
   }
 
   /// 临时跳过 mayDismiss 检测
@@ -357,11 +383,7 @@ class ZoOverlay {
       onDispose: () {
         skipDismissCheck(() {
           if (!entry.currentOpen) return;
-          if (entry.dismissMode == ZoOverlayDismissMode.close) {
-            close(entry);
-          } else {
-            dispose(entry);
-          }
+          entry.dismiss();
         });
       },
       onPop: entry._onDismiss,
@@ -409,10 +431,12 @@ class ZoOverlay {
   }
 
   /// 检测指定 entry 的 mayDismiss / onDismiss, 返回是否应关闭
-  bool _mayDismissCheck(ZoOverlayEntry entry) {
+  ///
+  /// notify 设置为 false 时, 不会触发 entry 的 onDismiss, 仅进行检测
+  bool _mayDismissCheck(ZoOverlayEntry entry, [bool notify = true]) {
     final didDismiss = _forceDismiss ? _forceDismiss : entry._mayDismiss();
 
-    entry._onDismiss(didDismiss, null);
+    if (notify) entry._onDismiss(didDismiss, null);
 
     return didDismiss;
   }
@@ -463,7 +487,7 @@ class ZoOverlay {
     return overlays.length - onTopCount;
   }
 
-  /// 将当前 entries 与 navigator.overlay 同步
+  /// 将当前 overlays 同步到 overlay
   void _syncOverlays() {
     overlay.insert(_emptyEntry);
 
@@ -487,7 +511,7 @@ class ZoOverlay {
 
 /// 提供 [ZoOverlay] 需要的必要配置, 用户需提供 navigatorKey, 内部会将其用于实现路由层
 ///
-/// 放置的理想位置是 [MaterialApp] / [WidgetsApp] 的 builder 内尽量外层的位置
+/// 放置的理想位置是 [MaterialApp] / [WidgetsApp] 的 builder 内
 class ZoOverlayProvider extends StatefulWidget {
   const ZoOverlayProvider({
     super.key,
@@ -509,13 +533,13 @@ class _ZoOverlayProviderState extends State<ZoOverlayProvider> {
   @override
   void initState() {
     super.initState();
-    zoOverlay.connect(widget.navigatorKey, overlayKey);
+    zoOverlay._connect(widget.navigatorKey, overlayKey);
   }
 
   @override
   void didUpdateWidget(covariant ZoOverlayProvider oldWidget) {
     super.didUpdateWidget(oldWidget);
-    zoOverlay.connect(widget.navigatorKey, overlayKey);
+    zoOverlay._connect(widget.navigatorKey, overlayKey);
   }
 
   @override
@@ -531,8 +555,8 @@ class _ZoOverlayProviderState extends State<ZoOverlayProvider> {
   }
 }
 
-/// ZoOverlay 视图层, 它在 navigator.overlay 中渲染 [ZoOverlayEntry], 并管理他们的更新,
-/// 布局, 定位等
+/// ZoOverlay 视图层, 它在 overlay 中渲染 [ZoOverlayEntry], 并管理他们的更新,
+/// 布局, 定位等， 每个 entry 由一个 ZoOverlayView 负责渲染
 class ZoOverlayView extends StatefulWidget {
   const ZoOverlayView({super.key, required this.entry, required this.overlay});
 
@@ -550,8 +574,6 @@ class _ZoOverlayViewState extends State<ZoOverlayView> {
   ZoOverlay get overlay => widget.overlay;
 
   FocusScopeNode focusScopeNode = FocusScopeNode();
-
-  OverlayPositionedRenderObject? positionedRenderObject;
 
   /// 记录前一个 barrier 状态, 用于防止在某些场景下 barrier 在没有动画的情况下直接关闭
   late bool lastBarrier;
@@ -612,6 +634,9 @@ class _ZoOverlayViewState extends State<ZoOverlayView> {
     widget.overlay._viewTrigger.off(onViewTrigger);
     entry.openChangedEvent.off(onOpenChanged);
     entry.delayClosedEvent.off(onDelayClosed);
+
+    _overlayDragStartRect = null;
+    _dragEndResetClear = null;
 
     super.dispose();
   }
@@ -674,8 +699,8 @@ class _ZoOverlayViewState extends State<ZoOverlayView> {
   void onDelayClosed() {
     emitBarrierChanged();
 
-    if (_needResetDragDistance && positionedRenderObject != null) {
-      positionedRenderObject!._manualPosition = null;
+    if (_needResetDragDistance && entry.positionedRenderObject != null) {
+      entry.positionedRenderObject!._manualPosition = null;
     }
   }
 
@@ -723,11 +748,7 @@ class _ZoOverlayViewState extends State<ZoOverlayView> {
 
     overlay._lastTapAwayTime = now;
 
-    if (entry.dismissMode == ZoOverlayDismissMode.dispose) {
-      overlay.dispose(entry);
-    } else {
-      overlay.close(entry);
-    }
+    entry.dismiss();
   }
 
   /// 按键按下
@@ -740,12 +761,7 @@ class _ZoOverlayViewState extends State<ZoOverlayView> {
 
     if (event is KeyDownEvent &&
         event.logicalKey == LogicalKeyboardKey.escape) {
-      if (entry.dismissMode == ZoOverlayDismissMode.dispose) {
-        overlay.dispose(entry);
-      } else {
-        overlay.close(entry);
-      }
-
+      entry.dismiss();
       return KeyEventResult.handled;
     }
 
@@ -753,11 +769,18 @@ class _ZoOverlayViewState extends State<ZoOverlayView> {
   }
 
   /// 拖动实现
-  bool onDrag(ZoDragTriggerEvent event) {
-    final obj = positionedRenderObject;
+  bool onDrag(ZoTriggerDragEvent event) {
+    final obj = entry.positionedRenderObject;
+
+    /// 正在执行还原操作时, 防止拖动
+    if (_dragEndResetClear != null) {
+      return false;
+    }
 
     // 为初始化或方向布局
-    if (obj == null || entry.direction != null) return false;
+    if (obj == null || entry.direction != null) {
+      return false;
+    }
 
     final overlayRect = obj.overlayRect;
     final containerRect = obj.containerRect;
@@ -863,8 +886,13 @@ class _ZoOverlayViewState extends State<ZoOverlayView> {
       if (endData != null) {
         if (endData) {
           animationToPosition(manualPosition!, _overlayDragStartRect!.topLeft);
-        } else {
+        } else if (overlay._mayDismissCheck(entry, false)) {
           _needResetDragDistance = true;
+        } else {
+          animationToPosition(
+            manualPosition!,
+            _overlayDragStartRect!.topLeft,
+          );
         }
       }
 
@@ -875,13 +903,16 @@ class _ZoOverlayViewState extends State<ZoOverlayView> {
     return true;
   }
 
-  /// 将层通过动画移动的指定位置
+  /// 将层通过动画移动到指定位置
   void animationToPosition(Offset startOffset, Offset endOffset) {
     _dragEndResetClear = zoAnimationKit.animation(
       tween: Tween(begin: startOffset, end: endOffset),
+      onEnd: () {
+        _dragEndResetClear = null;
+      },
       onAnimation: (value) {
-        if (!mounted || positionedRenderObject == null) return;
-        positionedRenderObject!.manualPosition = value.value;
+        if (!mounted || entry.positionedRenderObject == null) return;
+        entry.positionedRenderObject!.manualPosition = value.value;
       },
     );
   }
@@ -927,47 +958,78 @@ class _ZoOverlayViewState extends State<ZoOverlayView> {
   }
 
   void renderObjectRef(OverlayPositionedRenderObject? obj) {
-    positionedRenderObject = obj;
+    entry.positionedRenderObject = obj;
+  }
+
+  void onMouseEnter(PointerEnterEvent event) {
+    entry.hover = true;
+    entry.onHoverChanged?.call(true);
+    entry.hoverEvent.emit(true);
+  }
+
+  void onMouseExit(PointerExitEvent event) {
+    entry.hover = false;
+    entry.onHoverChanged?.call(false);
+    entry.hoverEvent.emit(false);
   }
 
   @override
   Widget build(BuildContext context) {
-    Widget child;
-
-    if (entry.animationWrap == null) {
-      child = defaultAnimationWrap(widget.entry.overlayBuilder(context), entry);
-    } else {
-      child = entry.animationWrap!(widget.entry.overlayBuilder(context), entry);
-    }
-
+    final style = context.zoStyle;
     final isActive = overlay.isActive(entry);
 
-    /// 添加外部点击关闭
-    child = TapRegion(
-      enabled: isActive && entry.tapAwayClosable,
-      onTapOutside: onTapOutside,
-      child: child,
-    );
+    Widget child = widget.entry.overlayBuilder(context);
 
-    child = FocusScope(
-      node: focusScopeNode,
-      canRequestFocus: isActive && entry.requestFocus,
-      onKeyEvent: onKeyEvent,
-      descendantsAreFocusable: true,
-      descendantsAreTraversable: true,
-      child: child,
-    );
+    if (!entry.alwaysOnTop) {
+      /// 添加外部点击关闭
+      child = TapRegion(
+        enabled: isActive,
+        onTapOutside: onTapOutside,
+        groupId: entry.groupId,
+        child: child,
+      );
+
+      /// 用于更新 entry.hover 状态
+      child = MouseRegion(
+        onEnter: onMouseEnter,
+        onExit: onMouseExit,
+        child: child,
+      );
+
+      child = FocusScope(
+        node: focusScopeNode,
+        canRequestFocus: isActive && entry.requestFocus,
+        onKeyEvent: onKeyEvent,
+        descendantsAreFocusable: true,
+        descendantsAreTraversable: true,
+        child: child,
+      );
+    }
 
     child = DefaultTextStyle(
-      style: Theme.of(context).textTheme.bodyMedium!,
+      style: style.textStyle,
       child: child,
     );
 
     // 监听自己派发的拖动事件, 实现拖动行为
-    child = NotificationListener<ZoDragTriggerEvent>(
+    child = NotificationListener<ZoTriggerDragEvent>(
       onNotification: onDrag,
       child: child,
     );
+
+    // 定位
+    child = ZoOverlayPositioned(
+      entry: widget.entry,
+      renderObjectRef: renderObjectRef,
+      child: child,
+    );
+
+    // 添加动画
+    if (entry.animationWrap == null) {
+      child = defaultAnimationWrap(child, entry);
+    } else {
+      child = entry.animationWrap!(child, entry);
+    }
 
     final visible =
         entry.currentOpen ||
@@ -983,19 +1045,9 @@ class _ZoOverlayViewState extends State<ZoOverlayView> {
       child: Stack(
         children: [
           if (barrier != null) barrier,
-          ZoOverlayPositioned(
-            entry: widget.entry,
-            renderObjectRef: renderObjectRef,
-            child: child,
-          ),
+          child,
         ],
       ),
     );
   }
 }
-
-/// 添加 PositionController 并向外暴露, 通过他获取容器尺寸, 层位置, 设置当前位置
-/// 新增 DragHandle 负责为子级派发拖动事件
-/// view 监听冒泡事件, 通过 PositionController 实施拖动
-/// 禁用drag的场景: popper / drawer
-/// 拖动关闭支持: 各实现自行添加drag并处理拖动关闭逻辑

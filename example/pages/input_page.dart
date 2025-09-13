@@ -54,7 +54,7 @@ class _InputPageState extends State<InputPage> {
                 ZoButton(
                   size: ZoSize.small,
                   child: Text("变更"),
-                  onPressed: () {
+                  onTap: () {
                     setState(() {
                       value = value + 1;
                     });
@@ -72,7 +72,7 @@ class _InputPageState extends State<InputPage> {
                 ZoButton(
                   size: ZoSize.small,
                   child: Text("变更"),
-                  onPressed: () {
+                  onTap: () {
                     setState(() {
                       checkValue = !checkValue!;
                     });
@@ -96,7 +96,7 @@ class _InputPageState extends State<InputPage> {
                 ZoButton(
                   size: ZoSize.small,
                   child: Text("变更"),
-                  onPressed: () {
+                  onTap: () {
                     setState(() {
                       radioValue = radioValue == "type1" ? "type2" : "type1";
                     });
@@ -115,7 +115,7 @@ class _InputPageState extends State<InputPage> {
                 ZoButton(
                   size: ZoSize.small,
                   child: Text("变更"),
-                  onPressed: () {
+                  onTap: () {
                     setState(() {
                       switchValue = !switchValue;
                     });
@@ -146,7 +146,7 @@ class _InputPageState extends State<InputPage> {
                 ZoButton(
                   size: ZoSize.small,
                   child: Text("变更"),
-                  onPressed: () {
+                  onTap: () {
                     setState(() {
                       selectedValue = "type3";
                     });
@@ -168,7 +168,7 @@ class _InputPageState extends State<InputPage> {
                 ZoButton(
                   size: ZoSize.small,
                   child: Text("变更"),
-                  onPressed: () {
+                  onTap: () {
                     setState(() {
                       dateTime = dateTime.add(Duration(days: 1));
                     });
@@ -183,14 +183,15 @@ class _InputPageState extends State<InputPage> {
                   width: 180,
                   child: TextField(
                     decoration: InputDecoration(label: Text("姓名")),
-                    buildCounter: (
-                      context, {
-                      required currentLength,
-                      required isFocused,
-                      required maxLength,
-                    }) {
-                      return Text("$currentLength/$maxLength");
-                    },
+                    buildCounter:
+                        (
+                          context, {
+                          required currentLength,
+                          required isFocused,
+                          required maxLength,
+                        }) {
+                          return Text("$currentLength/$maxLength");
+                        },
                     onChanged: (value) {
                       print("val: $value");
                     },
@@ -325,7 +326,7 @@ class _InputPageState extends State<InputPage> {
             SizedBox(height: 32),
             ZoButton(
               child: Text("change $inpVal1"),
-              onPressed: () {
+              onTap: () {
                 setState(() {
                   inpVal1 = "lixianjie";
                 });
@@ -352,7 +353,7 @@ class _InputPageState extends State<InputPage> {
             SizedBox(height: 32),
             ZoButton(
               child: Text("change $inpVal2"),
-              onPressed: () {
+              onTap: () {
                 setState(() {
                   inpVal2 = 10000;
                 });
@@ -387,7 +388,7 @@ class _InputPageState extends State<InputPage> {
             SizedBox(height: 32),
             ZoButton(
               child: Text("change $inpVal3"),
-              onPressed: () {
+              onTap: () {
                 setState(() {
                   inpVal3 = 10000;
                 });
@@ -395,7 +396,7 @@ class _InputPageState extends State<InputPage> {
             ),
             ZoButton(
               child: Text("loading: $loading"),
-              onPressed: () {
+              onTap: () {
                 setState(() {
                   loading = !loading;
                 });

@@ -7,7 +7,7 @@ import "package:zo/src/dialog/dialog.dart";
 import "package:zo/src/notice/notice.dart";
 import "package:zo/src/overlay/overlay.dart";
 import "package:zo/src/popper/popper.dart";
-import "package:zo/src/animation/ticker.dart";
+import "package:zo/src/animation/kit.dart";
 import "package:zo/zo.dart";
 
 import "widgets/float_node.dart";
@@ -138,8 +138,10 @@ class _OverlayPage2State extends State<OverlayPage2> {
     // },
     // tapAwayClosable: false,
     // distance: 24,
+    // mayDismiss: () => false,
+    barrier: false,
+    // onDismiss: onDismiss,
     closeButton: true,
-    alwaysOnTop: true,
     status: ZoStatus.error,
     title: Text(
       "Dialog标题",
@@ -159,7 +161,7 @@ class _OverlayPage2State extends State<OverlayPage2> {
       message: "date picker",
       child: ZoButton(
         child: Text("date picker"),
-        onPressed: () {
+        onTap: () {
           showDatePicker(
             useRootNavigator: false,
             context: context,
@@ -186,6 +188,7 @@ class _OverlayPage2State extends State<OverlayPage2> {
     // title: Text("Popper提示"),
     route: true,
     dismissMode: ZoOverlayDismissMode.close,
+
     // onConfirm: () {
     //   print("confirm");
     // },
@@ -194,6 +197,9 @@ class _OverlayPage2State extends State<OverlayPage2> {
     // alignment: Alignment.centerRight,
     // width: 0.4,
     // height: 1,
+    mayDismiss: () => false,
+    onDismiss: onDismiss,
+    // barrier: false,
     height: 0.92,
     drawer: AxisDirection.down,
     closeButton: true,
@@ -233,28 +239,30 @@ class _OverlayPage2State extends State<OverlayPage2> {
     transitionType: ZoTransitionType.slideRight,
   );
 
-  void onDismiss(bool didDismiss, dynamic result) async {
+  void onDismiss(bool didDismiss, dynamic result) {
     print("didDismiss $didDismiss result $result");
 
     if (didDismiss) {
-      return;
+      return null;
     }
 
-    try {
-      zoOverlay.disableAllTapAwayClosable = true;
+    final future = Completer();
 
-      final bool shouldPop = await _showBackDialog() ?? false;
-      if (context.mounted && shouldPop) {
-        // Navigator.pop(context, result);
-        zoOverlay.skipDismissCheck(() {
-          zoOverlay.close(overlay1);
-        });
-      }
-    } catch (e) {
-      print(e);
-    } finally {
-      zoOverlay.disableAllTapAwayClosable = false;
-    }
+    zoOverlay.open(
+      ZoDialog(
+        title: Text("提示"),
+        content: Text("是否关闭"),
+        onConfirm: () {
+          future.complete(true);
+          zoOverlay.skipDismissCheck(() {
+            zoOverlay.close(drawer1);
+          });
+        },
+        onDispose: () {
+          // future.complete(false);
+        },
+      ),
+    );
   }
 
   @override
@@ -263,264 +271,290 @@ class _OverlayPage2State extends State<OverlayPage2> {
       appBar: AppBar(title: Text("OverlayPage2")),
       body: SingleChildScrollView(
         padding: EdgeInsets.all(24),
-        child: Wrap(
-          spacing: 4,
-          runSpacing: 4,
+        child: Column(
           children: [
-            ZoButton(
-              child: Text("closeAll"),
-              onPressed: () {
-                zoOverlay.closeAll();
-              },
+            Container(
+              height: 300,
             ),
-            ZoButton(
-              child: Text("openAll"),
-              onPressed: () {
-                zoOverlay.openAll();
-              },
-            ),
-            ZoButton(
-              child: Text("disposeAll"),
-              onPressed: () {
-                zoOverlay.disposeAll();
-              },
-            ),
-            ZoButton(
-              child: Text("open1"),
-              onPressed: () {
-                zoOverlay.open(overlay1);
-
-                overlay1.wait().then((val) {
-                  print("val $val");
-                });
-              },
-            ),
-            ZoButton(
-              child: Text("open2"),
-              onPressed: () {
-                zoOverlay.open(overlay2);
-              },
-            ),
-            ZoButton(
-              child: Text("open together"),
-              onPressed: () {
-                zoOverlay.open(overlay1);
-                zoOverlay.open(overlay2);
-              },
-            ),
-            ZoButton(
-              child: Text("close1"),
-              onPressed: () {
-                zoOverlay.close(overlay1);
-              },
-            ),
-            ZoButton(
-              child: Text("close2"),
-              onPressed: () {
-                zoOverlay.close(overlay2);
-              },
-            ),
-            ZoButton(
-              child: Text("change1 alignment"),
-              onPressed: () {
-                overlay1.alignment = Alignment(
-                  math.Random().nextDouble() * 2 - 1,
-                  math.Random().nextDouble() * 2 - 1,
-                );
-              },
-            ),
-            ZoButton(
-              child: Text("change2 alignment"),
-              onPressed: () {
-                overlay2.alignment = Alignment(
-                  math.Random().nextDouble() * 2 - 1,
-                  math.Random().nextDouble() * 2 - 1,
-                );
-              },
-            ),
-            ZoButton(
-              child: Text("moveToTop1"),
-              onPressed: () {
-                zoOverlay.moveToTop(overlay1);
-              },
-            ),
-            ZoButton(
-              child: Text("moveToTop2"),
-              onPressed: () {
-                zoOverlay.moveToTop(overlay2);
-              },
-            ),
-            ZoButton(
-              child: Text("moveToBottom1"),
-              onPressed: () {
-                zoOverlay.moveToBottom(overlay1);
-              },
-            ),
-            ZoButton(
-              child: Text("moveToBottom2"),
-              onPressed: () {
-                zoOverlay.moveToBottom(overlay2);
-              },
-            ),
-            ZoButton(
-              child: Text("dispose1"),
-              onPressed: () {
-                zoOverlay.dispose(overlay1);
-              },
-            ),
-            ZoButton(
-              child: Text("dispose2"),
-              onPressed: () {
-                zoOverlay.dispose(overlay2);
-              },
-            ),
-            ZoButton(
-              child: Text("pop"),
-              onPressed: () {
-                Navigator.of(context).pop(123);
-              },
-            ),
-            ZoButton(
-              child: Text("maybePop"),
-              onPressed: () {
-                Navigator.of(context).maybePop(123);
-              },
-            ),
-            ZoButton(
-              child: Text("open popper1"),
-              onPressed: () {
-                zoOverlay.open(popper1);
-              },
-            ),
-            FocusMoveOverlayWidget(
-              anchorChild: Text("点击出现调试层"),
-              overlayContentChild: Container(
-                height: 44,
-                width: 100,
-                decoration: BoxDecoration(
-                  color: Colors.blueAccent.withOpacity(0.9),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              onRectChanged: (Rect globalRect) {
-                popper1.rect = globalRect;
-              },
-              initialPosition: const Offset(100, 300),
-              moveStep: 10.0,
-            ),
-            ZoButton(
-              child: Text("open dialog1"),
-              onPressed: () {
-                zoOverlay.open(dialog1);
-              },
-            ),
-            ZoButton(
-              child: Text("open drawer1"),
-              onPressed: () {
-                zoOverlay.open(drawer1);
-              },
-            ),
-            ZoButton(
-              child: Text("open dialog1 drawer1"),
-              onPressed: () {
-                zoOverlay.open(dialog1);
-                zoOverlay.open(drawer1);
-              },
-            ),
-            ZoButton(
-              child: Text("check active"),
-              onPressed: () {
-                zoOverlay.overlays.forEach((e) {
-                  print(
-                    "${e.runtimeType} ${zoOverlay.isActive(e)} ${e.currentOpen}",
-                  );
-                  print(
-                    "${zoOverlay.isDelayClosing(e)} ${zoOverlay.isDelayDisposing(e)}",
-                  );
-                });
-              },
-            ),
-            ZoButton(
-              child: Text("timepicker"),
-              onPressed: () {
-                showDatePicker(
-                  useRootNavigator: false,
-                  context: context,
-                  initialDate: DateTime(2021, 7, 25),
-                  firstDate: DateTime(2021),
-                  lastDate: DateTime(2022),
-                );
-              },
-            ),
-            ZoButton(
-              child: Text("compare overlay"),
-              onPressed: () {
-                print("${Overlay.of(context)} ${zoOverlay.navigator.overlay!}");
-                print(Overlay.of(context) == zoOverlay.navigator.overlay!);
-              },
-            ),
-            ZoButton(
-              child: Text("notice"),
-              onPressed: () {
-                final r = math.Random();
-
-                // 随机选择一个 ZoNoticePosition
-                final positions = ZoNoticePosition.values;
-                final position = positions[r.nextInt(positions.length)];
-                // final position = ZoNoticePosition.center;
-
-                final statuses = ZoStatus.values;
-                final status = statuses[r.nextInt(statuses.length)];
-
-                zoNotice.notice(
-                  ZoNoticeEntry(
-                    title: r.nextDouble() > 0.5 ? Text("标题内容") : null,
-                    closeButton: r.nextDouble() > 0.5,
-                    barrier: r.nextDouble() > 0.9,
-                    content: Text("Hello world"),
-                    position: position,
-                    status: status,
-                    // builder: (context) => Text("HEllo"),
-                  ),
-                );
-              },
-            ),
-            ZoButton(
-              child: Text("notice.tip"),
-              onPressed: () {
-                zoNotice.tip("hello world");
-              },
-            ),
-            ZoButton(
-              child: Text("notice.loading"),
-              onPressed: () {
-                final entry = zoNotice.loading(message: "hello world");
-
-                Timer(Duration(seconds: 2), () {
-                  zoNotice.close(entry);
-                });
-              },
-            ),
-            ZoButton(
-              child: Text("clear notice"),
-              onPressed: () {
-                zoNotice.disposeAll();
-              },
-            ),
-            ZoButton(
-              child: Text("ticker"),
-              onPressed: () {
-                final cancel = zoAnimationKit.animation(
-                  tween: Tween(begin: 100.0, end: 200.0),
-                  onAnimation: (value) {
-                    print(value.value);
+            Wrap(
+              spacing: 4,
+              runSpacing: 4,
+              children: [
+                ZoButton(
+                  child: Text("closeAll"),
+                  onTap: () {
+                    zoOverlay.closeAll();
                   },
-                );
+                ),
+                ZoButton(
+                  child: Text("openAll"),
+                  onTap: () {
+                    zoOverlay.openAll();
+                  },
+                ),
+                ZoButton(
+                  child: Text("disposeAll"),
+                  onTap: () {
+                    zoOverlay.disposeAll();
+                  },
+                ),
+                ZoButton(
+                  child: Text("open1"),
+                  onTap: () {
+                    zoOverlay.open(overlay1);
 
-                Timer(Duration(milliseconds: 100), () {
-                  cancel();
-                });
-              },
+                    overlay1.wait().then((val) {
+                      print("val $val");
+                    });
+                  },
+                ),
+                ZoButton(
+                  child: Text("open2"),
+                  onTap: () {
+                    zoOverlay.open(overlay2);
+                  },
+                ),
+                ZoButton(
+                  child: Text("open together"),
+                  onTap: () {
+                    zoOverlay.open(overlay1);
+                    zoOverlay.open(overlay2);
+                  },
+                ),
+                ZoButton(
+                  child: Text("close1"),
+                  onTap: () {
+                    zoOverlay.close(overlay1);
+                  },
+                ),
+                ZoButton(
+                  child: Text("close2"),
+                  onTap: () {
+                    zoOverlay.close(overlay2);
+                  },
+                ),
+                ZoButton(
+                  child: Text("change1 alignment"),
+                  onTap: () {
+                    overlay1.alignment = Alignment(
+                      math.Random().nextDouble() * 2 - 1,
+                      math.Random().nextDouble() * 2 - 1,
+                    );
+                  },
+                ),
+                ZoButton(
+                  child: Text("change2 alignment"),
+                  onTap: () {
+                    overlay2.alignment = Alignment(
+                      math.Random().nextDouble() * 2 - 1,
+                      math.Random().nextDouble() * 2 - 1,
+                    );
+                  },
+                ),
+                ZoButton(
+                  child: Text("moveToTop1"),
+                  onTap: () {
+                    zoOverlay.moveToTop(overlay1);
+                  },
+                ),
+                ZoButton(
+                  child: Text("moveToTop2"),
+                  onTap: () {
+                    zoOverlay.moveToTop(overlay2);
+                  },
+                ),
+                ZoButton(
+                  child: Text("moveToBottom1"),
+                  onTap: () {
+                    zoOverlay.moveToBottom(overlay1);
+                  },
+                ),
+                ZoButton(
+                  child: Text("moveToBottom2"),
+                  onTap: () {
+                    zoOverlay.moveToBottom(overlay2);
+                  },
+                ),
+                ZoButton(
+                  child: Text("dispose1"),
+                  onTap: () {
+                    zoOverlay.dispose(overlay1);
+                  },
+                ),
+                ZoButton(
+                  child: Text("dispose2"),
+                  onTap: () {
+                    zoOverlay.dispose(overlay2);
+                  },
+                ),
+                ZoButton(
+                  child: Text("pop"),
+                  onTap: () {
+                    Navigator.of(context).pop(123);
+                  },
+                ),
+                ZoButton(
+                  child: Text("maybePop"),
+                  onTap: () {
+                    Navigator.of(context).maybePop(123);
+                  },
+                ),
+                ZoButton(
+                  child: Text("open popper1"),
+                  onTap: () {
+                    zoOverlay.open(popper1);
+                  },
+                ),
+                FocusMoveOverlayWidget(
+                  anchorChild: Text("点击出现调试层"),
+                  overlayContentChild: Container(
+                    height: 44,
+                    width: 100,
+                    decoration: BoxDecoration(
+                      color: Colors.blueAccent.withOpacity(0.9),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onRectChanged: (Rect globalRect) {
+                    popper1.rect = globalRect;
+                  },
+                  initialPosition: const Offset(100, 300),
+                  moveStep: 10.0,
+                ),
+                ZoButton(
+                  child: Text("open dialog1"),
+                  onTap: () {
+                    zoOverlay.open(dialog1);
+                  },
+                ),
+                ZoButton(
+                  child: Text("open drawer1"),
+                  onTap: () {
+                    zoOverlay.open(drawer1);
+                  },
+                ),
+                ZoButton(
+                  child: Text("open dialog1 drawer1"),
+                  onTap: () {
+                    zoOverlay.open(dialog1);
+                    zoOverlay.open(drawer1);
+                  },
+                ),
+                ZoButton(
+                  child: Text("check active"),
+                  onTap: () {
+                    zoOverlay.overlays.forEach((e) {
+                      print(
+                        "${e.runtimeType} ${zoOverlay.isActive(e)} ${e.currentOpen}",
+                      );
+                      print(
+                        "${zoOverlay.isDelayClosing(e)} ${zoOverlay.isDelayDisposing(e)}",
+                      );
+                    });
+                  },
+                ),
+                ZoButton(
+                  child: Text("timepicker"),
+                  onTap: () {
+                    showDatePicker(
+                      useRootNavigator: false,
+                      context: context,
+                      initialDate: DateTime(2021, 7, 25),
+                      firstDate: DateTime(2021),
+                      lastDate: DateTime(2022),
+                    );
+                  },
+                ),
+                ZoButton(
+                  child: Text("compare overlay"),
+                  onTap: () {
+                    print(
+                      "${Overlay.of(context)} ${zoOverlay.navigator.overlay!}",
+                    );
+                    print(Overlay.of(context) == zoOverlay.navigator.overlay!);
+                  },
+                ),
+                ZoButton(
+                  child: Text("notice"),
+                  onTap: () {
+                    final r = math.Random();
+
+                    // 随机选择一个 ZoNoticePosition
+                    final positions = ZoNoticePosition.values;
+                    final position = positions[r.nextInt(positions.length)];
+                    // final position = ZoNoticePosition.center;
+
+                    final statuses = ZoStatus.values;
+                    final status = statuses[r.nextInt(statuses.length)];
+
+                    zoNotice.notice(
+                      ZoNoticeEntry(
+                        title: r.nextDouble() > 0.5 ? Text("标题内容") : null,
+                        closeButton: r.nextDouble() > 0.5,
+                        barrier: r.nextDouble() > 0.9,
+                        content: Text("Hello world"),
+                        position: position,
+                        status: status,
+                        // builder: (context) => Text("HEllo"),
+                      ),
+                    );
+                  },
+                ),
+                ZoButton(
+                  child: Text("notice.tip"),
+                  onTap: () {
+                    zoNotice.tip("hello world");
+                  },
+                ),
+                ZoButton(
+                  child: Text("notice.loading"),
+                  onTap: () {
+                    final entry = zoNotice.loading(message: "hello world");
+
+                    Timer(Duration(seconds: 2), () {
+                      zoNotice.close(entry);
+                    });
+                  },
+                ),
+                ZoButton(
+                  child: Text("clear notice"),
+                  onTap: () {
+                    zoNotice.disposeAll();
+                  },
+                ),
+                ZoButton(
+                  child: Text("ticker"),
+                  onTap: () {
+                    final cancel = zoAnimationKit.animation(
+                      tween: Tween(begin: 100.0, end: 200.0),
+                      onAnimation: (value) {
+                        print(value.value);
+                      },
+                    );
+
+                    Timer(Duration(milliseconds: 100), () {
+                      cancel();
+                    });
+                  },
+                ),
+                ZoPopper(
+                  title: Text("气泡标题"),
+                  // requestFocus: false,
+                  // direction: ZoPopperDirection.bottomLeft,
+                  type: ZoTriggerType.active,
+                  status: ZoStatus.success,
+                  content: Text("这是气泡内容这是气泡内容这是气泡内容"),
+                  // onOpenChanged: (open) {
+                  //   print("open: $open");
+                  // },
+                  child: ZoButton(
+                    child: Text("click"),
+                  ),
+                ),
+              ],
+            ),
+            Container(
+              height: 1000,
             ),
           ],
         ),
@@ -542,7 +576,7 @@ class __CounterState extends State<_Counter> {
   Widget build(BuildContext context) {
     return ZoButton(
       child: Text("add  $count"),
-      onPressed: () {
+      onTap: () {
         setState(() {
           count++;
         });

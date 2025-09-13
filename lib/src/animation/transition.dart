@@ -26,6 +26,7 @@ class ZoTransition extends StatelessWidget {
     this.autoAlpha = true,
     this.curve = ZoTransition.defaultCurve,
     this.duration = ZoTransition.defaultDuration,
+    this.reverseDuration,
     this.controller,
     this.controllerRef,
     this.onStatusChange,
@@ -65,6 +66,9 @@ class ZoTransition extends StatelessWidget {
   /// 动画持续时间
   final Duration? duration;
 
+  /// 反向动画的持续时间
+  final Duration? reverseDuration;
+
   /// 自行传入控制器, 仅在需要进一步手动控制动画时使用
   final AnimationController? controller;
 
@@ -84,6 +88,7 @@ class ZoTransition extends StatelessWidget {
       changeVisible: changeVisible,
       autoAlpha: true,
       duration: duration,
+      reverseDuration: reverseDuration,
       curve: curve,
       tween: Tween(begin: 1, end: 0),
       builder: (animate) => child,
@@ -110,6 +115,7 @@ class ZoTransition extends StatelessWidget {
       changeVisible: changeVisible,
       autoAlpha: autoAlpha,
       duration: duration,
+      reverseDuration: reverseDuration,
       curve: curve,
       tween: tween,
       builder: (animate) {
@@ -142,6 +148,7 @@ class ZoTransition extends StatelessWidget {
       changeVisible: changeVisible,
       autoAlpha: autoAlpha,
       duration: duration,
+      reverseDuration: reverseDuration,
       curve: curve,
       tween: tween,
       builder: (animate) {

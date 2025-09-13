@@ -19,7 +19,7 @@ class NumberTextInputFormatter extends TextInputFormatter {
     TextEditingValue oldValue,
     TextEditingValue newValue,
   ) {
-    var text = newValue.text;
+    final text = newValue.text;
     if (newValue.text.isEmpty) return newValue;
 
     // 阻止非小数的数值以0开始
@@ -27,23 +27,23 @@ class NumberTextInputFormatter extends TextInputFormatter {
       return oldValue;
     }
 
-    var endInd = newValue.selection.end;
+    final endInd = newValue.selection.end;
 
     var newOffset = endInd;
 
     // 拆分光标前后的字符串
-    var prevStr = text.substring(0, endInd);
-    var lastStr = text.substring(endInd);
+    final prevStr = text.substring(0, endInd);
+    final lastStr = text.substring(endInd);
 
-    var hasNegativeSing = text.startsWith("-");
+    final hasNegativeSing = text.startsWith("-");
 
     // 整形输入时只保留数字, 浮点型输入保留dot和数字
-    var reg = isInteger ? RegExp(r"[^0-9]+") : RegExp(r"[^\.0-9]+");
+    final reg = isInteger ? RegExp(r"[^0-9]+") : RegExp(r"[^\.0-9]+");
 
     // 计算结束光标前所有reg字符总数
-    var prevMatches = reg.allMatches(prevStr, 0);
+    final prevMatches = reg.allMatches(prevStr, 0);
 
-    var prevCount = prevMatches
+    final prevCount = prevMatches
         .map((i) => i.end - i.start)
         .fold(0, (prev, cur) => prev + cur);
 
@@ -54,7 +54,7 @@ class NumberTextInputFormatter extends TextInputFormatter {
 
     /// 查找所有dot中最接近光标位置的
     int? nearDotIndex;
-    var matchDots = RegExp(r"\.").allMatches(str);
+    final matchDots = RegExp(r"\.").allMatches(str);
 
     for (var i in matchDots) {
       if (nearDotIndex == null) {
@@ -62,8 +62,8 @@ class NumberTextInputFormatter extends TextInputFormatter {
         continue;
       }
 
-      var prevDiff = (nearDotIndex - newOffset).abs();
-      var diff = (i.start - newOffset).abs();
+      final prevDiff = (nearDotIndex - newOffset).abs();
+      final diff = (i.start - newOffset).abs();
 
       if (diff < prevDiff) {
         nearDotIndex = i.start;
@@ -73,23 +73,24 @@ class NumberTextInputFormatter extends TextInputFormatter {
     // 处理dot, 只保留 nearDotIndex
     if (!isInteger && nearDotIndex != null) {
       // 拆分dot前后的字符串, 并去掉所有dot
-      var prevDotStr = str.substring(0, nearDotIndex);
-      var lastDotStr = str.substring(nearDotIndex + 1);
+      final prevDotStr = str.substring(0, nearDotIndex);
+      final lastDotStr = str.substring(nearDotIndex + 1);
 
-      var prevStr = prevDotStr.replaceAll(".", "");
-      var lastStr = lastDotStr.replaceAll(".", "");
+      final prevStr = prevDotStr.replaceAll(".", "");
+      final lastStr = lastDotStr.replaceAll(".", "");
 
       // 计算光标前的dot数量, 并前移光标
-      var prevCursorDotStr = str.substring(0, newOffset);
-      var prevCursorDotStrLen = prevCursorDotStr.length;
-      var prevCursorDotNum =
+      final prevCursorDotStr = str.substring(0, newOffset);
+      final prevCursorDotStrLen = prevCursorDotStr.length;
+      final prevCursorDotNum =
           prevCursorDotStrLen - prevCursorDotStr.replaceAll(".", "").length;
 
       // 需要移动光标
       if (prevCursorDotNum > 0) {
         // 如果光标后还有其他dot则前移删除总数, 否则少移动一位
-        var diff =
-            newOffset > nearDotIndex ? prevCursorDotNum - 1 : prevCursorDotNum;
+        final diff = newOffset > nearDotIndex
+            ? prevCursorDotNum - 1
+            : prevCursorDotNum;
         newOffset -= diff;
       }
 
@@ -112,7 +113,7 @@ class NumberTextInputFormatter extends TextInputFormatter {
     // max / min 处理
     if (min != null) {
       if (isInteger) {
-        var iVal = int.tryParse(str);
+        final iVal = int.tryParse(str);
         if (iVal != null) {
           if (iVal < min!) {
             str = displayNumber(min!);
@@ -120,7 +121,7 @@ class NumberTextInputFormatter extends TextInputFormatter {
           }
         }
       } else {
-        var dVal = double.tryParse(str);
+        final dVal = double.tryParse(str);
         if (dVal != null) {
           if (dVal < min!) {
             str = displayNumber(min!);
@@ -132,7 +133,7 @@ class NumberTextInputFormatter extends TextInputFormatter {
 
     if (max != null) {
       if (isInteger) {
-        var iVal = int.tryParse(str);
+        final iVal = int.tryParse(str);
         if (iVal != null) {
           if (iVal > max!) {
             str = displayNumber(max!);
@@ -140,7 +141,7 @@ class NumberTextInputFormatter extends TextInputFormatter {
           }
         }
       } else {
-        var dVal = double.tryParse(str);
+        final dVal = double.tryParse(str);
         if (dVal != null) {
           if (dVal > max!) {
             str = displayNumber(max!);

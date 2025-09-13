@@ -10,7 +10,7 @@
 
 ### theme
 
-样式相关定制, 将所有常用样式配置维护到 `ZoStyle` 中, 大部分情况只需要操作此类, 它在内部也反向覆盖掉了 `ThemeData` 中有相同功能的配置, 使 UI 整体更加一致
+样式相关定制, 将所有常用样式配置维护到 `ZoStyle` 中, 大部分情况只需要操作此类, 它在内部也反向覆盖掉了 `ThemeData` 中有功能接近的配置, 使 UI 整体更加一致
 
 1. 在 MaterialApp 根注册主题
 ```dart
@@ -21,6 +21,8 @@ class MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
+    style.connectReverse(darkStyle);
+
     return MaterialApp(
       themeMode: ThemeMode.dark,
       theme: theme,
@@ -34,10 +36,6 @@ class MyAppState extends State<MyApp> {
 2. 在组件子树中通过 context 使用
 ```dart
 final ZoStyle zoStyle = context.zoStyle;
-// 如果需要获取 themeData 对象或 textTheme, 可通过以下方式, 当然, 直接使用 Theme.of(context) 获取也可以
-final ThemeData theme = context.zoTheme;
-final ThemeData textTheme = context.zoTextTheme;
-
 
 zoStyle.primaryColor
 ```
@@ -47,7 +45,6 @@ zoStyle.primaryColor
 ### types
 
 通用类型, 如 `ZoSize`, `ZoStatus`
-
 
 
 ### 配置
