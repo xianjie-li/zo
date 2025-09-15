@@ -60,11 +60,9 @@ class ZoMenuEntry extends ZoOverlayEntry {
     _bindEvents();
   }
 
-  List<ZoOption> _options;
-
   /// 选项列表
   List<ZoOption> get options => _options;
-
+  List<ZoOption> _options;
   set options(List<ZoOption> value) {
     _options = value;
     changedAndCloseDescendantMenus();

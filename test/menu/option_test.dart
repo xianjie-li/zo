@@ -88,10 +88,6 @@ void main() {
       true,
     );
     expect(
-      c.isIndirectMatchBranches("Option 2-2"),
-      true,
-    );
-    expect(
       c.isMatch("Option 2-2"),
       false,
     );
@@ -103,15 +99,15 @@ void main() {
       true,
     );
 
+    c.selector.select("Option 2-2");
+    expect(c.hasSelectedChild("Option 2"), true);
+    expect(c.hasSelectedChild("Option 1"), false);
+
     expect(c.processedOptions.length, 3);
     expect(c.flatList.length, 9);
     expect(c.filteredFlatList.length, 4);
     expect(
-      c.isVisible("Option 2-2-1"),
-      true,
-    );
-    expect(
-      c.isIndirectMatchBranches("Option 2-2"),
+      c.hasSelectedChild("Option 2-2"),
       false,
     );
     expect(

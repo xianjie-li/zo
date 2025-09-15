@@ -2,7 +2,7 @@
 /// - 通用类型： [ZoSelectionType] / [ZoOptionSelectedData] 等
 /// - 统一的选项接口: [ZoOption]
 /// - 统一的选项渲染Widget: [ZoOptionViewList] / [ZoOptionView]
-/// - 通用的选项逻辑控制器: 包含选中项管理， 树形数据处理， 高效的父子逻辑查询、选项数据管理等
+/// - 通用的选项逻辑控制器: [ZoOptionController] 选中项管理， 树形数据处理， 高效的父子逻辑查询、选项数据管理等
 library;
 
 import "dart:async";
@@ -810,7 +810,7 @@ class ZoOptionNode {
   final List<int> path;
 }
 
-/// 选项管理器，用于复杂树形 [ZoOption] 的管理，它会预计算和缓存必要信息来避免每次操作/查询都进行昂贵的计算, 并包含了预置的异步选项处理逻辑
+/// 选中项管理、树形数据管理、高效的树节点查询、选项数据/展开管理等
 ///
 /// 由于存在缓存信息，需要在必要时对它们进行更新，通常有三种情况：
 /// - [reload] 外部选项需要完全替换，此操作会清理所有缓存信息并重新计算
@@ -830,10 +830,15 @@ class ZoOptionController {
        _matchString = matchString,
        _options = options {
     selector = Selector(selected: selected, valueGetter: (opt) => opt.value);
+
     openSelector = Selector(
       selected: selected,
       valueGetter: (opt) => opt.value,
     );
+
+    selector.addListener(() {
+      refreshFilters();
+    });
 
     openSelector.addListener(() {
       refreshFilters();
@@ -892,8 +897,8 @@ class ZoOptionController {
   List<ZoOption> get filteredFlatList => _filteredFlatList;
   List<ZoOption> _filteredFlatList = [];
 
-  /// 包含被选中子级，但自身没有被选中的分支节点
-  final HashMap<Object, bool> _indirectMatchBranches = HashMap();
+  /// 包含被选中子项的分支节点
+  final HashMap<Object, bool> _branchesHasSelectedChild = HashMap();
 
   /// 检测节点 [matchString] / [matchRegexp] 的选中状态
   final HashMap<Object, bool> _matchStatus = HashMap();
@@ -1033,7 +1038,7 @@ class ZoOptionController {
   void refreshFilters() {
     final List<ZoOption> filteredList = [];
 
-    _indirectMatchBranches.clear();
+    _branchesHasSelectedChild.clear();
     _matchStatus.clear();
     _filterCache.clear();
     _visibleCache.clear();
@@ -1047,6 +1052,7 @@ class ZoOptionController {
       final node = _nodes[opt.value]!;
 
       final (:isOpen, :isMatch) = getFilterStatus(node);
+      final isSelected = selector.isSelected(node.value);
 
       var everyParentIsOpen = true;
       var parentHasMatch = false;
@@ -1070,8 +1076,8 @@ class ZoOptionController {
           optionsHasMatchChild[node.value] = true;
         }
 
-        if (!parentFilter.isMatch && isMatch) {
-          _indirectMatchBranches[parentNode.value] = true;
+        if (isSelected) {
+          _branchesHasSelectedChild[parentNode.value] = true;
         }
 
         parent = parentNode.parent;
@@ -1177,7 +1183,7 @@ class ZoOptionController {
     var isMatch = _matchStatus[node.value];
 
     if (isMatch == null) {
-      isMatch = _isMatchOption(node.value);
+      isMatch = _isMatch(node.value);
       _matchStatus[node.value] = isMatch;
     }
 
@@ -1193,9 +1199,9 @@ class ZoOptionController {
     return _matchStatus[value] ?? false;
   }
 
-  /// 检测指定分支选项是否为因为子项选中而间接选中的选项
-  bool isIndirectMatchBranches(Object value) {
-    return _indirectMatchBranches[value] ?? false;
+  /// 选项是否包含被选中子项
+  bool hasSelectedChild(Object value) {
+    return _branchesHasSelectedChild[value] ?? false;
   }
 
   /// 选项是否可见
@@ -1210,7 +1216,7 @@ class ZoOptionController {
   }
 
   /// 判断选项是否与 [ZoOptionViewList.matchString] / [ZoOptionViewList.matchRegexp] 匹配
-  bool _isMatchOption(Object value) {
+  bool _isMatch(Object value) {
     final node = getNode(value);
 
     assert(node != null);
@@ -1281,7 +1287,7 @@ class ZoOptionController {
     _processedOptions.clear();
     _flatList.clear();
     _filteredFlatList.clear();
-    _indirectMatchBranches.clear();
+    _branchesHasSelectedChild.clear();
     _matchStatus.clear();
     _nodes.clear();
     _filterCache.clear();
