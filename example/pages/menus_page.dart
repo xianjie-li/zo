@@ -218,7 +218,7 @@ class _MenusPageState extends State<MenusPage> {
   late ZoMenuEntry menu5 = ZoMenuEntry(
     options: options5,
     dismissMode: ZoOverlayDismissMode.close,
-    selectionType: ZoSelectionType.single,
+    selectionType: ZoSelectionType.multiple,
     branchSelectable: true,
   );
 
@@ -311,7 +311,8 @@ class _MenusPageState extends State<MenusPage> {
                   ZoButton(
                     child: Text("当前选项"),
                     onTap: () {
-                      print(ZoOption.toJsonList(menu4.treeOptions));
+                      final val = menu4.controller.processedOptions;
+                      print(val);
                     },
                   ),
                   ZoButton(
@@ -319,7 +320,6 @@ class _MenusPageState extends State<MenusPage> {
                     onContextAction: (event) {
                       menu5.offset = event.position;
                       zoOverlay.open(menu5);
-
                       // Timer(Duration(milliseconds: 5000), () {
                       //   print(111);
                       //   menu5.matchString = "5";
@@ -329,7 +329,8 @@ class _MenusPageState extends State<MenusPage> {
                   ZoButton(
                     child: Text("当前选项5"),
                     onTap: () {
-                      print(ZoOption.toJsonList(menu5.treeOptions));
+                      final val = menu5.controller.processedOptions;
+                      print(val);
                     },
                   ),
                   ZoButton(
@@ -339,6 +340,24 @@ class _MenusPageState extends State<MenusPage> {
 
                       print(c.flatList);
                     },
+                  ),
+                  FocusScope(
+                    // node: focusScopeNode,
+                    canRequestFocus: true,
+                    onKeyEvent: (n, e) {
+                      print("key: ${e.logicalKey}");
+                      return KeyEventResult.ignored;
+                    },
+                    descendantsAreFocusable: true,
+                    descendantsAreTraversable: true,
+                    child: ZoButton(
+                      child: Text("Test"),
+                      onTap: () {
+                        final c = ZoOptionController(options: options5);
+
+                        print(c.flatList);
+                      },
+                    ),
                   ),
                 ],
               ),

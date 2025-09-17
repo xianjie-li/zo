@@ -122,7 +122,7 @@ class ZoTile extends StatelessWidget {
   /// - 触摸设备: 按下触发, 松开或移动时关闭
   final ZoTriggerListener<ZoTriggerToggleEvent>? onActiveChanged;
 
-  /// 焦点变更, 传入此项后会自动启用 focus 功能
+  /// 焦点变更
   final ZoTriggerListener<ZoTriggerToggleEvent>? onFocusChanged;
 
   /// 触发上下文操作, 在鼠标操作中表示右键点击, 在触摸操作中表示长按

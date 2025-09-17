@@ -1,6 +1,7 @@
 export "../trigger/event_trigger.dart";
 export "action_history.dart";
 export "selector.dart";
+export "shortcuts.dart";
 
 // const int maxIntValue = kIsWeb ? 9007199254740991 : 9223372036854775807;
 // const int minIntValue = kIsWeb ? -9007199254740991 : -9223372036854775808;

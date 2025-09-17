@@ -23,11 +23,13 @@ class ZoOverlayEntry extends ChangeNotifier {
     bool escapeClosable = true,
     ZoOverlayDismissMode dismissMode = ZoOverlayDismissMode.dispose,
     bool requestFocus = true,
+    this.autoFocus = true,
     this.alwaysOnTop = false,
     this.persistentInBatch = false,
     this.mayDismiss,
     this.onDismiss,
     this.onHoverChanged,
+    this.onKeyEvent,
     void Function(bool open)? onOpenChanged,
     VoidCallback? onDelayClosed,
     VoidCallback? onDispose,
@@ -85,6 +87,9 @@ class ZoOverlayEntry extends ChangeNotifier {
 
   /// 与 [onHoverChanged] 触发时机相同
   final hoverEvent = EventTrigger<bool>();
+
+  /// 用于手动焦点控制
+  FocusScopeNode focusScopeNode = FocusScopeNode();
 
   /// 如果是一个 [route] 层, 在开启时, 会将层对应的路由设置到此项
   ZoOverlayRoute? _attachRoute;
@@ -206,6 +211,16 @@ class ZoOverlayEntry extends ChangeNotifier {
   @protected
   bool? onDragEnd(ZoOverlayDragEndData data) {
     return null;
+  }
+
+  /// 层获得焦点并且有按键被按下
+  @protected
+  KeyEventResult keyEvent(FocusNode node, KeyEvent event) {
+    if (onKeyEvent != null) {
+      return onKeyEvent!(node, event);
+    }
+
+    return KeyEventResult.ignored;
   }
 
   /// 关闭层, 层关闭后, 其状态仍会保留, 可以在稍后重新开启它
@@ -376,6 +391,9 @@ class ZoOverlayEntry extends ChangeNotifier {
     changed();
   }
 
+  /// 是否自动获取焦点
+  bool autoFocus;
+
   /// 控制层在通过 dismiss() 或 tapAway / escape / Navigator.pop 等行为触发关闭时,
   /// 应该销毁还是仅关闭层
   ZoOverlayDismissMode get dismissMode => _dismissMode;
@@ -395,11 +413,12 @@ class ZoOverlayEntry extends ChangeNotifier {
   /// 层是否处于光标悬停状态
   void Function(bool hovered)? onHoverChanged;
 
-  void Function(bool open)? _onOpenChanged;
+  /// 层获得焦点并且有按键被按下
+  KeyEventResult Function(FocusNode node, KeyEvent event)? onKeyEvent;
 
   /// [currentOpen] 状态变更时调用
   void Function(bool open)? get onOpenChanged => _onOpenChanged;
-
+  void Function(bool open)? _onOpenChanged;
   set onOpenChanged(void Function(bool open)? value) {
     _onOpenChanged = value;
     changed();

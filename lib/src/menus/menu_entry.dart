@@ -1,13 +1,19 @@
-import "dart:async";
-import "dart:collection";
+/// 通过 [ZoOverlayEntry] 实现层渲染，[ZoOptionViewList] 渲染具体的列表，[ZoOptionController] 管理选项数据，
+/// 每个层级的菜单单独持有一个 [ZoMenuEntry] 层，同级菜单复用一个层实例
+library;
 
+import "dart:async";
+
+import "package:flutter/services.dart";
 import "package:flutter/widgets.dart";
 import "package:zo/src/menus/option.dart";
 import "package:zo/zo.dart";
 
+/// 渲染菜单层，支持树选项、选中处理、筛选、选项定制等
 class ZoMenuEntry extends ZoOverlayEntry {
   ZoMenuEntry({
-    List<ZoOption> options = const [],
+    required List<ZoOption> options,
+    Iterable<Object>? selected,
     ZoOption? option,
     this.selectionType = ZoSelectionType.none,
     this.branchSelectable = false,
@@ -19,9 +25,9 @@ class ZoMenuEntry extends ZoOverlayEntry {
     bool loading = false,
     String? matchString,
     RegExp? matchRegexp,
-    Selector<Object, ZoOption>? selector,
     this.onTap,
     this.onActiveChanged,
+    this.onFocusChanged,
     super.groupId,
     // super.builder,
     super.offset,
@@ -30,12 +36,14 @@ class ZoMenuEntry extends ZoOverlayEntry {
     // super.route = false,
     // super.barrier = false,
     super.tapAwayClosable,
-    super.escapeClosable,
     super.dismissMode,
     super.requestFocus,
+    super.autoFocus,
     // super.alwaysOnTop,
     // super.mayDismiss,
     // super.onDismiss,
+    super.onHoverChanged,
+    super.onKeyEvent,
     super.onOpenChanged,
     super.onDelayClosed,
     super.onDispose,
@@ -45,40 +53,74 @@ class ZoMenuEntry extends ZoOverlayEntry {
     super.animationWrap,
     super.curve,
     super.duration = Duration.zero,
-  }) : _matchRegexp = matchRegexp,
-       _matchString = matchString,
-       _option = option,
+  }) : _option = option,
        _loading = loading,
        _width = width,
        _maxHeightFactor = maxHeightFactor,
        _maxHeight = maxHeight,
-       _toolbar = toolbar,
-       _options = options {
-    this.selector = selector ?? Selector();
+       _toolbar = toolbar {
+    // menu 自行处理esc关闭行为
+    super.escapeClosable = false;
+
     _openOptions = Selector();
 
-    _bindEvents();
+    if (option == null) {
+      _initController(
+        ZoOptionController(
+          options: options,
+          // menu不需要特定于树形的open管理
+          ignoreOpenStatus: true,
+          selected: selected,
+          matchRegexp: matchRegexp,
+          matchString: matchString,
+        ),
+      );
+    }
   }
+
+  /// 在独立控制器管理选项，便于后续在同样需要树形结构的组件中复用逻辑
+  late final ZoOptionController controller;
+
+  /// 选中项控制，选中项以扁平的列表方式维护，可以通过 [ZoOptionSelectedData] 和 [controller.flatList]
+  /// 获取包含树信息的选中项数据
+  Selector<Object, ZoOption> get selector => controller.selector;
 
   /// 选项列表
   List<ZoOption> get options => _options;
-  List<ZoOption> _options;
+  List<ZoOption> _options = [];
   set options(List<ZoOption> value) {
-    _options = value;
+    assert(option == null);
+    controller.options = value;
     changedAndCloseDescendantMenus();
   }
 
-  ZoOption? _option;
+  /// 用于过滤选项的文本, 传入后只显示包含该文本的选项
+  String? get matchString => controller.matchString;
+  set matchString(String? value) {
+    assert(option == null);
+    controller.matchString = value;
+    changedAndCloseDescendantMenus();
+  }
+
+  /// 用于过滤选项的正则, 传入后只显示匹配的选项
+  RegExp? get matchRegexp => controller.matchRegexp;
+  set matchRegexp(RegExp? value) {
+    assert(option == null);
+    controller.matchRegexp = value;
+    changedAndCloseDescendantMenus();
+  }
 
   /// 菜单对应的选项, 只有子菜单会存在此项, 传入时, 如果 options 没有值, 并且选项包含了 loadOptions
   /// 配置, 会通过 loadOptions 加载选项
   ///
-  /// 此选项通常只会由菜单内部为其子菜单设置, 对根菜单无效
+  /// 只会由菜单内部为其子菜单设置, 对根菜单无效
   ZoOption? get option => _option;
-
+  ZoOption? _option;
   set option(ZoOption? value) {
+    // 仅子菜单可更改选项
+    assert(_option != null && value != null);
     _option = value;
-    changed();
+    changedAndCloseDescendantMenus();
   }
 
   /// 控制选择类型, 默认为单选
@@ -90,74 +132,44 @@ class ZoMenuEntry extends ZoOverlayEntry {
   /// 单选或未启用选中时, 点击项后是否自动关闭层
   bool dismissOnSelect;
 
-  Widget? _toolbar;
-
   /// 在顶部渲染工具栏
   Widget? get toolbar => _toolbar;
-
+  Widget? _toolbar;
   set toolbar(Widget? value) {
     _toolbar = value;
     changed();
   }
 
-  double? _maxHeight;
-
   /// 最大高度, 默认会根据视口尺寸和 [maxHeightFactor] 进行限制
   double? get maxHeight => _maxHeight;
-
+  double? _maxHeight;
   set maxHeight(double? value) {
     _maxHeight = value;
     changed();
   }
 
-  double _maxHeightFactor;
-
   /// 最大高度的比例, 设置 [maxHeight] 后此项无效
   double get maxHeightFactor => _maxHeightFactor;
-
+  double _maxHeightFactor;
   set maxHeightFactor(double value) {
     _maxHeightFactor = value;
     changed();
   }
 
-  double _width;
-
   /// 菜单宽度
   double get width => _width;
-
+  double _width;
   set width(double value) {
     _width = value;
     changed();
   }
 
-  bool _loading;
-
   /// 是否处于加载状态
   bool get loading => _loading;
-
+  bool _loading;
   set loading(bool value) {
     _loading = value;
     changed();
-  }
-
-  String? _matchString;
-
-  /// 用于过滤选项的文本, 传入后只显示包含该文本的选项
-  String? get matchString => _matchString;
-
-  set matchString(String? value) {
-    _matchString = value;
-    changedAndCloseDescendantMenus();
-  }
-
-  RegExp? _matchRegexp;
-
-  /// 用于过滤选项的正则, 传入后只显示匹配的选项
-  RegExp? get matchRegexp => _matchRegexp;
-
-  set matchRegexp(RegExp? value) {
-    _matchRegexp = value;
-    changedAndCloseDescendantMenus();
   }
 
   /// 选项被点击, 若返回一个 future, 可进入loading状态
@@ -168,10 +180,10 @@ class ZoMenuEntry extends ZoOverlayEntry {
   /// - 触摸设备: 按下触发, 松开或移动时关闭
   ZoTriggerListener<ZoTriggerToggleEvent>? onActiveChanged;
 
-  /// 控制选中的选项
-  late final Selector<Object, ZoOption> selector;
+  /// 焦点变更事件
+  ZoTriggerListener<ZoTriggerToggleEvent>? onFocusChanged;
 
-  /// 标记所有开启子菜单的选项, 与 [selector] 不同, 它在每个层级的菜单间独立
+  /// 标记当前层级菜单所有开启子菜单的选项, 它在每个层级的菜单间独立
   ///
   /// 仅作为标记, 组件内部需要负责同步开启状态的菜单与此项一致
   late final Selector<Object, ZoOption> _openOptions;
@@ -188,22 +200,45 @@ class ZoMenuEntry extends ZoOverlayEntry {
   /// 滚动控制器
   final _scrollController = ScrollController();
 
-  // 控制子菜单延迟开启
+  /// 控制子菜单延迟开启
   Timer? _openChildMenuTimer;
 
-  /// 异步加载的选项缓存, 以 value 为 key 进行存储
-  final HashMap<Object, List<ZoOption>> _asyncOptionCaches = HashMap();
+  /// 用于内部控制loading状态
+  bool _localLoading = false;
 
-  /// 选项是否正在进行异步加载
-  final HashMap<Object, bool> _asyncOptionLoading = HashMap();
+  /// 全选行为标记，用于在全选和取消之间切换
+  bool _selectAllFlag = false;
+
+  /// 左移键
+  final _leftActivator = const SingleActivator(
+    LogicalKeyboardKey.arrowLeft,
+    includeRepeats: false,
+  );
+
+  /// 右移键
+  final _rightActivator = const SingleActivator(
+    LogicalKeyboardKey.arrowRight,
+    includeRepeats: false,
+  );
+
+  /// 全选按键
+  final _allSelectActivator = ZoShortcutsHelper.platformAwareActivator(
+    LogicalKeyboardKey.keyA,
+    includeRepeats: false,
+  );
+
+  /// 关闭
+  final _closeActivator = const SingleActivator(
+    LogicalKeyboardKey.escape,
+    includeRepeats: false,
+  );
 
   @override
   void dispose() {
     _unbindEvents();
     _scrollController.dispose();
     _openChildMenuTimer?.cancel();
-    _asyncOptionCaches.clear();
-    _asyncOptionLoading.clear();
+    controller.dispose();
     super.dispose();
   }
 
@@ -220,6 +255,80 @@ class ZoMenuEntry extends ZoOverlayEntry {
     }
   }
 
+  /// 覆盖 escapeClosable 关闭行为，关闭所有关联窗口
+  @override
+  @protected
+  KeyEventResult keyEvent(FocusNode node, KeyEvent event) {
+    if (!currentOpen) return KeyEventResult.ignored;
+
+    if (ZoShortcutsHelper.checkEvent(_closeActivator, event)) {
+      return _onShortcutsClose();
+    } else if (ZoShortcutsHelper.checkEvent(_leftActivator, event)) {
+      return _onShortcutsMove(true);
+    } else if (ZoShortcutsHelper.checkEvent(_rightActivator, event)) {
+      return _onShortcutsMove(false);
+    } else if (ZoShortcutsHelper.checkEvent(_allSelectActivator, event)) {
+      return _onShortcutsAllSelector();
+    }
+
+    return KeyEventResult.ignored;
+  }
+
+  /// 通过按键关闭所有层
+  KeyEventResult _onShortcutsClose() {
+    _getRelativeOverlay().forEach((entry) {
+      entry.close();
+    });
+    return KeyEventResult.handled;
+  }
+
+  /// 通过按键在相邻层之间移动焦点
+  KeyEventResult _onShortcutsMove(bool isLeft) {
+    final List<ZoMenuEntry?> list = [_child, _parent]; // 子项放在前面，优先匹配
+
+    final Rect? rect = positionedRenderObject?.overlayRect;
+
+    if (rect == null) return KeyEventResult.ignored;
+
+    for (final entry in list) {
+      if (entry == null) continue;
+
+      final otherRect = entry.positionedRenderObject?.overlayRect;
+
+      if (otherRect == null) continue;
+
+      final atLeft = otherRect.left < rect.left;
+      final atRight = otherRect.right > rect.right;
+
+      if ((isLeft && atLeft) || (!isLeft && atRight)) {
+        final focused = _preferFocus(entry.focusScopeNode);
+
+        return focused ? KeyEventResult.handled : KeyEventResult.ignored;
+      }
+    }
+
+    return KeyEventResult.ignored;
+  }
+
+  /// 通过按键全选当前层所有选项
+  KeyEventResult _onShortcutsAllSelector() {
+    if (selectionType != ZoSelectionType.multiple) {
+      return KeyEventResult.ignored;
+    }
+
+    final values = options.map((i) => i.value);
+
+    if (_selectAllFlag) {
+      controller.selector.unselectList(values);
+    } else {
+      controller.selector.selectList(values);
+    }
+
+    _selectAllFlag = !_selectAllFlag;
+
+    return KeyEventResult.handled;
+  }
+
   /// 通知所有关联菜单层进行更新
   void menusChanged() {
     if (_parent != null) return;
@@ -230,6 +339,7 @@ class ZoMenuEntry extends ZoOverlayEntry {
 
   /// 更新当前菜单, 并关闭所有子菜单
   void changedAndCloseDescendantMenus() {
+    _options = controller.getOptions(value: option?.value);
     changed();
     closeDescendantMenus();
   }
@@ -248,75 +358,20 @@ class ZoMenuEntry extends ZoOverlayEntry {
     }
   }
 
-  /// 将当前选项组装为完整的树结构返回, 主要用于异步数据的合并
-  List<ZoOption> get treeOptions {
-    var currentOptions = options.toList();
-
-    if (currentOptions.isEmpty && option != null) {
-      final asyncData = _asyncOptionCaches[option!.value];
-
-      if (asyncData != null) {
-        currentOptions = asyncData.toList();
-      }
-    }
-
-    /// 将所有异步获取的选项同步到选项列表
-    void syncAsyncOptions(List<ZoOption> list) {
-      for (var i = 0; i < list.length; i++) {
-        final opt = list[i];
-
-        var optChildren = opt.options;
-
-        // 加载动态选项
-        if (optChildren == null || optChildren.isEmpty) {
-          final asyncData = _asyncOptionCaches[opt.value];
-
-          if (asyncData != null) {
-            optChildren = asyncData.toList();
-
-            list[i] = opt.copyWith(
-              options: optChildren,
-            );
-          }
-        }
-
-        if (optChildren != null && optChildren.isNotEmpty) {
-          syncAsyncOptions(optChildren);
-        }
-      }
-    }
-
-    syncAsyncOptions(currentOptions);
-
-    return currentOptions;
-  }
-
-  /// 获取选中项， 包含子菜单的选中项
-  Set<Object> get selected {
-    var child = _child;
-    final Set<Object> set = selector.getSelected().toSet();
-
-    while (child != null) {
-      set.addAll(child.selector.getSelected());
-      child = child._child;
-    }
-
-    return set;
-  }
-
-  /// 获取更完整的选中项信息, 相比 [selected] 它会递归对选项进行获取,
-  /// 如果选项总量非常大, 应该避免频繁调用
-  ZoOptionSelectedData get selectedData {
-    return ZoOptionSelectedData.fromSelected(selected, treeOptions);
+  /// 初始化控制器
+  void _initController(ZoOptionController controller) {
+    this.controller = controller;
+    _options = controller.getOptions(value: option?.value);
+    _bindEvents();
   }
 
   void _bindEvents() {
-    selector.addListener(changed);
+    controller.selector.addListener(changed);
     _openOptions.addListener(changed);
   }
 
   void _unbindEvents() {
-    selector.removeListener(changed);
+    controller.selector.removeListener(changed);
     _openOptions.removeListener(changed);
   }
 
@@ -342,19 +397,52 @@ class ZoMenuEntry extends ZoOverlayEntry {
     }
 
     if (selectionType == ZoSelectionType.single) {
-      selector.setSelected([option.value]);
+      controller.selector.setSelected([option.value]);
 
       if (dismissOnSelect && !isBranchTouch) {
         _getTopOverlay().dismiss();
       }
     } else {
-      selector.toggle(option.value);
+      controller.selector.toggle(option.value);
     }
   }
 
   void _onActiveChanged(ZoTriggerToggleEvent event) {
     onActiveChanged?.call(event);
+    _childMenuOpenCommonHandler(event);
+  }
 
+  void _onFocusChanged(ZoTriggerToggleEvent event) {
+    onFocusChanged?.call(event);
+    _childMenuOpenCommonHandler(event);
+  }
+
+  /// 按以下顺序依次尝试聚焦节点
+  /// - 已存在的聚焦子节点
+  /// - 首个可聚焦子节点
+  /// - 自身
+  bool _preferFocus(FocusScopeNode node) {
+    if (node.focusedChild != null && node.focusedChild!.canRequestFocus) {
+      node.focusedChild!.requestFocus();
+      return true;
+    }
+
+    final firstNode = node.traversalChildren.firstOrNull;
+
+    if (firstNode != null && firstNode.canRequestFocus) {
+      firstNode.requestFocus();
+      return true;
+    }
+
+    if (node.canRequestFocus) {
+      node.requestFocus();
+      return true;
+    }
+
+    return false;
+  }
+
+  void _childMenuOpenCommonHandler(ZoTriggerToggleEvent event) {
     final ZoOptionEventData(:option, :context) = event.data;
 
     if (!event.toggle) return;
@@ -377,7 +465,7 @@ class ZoMenuEntry extends ZoOverlayEntry {
       _openOptions.unselectAll();
     }
 
-    // 没有子菜单
+    // 没有可用子菜单
     if (!hasChildren && !hasLoader) return;
 
     if (ZoTrigger.isTouchLike(event.deviceKind)) {
@@ -464,37 +552,6 @@ class ZoMenuEntry extends ZoOverlayEntry {
     return target.shift(Offset(0, -style.space2));
   }
 
-  /// 异步选项加载处理
-  void _onOptionsLoad(ZoOptionLoadEvent event) {
-    final entry = _getTopOverlay();
-
-    /// 根菜单
-    if (entry == this) return;
-
-    final localOption = event.option;
-
-    if (event.loading) {
-      entry._asyncOptionLoading[localOption.value] = true;
-
-      /// 仅当前选项仍然活动时更新
-      if (localOption == option) {
-        changed();
-      }
-
-      return;
-    }
-
-    if (event.options != null) {
-      entry._asyncOptionCaches[localOption.value] = event.options!;
-    }
-
-    entry._asyncOptionLoading[localOption.value] = false;
-
-    if (localOption == option) {
-      changed();
-    }
-  }
-
   /// 初始化或更新子菜单所在的层
   ZoMenuEntry _initOrUpdateChildOverlay(ZoOption option, Rect target) {
     // 子菜单固定使用已经 flip 的方向
@@ -506,10 +563,12 @@ class ZoMenuEntry extends ZoOverlayEntry {
 
     final width = option.optionsWidth ?? _getTopOverlay().width;
 
+    ZoMenuEntry child;
+
     if (_child == null) {
-      _child = ZoMenuEntry(
+      child = ZoMenuEntry(
         rect: target,
-        options: option.options ?? [],
+        options: [],
         option: option,
         selectionType: selectionType,
         branchSelectable: branchSelectable,
@@ -519,77 +578,83 @@ class ZoMenuEntry extends ZoOverlayEntry {
         width: width,
         onTap: onTap,
         onActiveChanged: onActiveChanged,
+        onFocusChanged: onFocusChanged,
         groupId: groupId,
         direction: direction,
         dismissMode: ZoOverlayDismissMode.close,
         tapAwayClosable: false,
-        selector: selector,
+        autoFocus: false,
       );
 
-      _child!._parent = this;
+      child._parent = this;
+      child._initController(controller);
+    } else {
+      child = _child!;
+      child._parent = this;
 
-      return _child!;
+      child.actions(() {
+        child.rect = target;
+        child.option = option;
+        child.selectionType = selectionType;
+        child.branchSelectable = branchSelectable;
+        child.dismissOnSelect = dismissOnSelect;
+        // child.maxHeight = maxHeight;
+        // child.maxHeightFactor = maxHeightFactor;
+        child.width = width;
+        child.onTap = onTap;
+        child.onActiveChanged = onActiveChanged;
+        child.onFocusChanged = onFocusChanged;
+        child.groupId = groupId;
+        child.direction = direction;
+        child._localLoading = false;
+      });
     }
 
-    final child = _child!;
+    _child = child;
 
-    _child!._parent = this;
-
-    child.actions(() {
-      child.rect = target;
-      child.options = option.options ?? [];
-      child.option = option;
-      child.selectionType = selectionType;
-      child.branchSelectable = branchSelectable;
-      child.dismissOnSelect = dismissOnSelect;
-      // child.maxHeight = maxHeight;
-      // child.maxHeightFactor = maxHeightFactor;
-      child.width = width;
-      child.onTap = onTap;
-      child.onActiveChanged = onActiveChanged;
-      child.groupId = groupId;
-      child.direction = direction;
-    });
+    // 获取异步选项
+    if ((option.options == null || option.options!.isEmpty) &&
+        option.loadOptions != null) {
+      final curVal = option.value;
+      _child!._localLoading = true;
+      controller.loadOptions(option.value).whenComplete(() {
+        if (_child != null && curVal == _child!.option!.value) {
+          _child!._localLoading = false;
+          _child!.changedAndCloseDescendantMenus();
+        }
+      });
+    }
 
     return child;
+  }
+
+  bool _isActive(ZoOption option) {
+    return selector.isSelected(option.value);
+  }
+
+  bool _isHighlight(ZoOption option) {
+    return _openOptions.isSelected(option.value) ||
+        controller.hasSelectedChild(option.value);
   }
 
   @protected
   @override
   Widget overlayBuilder(BuildContext context) {
-    final topEntry = _getTopOverlay();
-
-    // 是否正在加载异步选项
-    var optionsLoading = false;
-
-    // 已有异步选项缓存
-    List<ZoOption>? optionsCache;
-
-    if (option != null) {
-      if (topEntry._asyncOptionLoading[option!.value] == true) {
-        optionsLoading = true;
-      }
-
-      optionsCache = topEntry._asyncOptionCaches[option!.value];
-    }
-
     return SizedBox(
       width: width,
       child: ZoOptionViewList(
-        options: optionsCache ?? options,
+        options: options,
         option: option,
-        activeOptions: selector.getSelected(),
-        highlightOptions: _openOptions.getSelected(),
+        activeCheck: _isActive,
+        highlightCheck: _isHighlight,
         toolbar: toolbar,
         maxHeight: maxHeight,
         maxHeightFactor: maxHeightFactor,
-        loading: optionsLoading || loading,
-        matchString: topEntry.matchString,
-        matchRegexp: topEntry.matchRegexp,
+        loading: loading || _localLoading,
         scrollController: _scrollController,
         onTap: _onTap,
         onActiveChanged: _onActiveChanged,
-        onOptionLoad: _onOptionsLoad,
+        onFocusChanged: _onFocusChanged,
       ),
     );
   }

@@ -9,7 +9,6 @@ import "dart:async";
 import "dart:collection";
 
 import "package:flutter/material.dart";
-import "package:flutter/scheduler.dart";
 import "package:zo/zo.dart";
 
 // # # # # # # # 通用类型 # # # # # # #
@@ -195,7 +194,7 @@ class ZoOption {
 
   @override
   String toString() {
-    return "ZoOption(value: $value, title: $title, options: [${options?.length ?? 0}]";
+    return """ZoOption(value: $value, title: $title, options: [${options?.length ?? 0}]""";
   }
 
   /// 根据传入值复制当前选项
@@ -359,6 +358,7 @@ class ZoOptionView extends StatelessWidget {
     this.highlight = false,
     this.onTap,
     this.onActiveChanged,
+    this.onFocusChanged,
   });
 
   /// 图标尺寸
@@ -386,6 +386,9 @@ class ZoOptionView extends StatelessWidget {
   /// - 鼠标: 表示位于组件上方
   /// - 触摸设备: 按下触发, 松开或移动时关闭
   final ZoTriggerListener<ZoTriggerToggleEvent>? onActiveChanged;
+
+  /// 焦点变更事件
+  final ZoTriggerListener<ZoTriggerToggleEvent>? onFocusChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -449,6 +452,7 @@ class ZoOptionView extends StatelessWidget {
           iconTheme: const IconThemeData(size: ZoOptionView.iconSize),
           onTap: onTap,
           onActiveChanged: onActiveChanged,
+          onFocusChanged: onFocusChanged,
           data: data,
         ),
       ),
@@ -462,9 +466,9 @@ class ZoOptionViewList extends StatefulWidget {
     super.key,
     required this.options,
     this.option,
-    this.activeOptions = const {},
-    this.loadingOptions = const {},
-    this.highlightOptions = const {},
+    this.activeCheck,
+    this.loadingCheck,
+    this.highlightCheck,
     this.toolbar,
     this.maxHeight,
     this.maxHeightFactor = ZoOptionViewList.defaultHeightFactor,
@@ -474,9 +478,7 @@ class ZoOptionViewList extends StatefulWidget {
     this.scrollController,
     this.onTap,
     this.onActiveChanged,
-    this.onOptionLoad,
-    this.matchString,
-    this.matchRegexp,
+    this.onFocusChanged,
   });
 
   static const defaultHeightFactor = 0.92;
@@ -484,18 +486,17 @@ class ZoOptionViewList extends StatefulWidget {
   /// 选项列表
   final List<ZoOption> options;
 
-  /// 菜单对应的父选项, 只有子菜单会存在此项, 传入时, 如果 options 没有值, 并且选项包含了 loadOptions
-  /// 配置, 会通过 loadOptions 加载选项
+  /// 菜单对应的父选项, 只有子菜单会存在此项
   final ZoOption? option;
 
-  /// 所有需要标记为 active 的选项
-  final Set<Object> activeOptions;
+  /// 用于判断选项是否应显示 active 样式
+  final bool Function(ZoOption option)? activeCheck;
 
-  /// 所有需要标记为 loading 的选项
-  final Set<Object> loadingOptions;
+  /// 用于判断选项是否应显示 loading 样式
+  final bool Function(ZoOption option)? loadingCheck;
 
-  /// 所有需要标记为 highlight 的选项
-  final Set<Object> highlightOptions;
+  /// 用于判断选项是否应显示 highlight 样式
+  final bool Function(ZoOption option)? highlightCheck;
 
   /// 在顶部渲染工具栏
   final Widget? toolbar;
@@ -526,23 +527,14 @@ class ZoOptionViewList extends StatefulWidget {
   /// - 触摸设备: 按下触发, 松开或移动时关闭
   final ZoTriggerListener<ZoTriggerToggleEvent>? onActiveChanged;
 
-  /// 异步选项加载的各个节点调用
-  final void Function(ZoOptionLoadEvent event)? onOptionLoad;
-
-  /// 用于过滤选项的文本, 传入后只显示包含该文本的选项
-  final String? matchString;
-
-  /// 用于过滤选项的正则, 传入后只显示匹配的选项
-  final RegExp? matchRegexp;
+  /// 焦点变更
+  final ZoTriggerListener<ZoTriggerToggleEvent>? onFocusChanged;
 
   @override
   State<ZoOptionViewList> createState() => _ZoOptionViewListState();
 }
 
 class _ZoOptionViewListState extends State<ZoOptionViewList> {
-  /// 最终要显示的选项, 可能已经过过滤
-  List<ZoOption> filteredOptions = [];
-
   /// 选项总高度
   double listHeight = 0;
 
@@ -555,60 +547,28 @@ class _ZoOptionViewListState extends State<ZoOptionViewList> {
   @override
   void initState() {
     super.initState();
-
-    filterOptions();
-
-    daleyLoadOptions();
   }
 
   @override
   void didUpdateWidget(covariant ZoOptionViewList oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    if (oldWidget.option != widget.option) {
-      daleyLoadOptions();
+    if (oldWidget.options != widget.options ||
+        oldWidget.padding != widget.padding) {
+      updateScrollDatas();
     }
-
-    if (widget.options != oldWidget.options ||
-        widget.matchString != oldWidget.matchString ||
-        widget.matchRegexp != oldWidget.matchRegexp) {
-      filterOptions();
-    }
-
-    updateScrollDatas();
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+
     updateScrollDatas();
   }
 
   @override
   void dispose() {
-    filteredOptions = [];
     super.dispose();
-  }
-
-  /// 根据 [ZoOptionViewList.matchString] 或 [ZoOptionViewList.matchRegexp] 筛选要显示的选项
-  void filterOptions() {
-    if (widget.matchString == null && widget.matchRegexp == null) {
-      filteredOptions = widget.options;
-      return;
-    }
-
-    filteredOptions = widget.options.where((option) {
-      final String? text = option.getTitleText();
-
-      // 未获取到文本的选项一律视为不匹配
-      if (text == null) return false;
-
-      if (widget.matchString != null) {
-        return text.contains(widget.matchString!);
-      } else {
-        return widget.matchRegexp!.hasMatch(text);
-      }
-    }).toList();
   }
 
   /// 对比当前选项尺寸和视口的尺寸, 根据结果更新可滚动状态和容器高度
@@ -621,7 +581,7 @@ class _ZoOptionViewListState extends State<ZoOptionViewList> {
 
     scrollable = false;
 
-    for (final option in filteredOptions) {
+    for (final option in widget.options) {
       height += option.height;
 
       if (height > maxHeight) {
@@ -639,70 +599,20 @@ class _ZoOptionViewListState extends State<ZoOptionViewList> {
     listHeight = height > 0 ? height + paddingHeight : 0;
   }
 
-  /// 延迟到下一帧开始加载异步选项, 防止用户在 didUpdateWidget / initState 等回调中调用 setState
-  void daleyLoadOptions() {
-    final currentWidget = widget;
-
-    SchedulerBinding.instance.addPostFrameCallback((d) {
-      if (mounted) {
-        loadOptions(currentWidget);
-      }
-    });
-  }
-
-  /// 若当前选项为空, 并且存在配置加载器, 则通过加载器进行加载
-  ///
-  /// 由于当前实现是所有同级选项复用同一个层, 需要通过 currentWidget 缓存当前选项来避免选项错乱
-  Future loadOptions(ZoOptionViewList currentWidget) async {
-    if (currentWidget.options.isNotEmpty || loading || currentWidget.loading) {
-      return;
-    }
-
-    final loadOptions = currentWidget.option?.loadOptions;
-
-    if (loadOptions == null) return;
-
-    currentWidget.onOptionLoad?.call(
-      ZoOptionLoadEvent(
-        option: currentWidget.option!,
-        loading: true,
-      ),
-    );
-
-    try {
-      final res = await loadOptions(currentWidget.option!);
-
-      currentWidget.onOptionLoad?.call(
-        ZoOptionLoadEvent(
-          option: currentWidget.option!,
-          options: res,
-          loading: false,
-        ),
-      );
-    } catch (e) {
-      currentWidget.onOptionLoad?.call(
-        ZoOptionLoadEvent(
-          option: currentWidget.option!,
-          error: e,
-          loading: false,
-        ),
-      );
-    }
-  }
-
   Widget? itemBuilder(BuildContext context, int index) {
-    final opt = filteredOptions.elementAtOrNull(index);
+    final opt = widget.options.elementAtOrNull(index);
 
     if (opt == null) return null;
 
-    final isActive = widget.activeOptions.contains(opt.value);
-    final isLoading = widget.loadingOptions.contains(opt.value);
-    final isHighlight = widget.highlightOptions.contains(opt.value);
+    final isActive = widget.activeCheck?.call(opt) ?? false;
+    final isLoading = widget.loadingCheck?.call(opt) ?? false;
+    final isHighlight = widget.highlightCheck?.call(opt) ?? false;
 
     return ZoOptionView(
       key: ValueKey(opt.value),
       onTap: widget.onTap,
       onActiveChanged: widget.onActiveChanged,
+      onFocusChanged: widget.onFocusChanged,
       option: opt,
       active: isActive,
       loading: isLoading,
@@ -711,7 +621,7 @@ class _ZoOptionViewListState extends State<ZoOptionViewList> {
   }
 
   double? itemExtent(index, dimensions) {
-    final opt = filteredOptions.elementAtOrNull(index);
+    final opt = widget.options.elementAtOrNull(index);
     return opt?.height;
   }
 
@@ -722,7 +632,7 @@ class _ZoOptionViewListState extends State<ZoOptionViewList> {
       );
     }
 
-    if (filteredOptions.isEmpty) {
+    if (widget.options.isEmpty) {
       return ZoOptionView(
         option: ZoOption(
           title: Text(locale.noData, style: style.hintTextStyle),
@@ -741,7 +651,7 @@ class _ZoOptionViewListState extends State<ZoOptionViewList> {
         child: ListView.builder(
           controller: widget.scrollController,
           physics: scrollable ? null : const NeverScrollableScrollPhysics(),
-          itemCount: filteredOptions.length,
+          itemCount: widget.options.length,
           itemBuilder: itemBuilder,
           itemExtentBuilder: itemExtent,
         ),
@@ -810,11 +720,11 @@ class ZoOptionNode {
   final List<int> path;
 }
 
-/// 选中项管理、树形数据管理、高效的树节点查询、选项数据/展开管理等
+/// 提供选中项管理、树形数据管理、高效的树节点查询、选项数据/展开管理等选项通用行为的处理
 ///
 /// 由于存在缓存信息，需要在必要时对它们进行更新，通常有三种情况：
 /// - [reload] 外部选项需要完全替换，此操作会清理所有缓存信息并重新计算
-/// - [refresh] 选项在内部被可控的更新，此操作会重新计算节点的关联关系，flatList 等
+/// - [refresh] 选项在内部被可控的更新，此操作会重新计算节点的关联关系、flatList 等
 /// - [refreshFilters] 展开状态/筛选条件变更
 ///
 /// 内部会自动在合适的时机调用对应的更新函数，除非需要自行扩展行为，否则大部分情况无需手动调用这些方法
@@ -829,7 +739,11 @@ class ZoOptionController {
   }) : _matchRegexp = matchRegexp,
        _matchString = matchString,
        _options = options {
-    selector = Selector(selected: selected, valueGetter: (opt) => opt.value);
+    selector = Selector(
+      selected: selected,
+      valueGetter: (opt) => opt.value,
+      optionsGetter: () => flatList,
+    );
 
     openSelector = Selector(
       selected: selected,
@@ -893,7 +807,7 @@ class ZoOptionController {
   List<ZoOption> get flatList => _flatList;
   List<ZoOption> _flatList = [];
 
-  /// 经过 open 、 match 等配置过滤后的 [flatList]
+  /// 经过 open、match 等配置过滤后的 [flatList]
   List<ZoOption> get filteredFlatList => _filteredFlatList;
   List<ZoOption> _filteredFlatList = [];
 
@@ -1142,6 +1056,12 @@ class ZoOptionController {
     try {
       final res = await loadOptions(node.option);
 
+      node.option.options = res;
+
+      refresh();
+
+      _asyncOptionTask.remove(node.option.value);
+
       asyncLoadTrigger.emit(
         ZoOptionLoadEvent(
           option: node.option,
@@ -1150,11 +1070,10 @@ class ZoOptionController {
         ),
       );
 
-      node.option.options = res;
       completer.complete();
-
-      refresh();
     } catch (e) {
+      _asyncOptionTask.remove(node.option.value);
+
       asyncLoadTrigger.emit(
         ZoOptionLoadEvent(
           option: node.option,
@@ -1162,9 +1081,8 @@ class ZoOptionController {
           loading: false,
         ),
       );
+
       completer.completeError(e);
-    } finally {
-      _asyncOptionTask.remove(node.option.value);
     }
   }
 

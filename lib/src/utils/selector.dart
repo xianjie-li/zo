@@ -19,10 +19,14 @@ class Selector<Val, Opt> extends ChangeNotifier {
   Selector({
     Iterable<Val>? selected,
     this.valueGetter,
+    this.optionsGetter,
   }) : _selected = selected?.toSet() ?? {};
 
   /// 控制如何从 [Opt] 中获取选中值, 如果选项本身就代表值则不需要设置
   Val Function(Opt)? valueGetter;
+
+  /// 获取当前所有选项的函数，传入后，依赖 allOptions 的方法可以不再传入
+  Iterable<Opt> Function()? optionsGetter;
 
   /// 已选中选项
   /// 选中值不一定存在于选项列表中
@@ -48,13 +52,21 @@ class Selector<Val, Opt> extends ChangeNotifier {
     return _selected.isNotEmpty;
   }
 
+  /// 确保存在可用选项
+  Iterable<Opt> _assertOptionsValid(Iterable<Opt>? allOptions) {
+    assert(allOptions != null || optionsGetter != null);
+    return allOptions ?? optionsGetter!();
+  }
+
   /// 是否部分选中, 需要传入当前所有选项
-  bool isPartialSelected(Iterable<Opt> allOptions) {
-    if (_selected.isEmpty || _selected.length == allOptions.length) {
+  bool isPartialSelected(Iterable<Opt>? allOptions) {
+    final allOptions2 = _assertOptionsValid(allOptions);
+
+    if (_selected.isEmpty || _selected.length == allOptions2.length) {
       return false;
     }
 
-    for (var opt in allOptions) {
+    for (var opt in allOptions2) {
       if (!_selected.contains(getOptionValue(opt))) {
         return true;
       }
@@ -64,10 +76,12 @@ class Selector<Val, Opt> extends ChangeNotifier {
   }
 
   /// 是否选中了所有值, 需要传入当前所有选项
-  bool isAllSelected(Iterable<Opt> allOptions) {
-    if (_selected.length < allOptions.length) return false;
+  bool isAllSelected(Iterable<Opt>? allOptions) {
+    final allOptions2 = _assertOptionsValid(allOptions);
 
-    for (var opt in allOptions) {
+    if (_selected.length < allOptions2.length) return false;
+
+    for (var opt in allOptions2) {
       if (!_selected.contains(getOptionValue(opt))) {
         return false;
       }
@@ -83,14 +97,16 @@ class Selector<Val, Opt> extends ChangeNotifier {
 
   /// 获取当前选中值, 相比 [getSelected] 它包含更完整的信息, 比如不存在于列表中的选项,
   /// 选项值和选项列表等
-  SelectorState<Val, Opt> getSelectionState(Iterable<Opt> allOptions) {
+  SelectorState<Val, Opt> getSelectionState(Iterable<Opt>? allOptions) {
+    final allOptions2 = _assertOptionsValid(allOptions);
+
     final selected = <Val>{};
     final selectedOptions = <Opt>{};
     final unlistedSelected = <Val>{};
 
     final HashMap<Val, Opt> optionsMap = HashMap();
 
-    for (final option in allOptions) {
+    for (final option in allOptions2) {
       optionsMap[getOptionValue(option)] = option;
     }
 
@@ -141,11 +157,13 @@ class Selector<Val, Opt> extends ChangeNotifier {
   }
 
   /// 选中所有值, 需要传入当前所有选项
-  void selectAll(Iterable<Opt> allOptions) {
+  void selectAll(Iterable<Opt>? allOptions) {
+    final allOptions2 = _assertOptionsValid(allOptions);
+
     if (valueGetter != null) {
-      _selected.addAll(allOptions.map(valueGetter!));
+      _selected.addAll(allOptions2.map(valueGetter!));
     } else {
-      _selected.addAll(allOptions as Iterable<Val>);
+      _selected.addAll(allOptions2 as Iterable<Val>);
     }
 
     notifyListeners();
@@ -170,8 +188,10 @@ class Selector<Val, Opt> extends ChangeNotifier {
   }
 
   /// 反选所有值, 需要传入当前所有选项
-  void toggleAll(Iterable<Opt> allOptions) {
-    for (var opt in allOptions) {
+  void toggleAll(Iterable<Opt>? allOptions) {
+    final allOptions2 = _assertOptionsValid(allOptions);
+
+    for (var opt in allOptions2) {
       final value = getOptionValue(opt);
 
       if (_selected.contains(value)) {

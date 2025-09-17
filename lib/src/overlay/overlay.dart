@@ -573,8 +573,6 @@ class _ZoOverlayViewState extends State<ZoOverlayView> {
 
   ZoOverlay get overlay => widget.overlay;
 
-  FocusScopeNode focusScopeNode = FocusScopeNode();
-
   /// 记录前一个 barrier 状态, 用于防止在某些场景下 barrier 在没有动画的情况下直接关闭
   late bool lastBarrier;
 
@@ -604,7 +602,9 @@ class _ZoOverlayViewState extends State<ZoOverlayView> {
 
     lastBarrier = entry.barrier;
 
-    focus();
+    if (entry.autoFocus) {
+      focus();
+    }
   }
 
   @override
@@ -662,7 +662,7 @@ class _ZoOverlayViewState extends State<ZoOverlayView> {
     if (!entry.requestFocus || !entry.currentOpen) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      focusScopeNode.requestFocus();
+      entry.focusScopeNode.requestFocus();
     });
   }
 
@@ -685,7 +685,9 @@ class _ZoOverlayViewState extends State<ZoOverlayView> {
 
   /// open状态变更
   void onOpenChanged(bool open) {
-    focus();
+    if (entry.autoFocus) {
+      focus();
+    }
 
     if (_dragEndResetClear != null) {
       _dragEndResetClear!();
@@ -753,13 +755,23 @@ class _ZoOverlayViewState extends State<ZoOverlayView> {
 
   /// 按键按下
   KeyEventResult onKeyEvent(FocusNode node, KeyEvent event) {
-    if (!entry.currentOpen ||
-        !entry.escapeClosable ||
-        overlay.disableAllEscapeClosable) {
+    if (!entry.currentOpen) return KeyEventResult.ignored;
+
+    final res = entry.keyEvent(node, event);
+
+    // 已明确无需传播
+    if (res != KeyEventResult.ignored) return res;
+
+    if (!entry.escapeClosable || overlay.disableAllEscapeClosable) {
       return KeyEventResult.ignored;
     }
 
-    if (event is KeyDownEvent &&
+    // 处理esc关闭
+    final escapeCloseableIsValid =
+        entry.escapeClosable && !overlay.disableAllEscapeClosable;
+
+    if (escapeCloseableIsValid &&
+        event is KeyDownEvent &&
         event.logicalKey == LogicalKeyboardKey.escape) {
       entry.dismiss();
       return KeyEventResult.handled;
@@ -980,6 +992,8 @@ class _ZoOverlayViewState extends State<ZoOverlayView> {
 
     Widget child = widget.entry.overlayBuilder(context);
 
+    if (!entry.currentOpen) return SizedBox.shrink();
+
     if (!entry.alwaysOnTop) {
       /// 添加外部点击关闭
       child = TapRegion(
@@ -997,7 +1011,7 @@ class _ZoOverlayViewState extends State<ZoOverlayView> {
       );
 
       child = FocusScope(
-        node: focusScopeNode,
+        node: entry.focusScopeNode,
         canRequestFocus: isActive && entry.requestFocus,
         onKeyEvent: onKeyEvent,
         descendantsAreFocusable: true,
