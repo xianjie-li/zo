@@ -2,7 +2,7 @@ import "dart:math";
 
 import "package:flutter/widgets.dart";
 import "package:flutter_test/flutter_test.dart";
-import "package:zo/src/menus/option.dart";
+import "package:zo/src/option/option.dart";
 
 void main() {
   Future<List<ZoOption>> loadOptions(ZoOption option) async {

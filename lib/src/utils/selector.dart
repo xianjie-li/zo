@@ -171,6 +171,8 @@ class Selector<Val, Opt> extends ChangeNotifier {
 
   /// 取消选中所有值
   void unselectAll() {
+    if (_selected.isEmpty) return;
+
     _selected.clear();
 
     notifyListeners();

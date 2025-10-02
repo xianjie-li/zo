@@ -16,3 +16,6 @@ export "src/overlay/overlay.dart";
 export "src/popper/popper.dart";
 export "src/dialog/dialog.dart";
 export "src/notice/notice.dart";
+export "src/option/option.dart";
+export "src/menus/menus.dart";
+export "src/select/select.dart";

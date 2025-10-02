@@ -47,8 +47,8 @@ class Fetcher<Data, Payload> extends ChangeNotifier {
   }) {
     assert(fetchFn != null || fetchVoidFn != null);
 
-    this._data = data;
-    this._payload = payload;
+    _data = data;
+    _payload = payload;
   }
 
   /// 是否已执行初始化操作
@@ -274,7 +274,7 @@ class Fetcher<Data, Payload> extends ChangeNotifier {
       // 获取 data, null也可能是有效缓存
       if (cachePayload != null &&
           (cachePayload.data is Payload || cachePayload.data == null)) {
-        this._payload = cachePayload.data as Payload?;
+        _payload = cachePayload.data as Payload?;
         _updateHash();
       }
 
@@ -283,17 +283,17 @@ class Fetcher<Data, Payload> extends ChangeNotifier {
       // 获取 payload, null也可能是有效缓存
       if (cacheData != null &&
           (cacheData.data is Data || cacheData.data == null)) {
-        this._data = cacheData.data as Data?;
-        this.fetchAt = cacheData.time;
+        _data = cacheData.data as Data?;
+        fetchAt = cacheData.time;
 
         // 有缓存是默认不用再查询
         needInitialLoad = false;
 
         // 处理 staleTime
-        if (this.staleTime > Duration.zero) {
+        if (staleTime > Duration.zero) {
           final diff = DateTime.now().difference(cacheData.time);
 
-          if (diff > this.staleTime) {
+          if (diff > staleTime) {
             needInitialLoad = true;
           }
         }

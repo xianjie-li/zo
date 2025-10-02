@@ -17,6 +17,7 @@ class ZoButton extends StatelessWidget {
     this.onContextAction,
     this.focusNode,
     this.autofocus = false,
+    this.canRequestFocus = true,
   });
 
   /// 按钮主要内容
@@ -54,6 +55,9 @@ class ZoButton extends StatelessWidget {
 
   /// 自动聚焦
   final bool autofocus;
+
+  /// 是否可获取焦点
+  final bool canRequestFocus;
 
   dynamic _onTapHandle(ZoTriggerEvent event) {
     return onTap?.call();
@@ -108,6 +112,7 @@ class ZoButton extends StatelessWidget {
       button: true,
       enabled: enabled,
       child: ZoInteractiveBox(
+        canRequestFocus: canRequestFocus,
         iconTheme: IconThemeData(size: iconSize),
         textStyle: TextStyle(fontSize: textSize),
         loading: loading,

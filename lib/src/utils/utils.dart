@@ -1,3 +1,7 @@
+import "dart:async";
+
+import "package:flutter/widgets.dart";
+
 export "../trigger/event_trigger.dart";
 export "action_history.dart";
 export "selector.dart";
@@ -82,4 +86,52 @@ int deepHash(Object? value) {
   // 其他情况: 尝试使用 hashCode, 可能由于对象实现 hashCode 而导致不一致, 但对于大多数标准库
   // 类型来说这是正常的
   return value.hashCode;
+}
+
+/// 防抖
+class Debouncer {
+  final Duration delay;
+  Timer? _timer;
+
+  Debouncer({required this.delay});
+
+  // 当调用 run 时，它会启动或重置计时器
+  void run(VoidCallback action) {
+    // 如果已有计时器，先取消
+    _timer?.cancel();
+    // 创建一个新的计时器，在 delay 时间后执行 action
+    _timer = Timer(delay, action);
+  }
+
+  // 可以在 Widget dispose 时调用，以确保没有悬挂的计时器
+  void cancel() {
+    _timer?.cancel();
+  }
+}
+
+/// 节流
+class Throttler {
+  final Duration delay;
+  Timer? _timer;
+  bool _isReady = true;
+
+  Throttler({required this.delay});
+
+  void run(VoidCallback action) {
+    if (!_isReady) {
+      return;
+    }
+
+    action();
+    _isReady = false;
+    // 启动计时器，在 delay 时间后恢复 _isReady
+    _timer = Timer(delay, () {
+      _isReady = true;
+    });
+  }
+
+  void cancel() {
+    _timer?.cancel();
+    _isReady = true;
+  }
 }

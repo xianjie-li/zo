@@ -47,6 +47,7 @@ class ZoTile extends StatelessWidget {
     this.focusNode,
     this.autofocus = false,
     this.canRequestFocus = true,
+    this.focusBorder = true,
     this.disabledColor,
     this.iconTheme,
     this.textStyle,
@@ -139,6 +140,9 @@ class ZoTile extends StatelessWidget {
 
   /// 是否可获取焦点
   final bool canRequestFocus;
+
+  /// 获取焦点时，是否为组件设置边框样式
+  final bool focusBorder;
 
   /// 禁用状态的背景色
   final Color? disabledColor;
@@ -244,7 +248,8 @@ class ZoTile extends StatelessWidget {
 
     return Column(
       spacing: footerSpacing ?? style.space4,
-      mainAxisSize: MainAxisSize.min,
+      // mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [child, if (footer != null) footer!],
     );
   }
@@ -304,6 +309,8 @@ class ZoTile extends StatelessWidget {
     ZoStyle style,
     Color? statusColor,
   ) {
+    if (focusBorder) {}
+
     if (this.style != ZoTileStyle.border) return (null, null);
 
     if (statusColor != null) {
@@ -327,8 +334,8 @@ class ZoTile extends StatelessWidget {
 
     final mainContent = Row(
       spacing: horizontalSpacing ?? style.space3,
-      mainAxisAlignment: MainAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      // mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: crossAxisAlignment,
       children: _buildMainContent(style, statusColor),
     );

@@ -36,6 +36,8 @@ class ZoInput<T> extends ZoCustomFormWidget<T> {
     this.hintText,
     this.leading,
     this.trailing,
+    this.extra,
+    this.mainWrapper,
     this.padding,
     this.constraints,
     this.borderless = false,
@@ -72,7 +74,7 @@ class ZoInput<T> extends ZoCustomFormWidget<T> {
   /// 仅数值类型的输入有效, 它表示最小数值
   final double? min;
 
-  /// 在包含已输入内容时, 显示清楚按钮
+  /// 在包含已输入内容时, 显示清除按钮
   final bool clear;
 
   /// 组件尺寸
@@ -94,10 +96,16 @@ class ZoInput<T> extends ZoCustomFormWidget<T> {
   final Widget? hintText;
 
   /// 前导内容
-  final Widget? leading;
+  final List<Widget>? leading;
 
   /// 后导内容
-  final Widget? trailing;
+  final List<Widget>? trailing;
+
+  /// 额外现实在输入区域的内容，它会通过 [Stack] 堆叠到输入区域的上方
+  final Widget? extra;
+
+  /// 对主输入区域添加自定义包装节点
+  final Widget Function(BuildContext context, Widget mainWidget)? mainWrapper;
 
   /// 内间距
   final EdgeInsetsGeometry? padding;
@@ -270,11 +278,11 @@ class _ZoInputState<T> extends ZoCustomFormState<T, ZoInput<T>> {
   }
 
   void onTextFieldChanged(String? val) {
-    onChanged(val);
+    _onChanged(val);
   }
 
   /// 监听 TextField 并同步到 value
-  void onChanged(String? val, [bool skipIncompleteNum = false]) {
+  void _onChanged(String? val, [bool skipIncompleteNum = false]) {
     if (val == null) {
       value = null;
       return;
@@ -329,7 +337,7 @@ class _ZoInputState<T> extends ZoCustomFormState<T, ZoInput<T>> {
       if (text.endsWith(".")) {
         controller.text = text.substring(0, text.length - 1);
       }
-      onChanged(controller.text, true);
+      _onChanged(controller.text, true);
     }
   }
 
@@ -375,7 +383,7 @@ class _ZoInputState<T> extends ZoCustomFormState<T, ZoInput<T>> {
 
   void onClear() {
     controller.clear();
-    onChanged(controller.text);
+    _onChanged(controller.text);
   }
 
   void onObscureTextEnableChange() {
@@ -397,6 +405,7 @@ class _ZoInputState<T> extends ZoCustomFormState<T, ZoInput<T>> {
       if (!isEmpty) {
         list.add(
           ZoButton(
+            key: const ValueKey("_ZO_CLEAR_BUTTON"),
             icon: const Icon(Icons.clear),
             plain: true,
             size: widget.size == ZoSize.large ? ZoSize.medium : ZoSize.small,
@@ -409,6 +418,7 @@ class _ZoInputState<T> extends ZoCustomFormState<T, ZoInput<T>> {
     if (widget.obscureText) {
       list.add(
         ZoButton(
+          key: const ValueKey("_ZO_VISIBLE_BUTTON"),
           icon: Icon(
             obscureTextEnable
                 ? Icons.visibility_outlined
@@ -422,7 +432,7 @@ class _ZoInputState<T> extends ZoCustomFormState<T, ZoInput<T>> {
     }
 
     if (widget.trailing != null) {
-      list.add(widget.trailing!);
+      list.addAll(widget.trailing!);
     }
 
     return list;
@@ -433,7 +443,7 @@ class _ZoInputState<T> extends ZoCustomFormState<T, ZoInput<T>> {
     final List<Widget> list = [];
 
     if (widget.leading != null) {
-      list.add(widget.leading!);
+      list.addAll(widget.leading!);
     }
 
     return list;
@@ -477,17 +487,11 @@ class _ZoInputState<T> extends ZoCustomFormState<T, ZoInput<T>> {
     final double verticalSpace = isMultipleLine ? style.space2 : 0;
 
     if (leading.isNotEmpty) {
-      final first = leading.first;
-      if (first is ZoButton && first.icon != null && first.child == null) {
-        left = style.space1;
-      }
+      left = style.space1;
     }
 
     if (trailing.isNotEmpty) {
-      final last = trailing.last;
-      if (last is ZoButton && last.icon != null && last.child == null) {
-        right = style.space1;
-      }
+      right = style.space1;
     }
 
     return EdgeInsets.only(
@@ -519,7 +523,7 @@ class _ZoInputState<T> extends ZoCustomFormState<T, ZoInput<T>> {
 
     final style = context.zoStyle;
 
-    if (!widget.enabled || widget.readOnly) {
+    if (!widget.enabled) {
       return style.disabledColor;
     }
 
@@ -567,10 +571,13 @@ class _ZoInputState<T> extends ZoCustomFormState<T, ZoInput<T>> {
     final leading = buildLeading();
     final trailing = buildTrailing();
 
-    final mainContent = Stack(
+    Widget mainContent = Stack(
+      key: const ValueKey("_MAIN_CONTENT"),
+      alignment: AlignmentGeometry.centerLeft,
       children: [
-        if (hintNode != null) hintNode,
+        ?hintNode,
         TextField(
+          key: const ValueKey("_MAIN_INPUT"),
           // 完全禁用预置样式
           decoration: null,
           onChanged: onTextFieldChanged,
@@ -601,8 +608,13 @@ class _ZoInputState<T> extends ZoCustomFormState<T, ZoInput<T>> {
           obscureText: obscureTextEnable ? widget.obscureText : false,
           statesController: widgetStatesController,
         ),
+        ?widget.extra,
       ],
     );
+
+    if (widget.mainWrapper != null) {
+      mainContent = widget.mainWrapper!(context, mainContent);
+    }
 
     return IconTheme.merge(
       data: IconThemeData(color: style.hintTextColor),

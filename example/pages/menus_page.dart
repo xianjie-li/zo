@@ -2,8 +2,6 @@ import "dart:async";
 import "dart:math";
 
 import "package:flutter/material.dart";
-import "package:zo/src/menus/menu_entry.dart";
-import "package:zo/src/menus/option.dart";
 import "package:zo/zo.dart";
 
 class MenusPage extends StatefulWidget {

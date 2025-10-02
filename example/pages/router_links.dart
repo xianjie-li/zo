@@ -13,7 +13,9 @@ import "overlay_page2.dart";
 import "play_page.dart";
 import "progress_page.dart";
 import "result_page.dart";
+import "select_page.dart";
 import "transition_page.dart";
+import "tree_page/tree_page.dart";
 
 class RouterLinks extends StatelessWidget {
   const RouterLinks({super.key, required this.navigatorKey});
@@ -103,6 +105,16 @@ class RouterLinks extends StatelessWidget {
               plain: true,
               child: const Text("Menus"),
               onTap: () => toPage(context, const MenusPage()),
+            ),
+            ZoButton(
+              plain: true,
+              child: const Text("Select"),
+              onTap: () => toPage(context, const SelectPage()),
+            ),
+            ZoButton(
+              plain: true,
+              child: const Text("Tree"),
+              onTap: () => toPage(context, const TreePage()),
             ),
           ],
         ),

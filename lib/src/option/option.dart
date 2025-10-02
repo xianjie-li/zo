@@ -151,7 +151,7 @@ class ZoOption {
        );
 
   /// 默认高度
-  static const double defaultHeight = 35;
+  static const double defaultHeight = 34;
 
   /// 表示该项的唯一值
   Object value;
@@ -308,7 +308,7 @@ class ZoOptionSection extends ZoOption {
           final style = context.zoStyle;
 
           return Container(
-            height: ZoOption.defaultHeight,
+            height: ZoOption.defaultHeight - 2,
             alignment: Alignment.bottomLeft,
             padding: EdgeInsets.all(style.space2),
             child: Text(
@@ -329,14 +329,10 @@ class ZoOptionDivider extends ZoOption {
     : super(
         value: "ZoDivider ${createTempId()}",
         interactive: false,
-        height: defaultHeight,
         builder: (context) {
-          return const SizedBox(
-            height: defaultHeight,
-            child: Center(
-              child: Divider(
-                height: 1,
-              ),
+          return const Center(
+            child: Divider(
+              height: 1,
             ),
           );
         },
@@ -432,29 +428,27 @@ class ZoOptionView extends StatelessWidget {
 
     final ZoOptionEventData data = (option: option, context: context);
 
-    return SizedBox(
-      height: option.height,
-      child: Center(
-        child: ZoTile(
-          header: header,
-          leading: leading,
-          trailing: trailing,
-          enabled: option.enabled,
-          arrow: hasChild,
-          active: active,
-          loading: loading,
-          highlight: highlight,
-          horizontalSpacing: style.space2,
-          interactive: option.interactive,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          disabledColor: Colors.transparent,
-          padding: padding,
-          iconTheme: const IconThemeData(size: ZoOptionView.iconSize),
-          onTap: onTap,
-          onActiveChanged: onActiveChanged,
-          onFocusChanged: onFocusChanged,
-          data: data,
-        ),
+    return Padding(
+      padding: const EdgeInsetsDirectional.symmetric(vertical: 1),
+      child: ZoTile(
+        header: header,
+        leading: leading,
+        trailing: trailing,
+        enabled: option.enabled,
+        arrow: hasChild,
+        active: active,
+        loading: loading,
+        highlight: highlight,
+        horizontalSpacing: style.space2,
+        interactive: option.interactive,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        disabledColor: Colors.transparent,
+        padding: padding,
+        iconTheme: const IconThemeData(size: ZoOptionView.iconSize),
+        onTap: onTap,
+        onActiveChanged: onActiveChanged,
+        onFocusChanged: onFocusChanged,
+        data: data,
       ),
     );
   }
@@ -814,7 +808,7 @@ class ZoOptionController {
   /// 包含被选中子项的分支节点
   final HashMap<Object, bool> _branchesHasSelectedChild = HashMap();
 
-  /// 检测节点 [matchString] / [matchRegexp] 的选中状态
+  /// 检测节点 [matchString] / [matchRegexp] 的匹配状态
   final HashMap<Object, bool> _matchStatus = HashMap();
 
   /// 所有节点

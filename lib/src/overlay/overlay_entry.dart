@@ -71,7 +71,23 @@ class ZoOverlayEntry extends ChangeNotifier {
   OverlayPositionedRenderObject? positionedRenderObject;
 
   /// 在层处于 hover 状态时, 此项会被设置为 true
-  bool hover = false;
+  bool get hover => _hover;
+  bool _hover = false;
+
+  /// 在层被按住时，此项会被设置为 true
+  bool get pressed => _pressed;
+  bool _pressed = false;
+
+  /// 层是否已被挂载
+  bool get attached => positionedRenderObject?.attached ?? false;
+
+  /// 当前层渲染的位置，如果层未开启，返回 null、
+  Rect? get overlayRect {
+    if (positionedRenderObject == null || !currentOpen) {
+      return null;
+    }
+    return positionedRenderObject!.overlayRect;
+  }
 
   /// 记录了最近一次 open 变为 true 的时间
   DateTime? lastOpenTime;
@@ -136,7 +152,10 @@ class ZoOverlayEntry extends ChangeNotifier {
   /// 通知层发生了变更
   void changed() {
     changeId = math.Random().nextDouble();
-    if (!_lockNotify) notifyListeners();
+    if (!_lockNotify) {
+      notifyListeners();
+      // print("changed: ${1123}");
+    }
   }
 
   /// 在 popper 布局中, 控制气泡和目标的间距
@@ -244,28 +263,42 @@ class ZoOverlayEntry extends ChangeNotifier {
     overlay!.dismiss(this);
   }
 
-  /// 完全移除层, 被销毁的层不能被再次使用
+  /// 将 entry 从所在的 overlay 销毁， 被销毁的层不能被再次使用
+  void disposeSelf() {
+    if (overlay == null) return;
+
+    actions(() {
+      // 已确定销毁，无需再更新UI
+      overlay!.dispose(this);
+    }, false);
+  }
+
+  /// 完全移除层, 被销毁的层不能被再次使用, 此类仅用于子类用于销毁操作，不可由外部直接调用，
+  /// 请改为使用 [disposeSelf] 或 [ZoOverlay.dispose]
   @override
+  @protected
   void dispose() {
-    if (overlay == null || _disposeByParent) {
-      onDispose?.call();
-      disposeEvent.emit();
-
-      overlay = null;
-      _attachRoute = null;
-
-      _disposeByParent = false;
-
-      openChangedEvent.clear();
-      delayClosedEvent.clear();
-      disposeEvent.clear();
-      hoverEvent.clear();
-
-      super.dispose();
-      return;
+    if (overlay != null && !_disposeByParent) {
+      assert(
+        false,
+        "Cannot direct dispose a overlay entry when that is attached to a overlay, please use overlay.dispose(entry) or disposeSelf() instead.",
+      );
     }
 
-    overlay!.dispose(this);
+    onDispose?.call();
+    disposeEvent.emit();
+
+    overlay = null;
+    _attachRoute = null;
+
+    _disposeByParent = false;
+
+    openChangedEvent.clear();
+    delayClosedEvent.clear();
+    disposeEvent.clear();
+    hoverEvent.clear();
+
+    super.dispose();
   }
 
   /// 将层移动到顶部
@@ -288,6 +321,74 @@ class ZoOverlayEntry extends ChangeNotifier {
       return;
     }
     overlay!.moveToBottom(this);
+  }
+
+  /// 挂载回调
+  final List<VoidCallback> _mountedCallbackList = [];
+
+  /// 添加一个挂载回调，在层的 widget 挂载完成后调用一次
+  void addPostMountedCallback(VoidCallback callback) {
+    _mountedCallbackList.add(callback);
+  }
+
+  /// 触发所有 _mountedCallbackList 并将其清空，会自动延迟到 addPostFrameCallback 执行
+  void _triggerMountedCallback() {
+    if (_mountedCallbackList.isEmpty) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
+      for (final call in _mountedCallbackList) {
+        call();
+      }
+      _mountedCallbackList.clear();
+    });
+  }
+
+  /// 请求获取焦点
+  void focus() {
+    if (!requestFocus || !currentOpen) return;
+
+    /// 如果层未挂载过，延迟挂载，防止focus失败
+    if (positionedRenderObject == null) {
+      addPostMountedCallback(focus);
+      return;
+    }
+
+    focusScopeNode.requestFocus();
+  }
+
+  /// 聚焦子项，会按以下优先级挑选要聚焦的节点, 若成功聚焦，返回true
+  /// - 已存在的聚焦子节点
+  /// - 首个可聚焦子节点
+  /// - 自身
+  bool focusChild() {
+    if (!requestFocus || !currentOpen) return false;
+
+    /// 如果层未挂载过，延迟挂载，防止focus失败
+    if (positionedRenderObject == null) {
+      addPostMountedCallback(focusChild);
+      // 这里应该不存在失败的可能
+      return true;
+    }
+
+    if (focusScopeNode.focusedChild != null &&
+        focusScopeNode.focusedChild!.canRequestFocus) {
+      focusScopeNode.focusedChild!.requestFocus();
+      return true;
+    }
+
+    final firstNode = focusScopeNode.traversalChildren.firstOrNull;
+
+    if (firstNode != null && firstNode.canRequestFocus) {
+      firstNode.requestFocus();
+      return true;
+    }
+
+    if (focusScopeNode.canRequestFocus) {
+      focusScopeNode.requestFocus();
+      return true;
+    }
+
+    return false;
   }
 
   // # # # # # # # 参数 getter & setter # # # # # # #

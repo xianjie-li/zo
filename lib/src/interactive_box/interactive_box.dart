@@ -21,6 +21,7 @@ class ZoInteractiveBox extends StatefulWidget {
     this.focusNode,
     this.autofocus = false,
     this.canRequestFocus = true,
+    this.focusBorder = true,
     this.alignment,
     this.padding,
     this.width,
@@ -82,6 +83,9 @@ class ZoInteractiveBox extends StatefulWidget {
 
   /// 是否可获取焦点
   final bool canRequestFocus;
+
+  /// 获取焦点时，是否为组件设置边框样式
+  final bool focusBorder;
 
   /// 控制子级对齐
   final AlignmentGeometry? alignment;
@@ -332,6 +336,18 @@ class _ZoInteractiveBoxState extends State<ZoInteractiveBox> {
     );
   }
 
+  BoxBorder? getBorder(ZoStyle style) {
+    if (focus && widget.focusBorder) {
+      return Border.all(color: style.primaryColor);
+    }
+
+    if (focus || active) {
+      return widget.activeBorder ?? widget.border;
+    }
+
+    return widget.border;
+  }
+
   @override
   Widget build(BuildContext context) {
     // 优化builder函数
@@ -379,13 +395,11 @@ class _ZoInteractiveBoxState extends State<ZoInteractiveBox> {
               // 背景层, 和内容分开, 防止被遮罩反馈影响显示
               Positioned.fill(
                 key: const ValueKey("BG"),
-                child: Container(
+                child: DecoratedBox(
                   decoration: decoration.copyWith(
                     color: color,
                     borderRadius: radius,
-                    border: needHighlight
-                        ? (widget.activeBorder ?? widget.border)
-                        : widget.border,
+                    border: getBorder(style),
                   ),
                 ),
               ),

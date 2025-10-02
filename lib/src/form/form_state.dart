@@ -10,7 +10,7 @@ abstract class ZoCustomFormWidget<T> extends StatefulWidget {
   ///
   /// - 如果传入一个不变的值, 它的行为类似于默认值, 组件将使用该值作为初始化值
   /// - 不传入value, 状态将完全在组件内部管理
-  /// - 传入一个会变更的状态值, 组件会和该状态简历连接, value变更时会同步到组件内部, 组件内部
+  /// - 传入一个会变更的状态值, 组件会和该状态建立连接, value变更时会同步到组件内部, 组件内部
   /// 值发生变更时会通过 [onChanged] 通知
   ///
   /// 组件内部通过 == 运算符判断value是否变更, 需要避免在builder中直接构造value,
@@ -25,15 +25,12 @@ abstract class ZoCustomFormWidget<T> extends StatefulWidget {
 abstract class ZoCustomFormState<T, W extends ZoCustomFormWidget<T>>
     extends State<W> {
   T? get value => _value;
-
   set value(T? n) {
     if (_value == n) return;
 
     _value = n;
 
-    if (widget.onChanged != null) {
-      widget.onChanged!(n);
-    }
+    onChange(n);
 
     setState(() {});
   }
@@ -60,6 +57,13 @@ abstract class ZoCustomFormState<T, W extends ZoCustomFormWidget<T>>
   }
 
   /// 当 widget.value 变更时, 会调用此方法, 此时可通过 value 获取当前值
-  /// 如果内部空间使用类似 TextEditingController 的api管理值, 可以在此处同步
+  /// 如果内部控件使用类似 TextEditingController 的api管理值, 可以在此处同步
   void onPropValueChanged() {}
+
+  /// 内部值变更后会通过此方法通知
+  void onChange(T? newValue) {
+    if (widget.onChanged != null) {
+      widget.onChanged!(newValue);
+    }
+  }
 }

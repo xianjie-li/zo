@@ -53,39 +53,45 @@ class _InputPage2State extends State<InputPage2> {
             ZoCell(
               span: 3,
               child: ZoInput(
-                leading: Text("前置"),
+                leading: [Text("前置")],
                 hintText: Text("请输入"),
-                trailing: Text("后置"),
+                trailing: [Text("后置")],
               ),
             ),
             ZoCell(
               span: 3,
               child: ZoInput(
-                leading: ZoButton(
-                  icon: Icon(Icons.account_balance_wallet),
-                  plain: true,
-                  size: ZoSize.small,
-                  onTap: () => {},
-                ),
+                leading: [
+                  ZoButton(
+                    icon: Icon(Icons.account_balance_wallet),
+                    plain: true,
+                    size: ZoSize.small,
+                    onTap: () => {},
+                  ),
+                ],
                 hintText: Text("请输入"),
-                trailing: ZoButton(
-                  icon: Icon(Icons.ac_unit_rounded),
-                  plain: true,
-                  size: ZoSize.small,
-                  onTap: () => {},
-                ),
+                trailing: [
+                  ZoButton(
+                    icon: Icon(Icons.ac_unit_rounded),
+                    plain: true,
+                    size: ZoSize.small,
+                    onTap: () => {},
+                  ),
+                ],
               ),
             ),
             ZoCell(
               span: 3,
               child: ZoInput(
-                leading: ZoButton(
-                  icon: Icon(Icons.account_balance_wallet),
-                  plain: true,
+                leading: [
+                  ZoButton(
+                    icon: Icon(Icons.account_balance_wallet),
+                    plain: true,
 
-                  size: ZoSize.small,
-                  onTap: () => {},
-                ),
+                    size: ZoSize.small,
+                    onTap: () => {},
+                  ),
+                ],
                 hintText: Text("请输入"),
                 maxLines: 3,
                 minLines: 1,
@@ -100,62 +106,74 @@ class _InputPage2State extends State<InputPage2> {
               span: 3,
               child: ZoInput(
                 size: ZoSize.small,
-                leading: ZoButton(
-                  icon: Icon(Icons.account_balance_wallet),
-                  plain: true,
+                leading: [
+                  ZoButton(
+                    icon: Icon(Icons.account_balance_wallet),
+                    plain: true,
 
-                  size: ZoSize.small,
-                  onTap: () => {},
-                ),
+                    size: ZoSize.small,
+                    onTap: () => {},
+                  ),
+                ],
                 hintText: Text("请输入"),
-                trailing: ZoButton(
-                  icon: Icon(Icons.ac_unit_rounded),
-                  plain: true,
+                trailing: [
+                  ZoButton(
+                    icon: Icon(Icons.ac_unit_rounded),
+                    plain: true,
 
-                  size: ZoSize.small,
-                  onTap: () => {},
-                ),
+                    size: ZoSize.small,
+                    onTap: () => {},
+                  ),
+                ],
               ),
             ),
             ZoCell(
               span: 3,
               child: ZoInput(
-                leading: ZoButton(
-                  icon: Icon(Icons.account_balance_wallet),
-                  plain: true,
+                leading: [
+                  ZoButton(
+                    icon: Icon(Icons.account_balance_wallet),
+                    plain: true,
 
-                  size: ZoSize.small,
-                  onTap: () => {},
-                ),
+                    size: ZoSize.small,
+                    onTap: () => {},
+                  ),
+                ],
                 hintText: Text("请输入"),
-                trailing: ZoButton(
-                  icon: Icon(Icons.ac_unit_rounded),
-                  plain: true,
+                trailing: [
+                  ZoButton(
+                    icon: Icon(Icons.ac_unit_rounded),
+                    plain: true,
 
-                  size: ZoSize.small,
-                  onTap: () => {},
-                ),
+                    size: ZoSize.small,
+                    onTap: () => {},
+                  ),
+                ],
               ),
             ),
             ZoCell(
               span: 3,
               child: ZoInput(
                 size: ZoSize.large,
-                leading: ZoButton(
-                  icon: Icon(Icons.account_balance_wallet),
-                  plain: true,
+                leading: [
+                  ZoButton(
+                    icon: Icon(Icons.account_balance_wallet),
+                    plain: true,
 
-                  size: ZoSize.small,
-                  onTap: () => {},
-                ),
+                    size: ZoSize.small,
+                    onTap: () => {},
+                  ),
+                ],
                 hintText: Text("请输入"),
-                trailing: ZoButton(
-                  icon: Icon(Icons.ac_unit_rounded),
-                  plain: true,
+                trailing: [
+                  ZoButton(
+                    icon: Icon(Icons.ac_unit_rounded),
+                    plain: true,
 
-                  size: ZoSize.small,
-                  onTap: () => {},
-                ),
+                    size: ZoSize.small,
+                    onTap: () => {},
+                  ),
+                ],
               ),
             ),
             ZoCell(span: 3),
@@ -165,42 +183,50 @@ class _InputPage2State extends State<InputPage2> {
               child: ZoInput(
                 borderless: true,
                 size: ZoSize.small,
-                leading: ZoButton(
-                  icon: Icon(Icons.account_balance_wallet),
-                  plain: true,
+                leading: [
+                  ZoButton(
+                    icon: Icon(Icons.account_balance_wallet),
+                    plain: true,
 
-                  size: ZoSize.small,
-                  onTap: () => {},
-                ),
+                    size: ZoSize.small,
+                    onTap: () => {},
+                  ),
+                ],
                 hintText: Text("请输入"),
-                trailing: ZoButton(
-                  icon: Icon(Icons.ac_unit_rounded),
-                  plain: true,
+                trailing: [
+                  ZoButton(
+                    icon: Icon(Icons.ac_unit_rounded),
+                    plain: true,
 
-                  size: ZoSize.small,
-                  onTap: () => {},
-                ),
+                    size: ZoSize.small,
+                    onTap: () => {},
+                  ),
+                ],
               ),
             ),
             ZoCell(
               span: 3,
               child: ZoInput(
                 borderless: true,
-                leading: ZoButton(
-                  icon: Icon(Icons.account_balance_wallet),
-                  plain: true,
+                leading: [
+                  ZoButton(
+                    icon: Icon(Icons.account_balance_wallet),
+                    plain: true,
 
-                  size: ZoSize.small,
-                  onTap: () => {},
-                ),
+                    size: ZoSize.small,
+                    onTap: () => {},
+                  ),
+                ],
                 hintText: Text("请输入"),
-                trailing: ZoButton(
-                  icon: Icon(Icons.ac_unit_rounded),
-                  plain: true,
+                trailing: [
+                  ZoButton(
+                    icon: Icon(Icons.ac_unit_rounded),
+                    plain: true,
 
-                  size: ZoSize.small,
-                  onTap: () => {},
-                ),
+                    size: ZoSize.small,
+                    onTap: () => {},
+                  ),
+                ],
               ),
             ),
             ZoCell(
@@ -208,21 +234,25 @@ class _InputPage2State extends State<InputPage2> {
               child: ZoInput(
                 borderless: true,
                 size: ZoSize.large,
-                leading: ZoButton(
-                  icon: Icon(Icons.account_balance_wallet),
-                  plain: true,
+                leading: [
+                  ZoButton(
+                    icon: Icon(Icons.account_balance_wallet),
+                    plain: true,
 
-                  size: ZoSize.small,
-                  onTap: () => {},
-                ),
+                    size: ZoSize.small,
+                    onTap: () => {},
+                  ),
+                ],
                 hintText: Text("请输入"),
-                trailing: ZoButton(
-                  icon: Icon(Icons.ac_unit_rounded),
-                  plain: true,
+                trailing: [
+                  ZoButton(
+                    icon: Icon(Icons.ac_unit_rounded),
+                    plain: true,
 
-                  size: ZoSize.small,
-                  onTap: () => {},
-                ),
+                    size: ZoSize.small,
+                    onTap: () => {},
+                  ),
+                ],
               ),
             ),
             ZoCell(span: 3),
@@ -231,21 +261,25 @@ class _InputPage2State extends State<InputPage2> {
               span: 3,
               child: ZoInput(
                 enabled: false,
-                leading: ZoButton(
-                  icon: Icon(Icons.account_balance_wallet),
-                  plain: true,
+                leading: [
+                  ZoButton(
+                    icon: Icon(Icons.account_balance_wallet),
+                    plain: true,
 
-                  size: ZoSize.small,
-                  onTap: () => {},
-                ),
+                    size: ZoSize.small,
+                    onTap: () => {},
+                  ),
+                ],
                 hintText: Text("请输入"),
-                trailing: ZoButton(
-                  icon: Icon(Icons.ac_unit_rounded),
-                  plain: true,
+                trailing: [
+                  ZoButton(
+                    icon: Icon(Icons.ac_unit_rounded),
+                    plain: true,
 
-                  size: ZoSize.small,
-                  onTap: () => {},
-                ),
+                    size: ZoSize.small,
+                    onTap: () => {},
+                  ),
+                ],
               ),
             ),
             ZoCell(
@@ -254,21 +288,25 @@ class _InputPage2State extends State<InputPage2> {
                 value: "hello",
                 enabled: false,
                 borderless: true,
-                leading: ZoButton(
-                  icon: Icon(Icons.account_balance_wallet),
-                  plain: true,
+                leading: [
+                  ZoButton(
+                    icon: Icon(Icons.account_balance_wallet),
+                    plain: true,
 
-                  size: ZoSize.small,
-                  onTap: () => {},
-                ),
+                    size: ZoSize.small,
+                    onTap: () => {},
+                  ),
+                ],
                 hintText: Text("请输入"),
-                trailing: ZoButton(
-                  icon: Icon(Icons.ac_unit_rounded),
-                  plain: true,
+                trailing: [
+                  ZoButton(
+                    icon: Icon(Icons.ac_unit_rounded),
+                    plain: true,
 
-                  size: ZoSize.small,
-                  onTap: () => {},
-                ),
+                    size: ZoSize.small,
+                    onTap: () => {},
+                  ),
+                ],
               ),
             ),
             ZoCell(
@@ -277,21 +315,25 @@ class _InputPage2State extends State<InputPage2> {
                 value: "默认值默认值默认值默认值默认值默认值默认值默认值默认值默认值默认值默认值默认值默认值",
                 readOnly: true,
                 borderless: true,
-                leading: ZoButton(
-                  icon: Icon(Icons.account_balance_wallet),
-                  plain: true,
+                leading: [
+                  ZoButton(
+                    icon: Icon(Icons.account_balance_wallet),
+                    plain: true,
 
-                  size: ZoSize.small,
-                  onTap: () => {},
-                ),
+                    size: ZoSize.small,
+                    onTap: () => {},
+                  ),
+                ],
                 hintText: Text("请输入"),
-                trailing: ZoButton(
-                  icon: Icon(Icons.ac_unit_rounded),
-                  plain: true,
+                trailing: [
+                  ZoButton(
+                    icon: Icon(Icons.ac_unit_rounded),
+                    plain: true,
 
-                  size: ZoSize.small,
-                  onTap: () => {},
-                ),
+                    size: ZoSize.small,
+                    onTap: () => {},
+                  ),
+                ],
               ),
             ),
             ZoCell(
@@ -306,21 +348,25 @@ class _InputPage2State extends State<InputPage2> {
                   value: "Hello",
                   enabled: false,
                   borderless: true,
-                  leading: ZoButton(
-                    icon: Icon(Icons.account_balance_wallet),
-                    plain: true,
+                  leading: [
+                    ZoButton(
+                      icon: Icon(Icons.account_balance_wallet),
+                      plain: true,
 
-                    size: ZoSize.small,
-                    onTap: () => {},
-                  ),
+                      size: ZoSize.small,
+                      onTap: () => {},
+                    ),
+                  ],
                   hintText: Text("请输入"),
-                  trailing: ZoButton(
-                    icon: Icon(Icons.ac_unit_rounded),
-                    plain: true,
+                  trailing: [
+                    ZoButton(
+                      icon: Icon(Icons.ac_unit_rounded),
+                      plain: true,
 
-                    size: ZoSize.small,
-                    onTap: () => {},
-                  ),
+                      size: ZoSize.small,
+                      onTap: () => {},
+                    ),
+                  ],
                 ),
               ),
             ),

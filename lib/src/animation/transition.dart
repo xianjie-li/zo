@@ -79,6 +79,10 @@ class ZoTransition extends StatelessWidget {
   /// 动画状态变更时进行通知
   final AnimationStatusListener? onStatusChange;
 
+  Widget buildFadeUnit(ZoTransitionBuilderArgs<double> animate) {
+    return child;
+  }
+
   Widget buildFade() {
     return ZoTransitionBase<double>(
       open: open,
@@ -91,11 +95,15 @@ class ZoTransition extends StatelessWidget {
       reverseDuration: reverseDuration,
       curve: curve,
       tween: Tween(begin: 1, end: 0),
-      builder: (animate) => child,
+      builder: buildFadeUnit,
       controller: controller,
       controllerRef: controllerRef,
       onStatusChange: onStatusChange,
     );
+  }
+
+  Widget buildZoomPunchUnit(ZoTransitionBuilderArgs<double> animate) {
+    return ScaleTransition(scale: animate.animation, child: child);
   }
 
   Widget buildZoomPunch() {
@@ -118,13 +126,15 @@ class ZoTransition extends StatelessWidget {
       reverseDuration: reverseDuration,
       curve: curve,
       tween: tween,
-      builder: (animate) {
-        return ScaleTransition(scale: animate.animation, child: child);
-      },
+      builder: buildZoomPunchUnit,
       controller: controller,
       controllerRef: controllerRef,
       onStatusChange: onStatusChange,
     );
+  }
+
+  Widget buildSlideUnit(ZoTransitionBuilderArgs<Offset> animate) {
+    return SlideTransition(position: animate.animation, child: child);
   }
 
   Widget buildSlide() {
@@ -151,9 +161,7 @@ class ZoTransition extends StatelessWidget {
       reverseDuration: reverseDuration,
       curve: curve,
       tween: tween,
-      builder: (animate) {
-        return SlideTransition(position: animate.animation, child: child);
-      },
+      builder: buildSlideUnit,
       controller: controller,
       controllerRef: controllerRef,
       onStatusChange: onStatusChange,

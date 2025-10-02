@@ -489,15 +489,17 @@ class ZoOverlay {
 
   /// 将当前 overlays 同步到 overlay
   void _syncOverlays() {
-    overlay.insert(_emptyEntry);
+    WidgetsBinding.instance.addPostFrameCallback((i) {
+      overlay.insert(_emptyEntry);
 
-    final list = overlays.map((i) {
-      return _originalOverlays[i]!;
+      final list = overlays.map((i) {
+        return _originalOverlays[i]!;
+      });
+
+      overlay.rearrange([_emptyEntry, ...list], below: _emptyEntry);
+
+      _emptyEntry.remove();
     });
-
-    overlay.rearrange([_emptyEntry, ...list], below: _emptyEntry);
-
-    _emptyEntry.remove();
   }
 
   /// 停止并销毁指定 entry 的延迟关闭计时器
@@ -603,7 +605,9 @@ class _ZoOverlayViewState extends State<ZoOverlayView> {
     lastBarrier = entry.barrier;
 
     if (entry.autoFocus) {
-      focus();
+      WidgetsBinding.instance.addPostFrameCallback((i) {
+        entry.focus();
+      });
     }
   }
 
@@ -657,15 +661,6 @@ class _ZoOverlayViewState extends State<ZoOverlayView> {
     );
   }
 
-  /// 请求获取焦点
-  void focus() {
-    if (!entry.requestFocus || !entry.currentOpen) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      entry.focusScopeNode.requestFocus();
-    });
-  }
-
   /// 接收来自其他 OverlayView 组件的通知
   void onViewTrigger(_ViewTriggerArgs args) {
     if (args.state == this) return;
@@ -686,7 +681,7 @@ class _ZoOverlayViewState extends State<ZoOverlayView> {
   /// open状态变更
   void onOpenChanged(bool open) {
     if (entry.autoFocus) {
-      focus();
+      entry.focus();
     }
 
     if (_dragEndResetClear != null) {
@@ -974,15 +969,23 @@ class _ZoOverlayViewState extends State<ZoOverlayView> {
   }
 
   void onMouseEnter(PointerEnterEvent event) {
-    entry.hover = true;
+    entry._hover = true;
     entry.onHoverChanged?.call(true);
     entry.hoverEvent.emit(true);
   }
 
   void onMouseExit(PointerExitEvent event) {
-    entry.hover = false;
+    entry._hover = false;
     entry.onHoverChanged?.call(false);
     entry.hoverEvent.emit(false);
+  }
+
+  void onTapInside(PointerDownEvent event) {
+    entry._pressed = true;
+  }
+
+  void onTapUpInside(PointerUpEvent event) {
+    entry._pressed = false;
   }
 
   @override
@@ -990,15 +993,22 @@ class _ZoOverlayViewState extends State<ZoOverlayView> {
     final style = context.zoStyle;
     final isActive = overlay.isActive(entry);
 
-    Widget child = widget.entry.overlayBuilder(context);
+    Widget child = LifeCycleTrigger(
+      initState: () {
+        entry._triggerMountedCallback();
+      },
+      child: widget.entry.overlayBuilder(context),
+    );
 
-    if (!entry.currentOpen) return SizedBox.shrink();
+    if (!entry.currentOpen) return const SizedBox.shrink();
 
     if (!entry.alwaysOnTop) {
       /// 添加外部点击关闭
       child = TapRegion(
         enabled: isActive,
         onTapOutside: onTapOutside,
+        onTapInside: onTapInside,
+        onTapUpInside: onTapUpInside,
         groupId: entry.groupId,
         child: child,
       );
@@ -1016,6 +1026,7 @@ class _ZoOverlayViewState extends State<ZoOverlayView> {
         onKeyEvent: onKeyEvent,
         descendantsAreFocusable: true,
         descendantsAreTraversable: true,
+        skipTraversal: true,
         child: child,
       );
     }

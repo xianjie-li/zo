@@ -141,10 +141,11 @@ class _ZoPopperState extends State<ZoPopper> {
   }
 
   @override
+  @protected
   void dispose() {
     // 非传入的 popperEntry 需要释放
     if (popperEntry != widget.popperEntry) {
-      popperEntry!.dispose();
+      popperEntry!.disposeSelf();
     }
 
     entry.hoverEvent.off(overlayHoverChanged);

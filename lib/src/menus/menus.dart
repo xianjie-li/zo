@@ -6,7 +6,6 @@ import "dart:async";
 
 import "package:flutter/services.dart";
 import "package:flutter/widgets.dart";
-import "package:zo/src/menus/option.dart";
 import "package:zo/zo.dart";
 
 /// 渲染菜单层，支持树选项、选中处理、筛选、选项定制等
@@ -22,6 +21,7 @@ class ZoMenuEntry extends ZoOverlayEntry {
     double? maxHeight,
     double maxHeightFactor = ZoOptionViewList.defaultHeightFactor,
     double width = ZoMenuEntry.defaultMenuWidth,
+    this.inheritWidth = true,
     bool loading = false,
     String? matchString,
     RegExp? matchRegexp,
@@ -85,6 +85,15 @@ class ZoMenuEntry extends ZoOverlayEntry {
   /// 获取包含树信息的选中项数据
   Selector<Object, ZoOption> get selector => controller.selector;
 
+  /// 包含选中项各种信息的对象，相比 [selector] 包含更树形结构的选中信息，如果选项是扁平的或无需树信息，
+  /// 优先使用 [selector], 因为本属性会对整个树进行遍历
+  ZoOptionSelectedData get selectedDatas {
+    return ZoOptionSelectedData.fromSelected(
+      selector.getSelected(),
+      controller.flatList,
+    );
+  }
+
   /// 选项列表
   List<ZoOption> get options => _options;
   List<ZoOption> _options = [];
@@ -123,7 +132,7 @@ class ZoMenuEntry extends ZoOverlayEntry {
     changedAndCloseDescendantMenus();
   }
 
-  /// 控制选择类型, 默认为单选
+  /// 控制选择类型
   ZoSelectionType selectionType;
 
   /// 分支节点是否可选中
@@ -164,6 +173,9 @@ class ZoMenuEntry extends ZoOverlayEntry {
     changed();
   }
 
+  /// 若子选项未设置宽度，是否继承父级宽度
+  bool inheritWidth;
+
   /// 是否处于加载状态
   bool get loading => _loading;
   bool _loading;
@@ -202,6 +214,9 @@ class ZoMenuEntry extends ZoOverlayEntry {
 
   /// 控制子菜单延迟开启
   Timer? _openChildMenuTimer;
+
+  /// 最后一次有子菜单开启的时间，此属性只在顶层菜单写入
+  DateTime? _lastChildOpenTime;
 
   /// 用于内部控制loading状态
   bool _localLoading = false;
@@ -301,7 +316,7 @@ class ZoMenuEntry extends ZoOverlayEntry {
       final atRight = otherRect.right > rect.right;
 
       if ((isLeft && atLeft) || (!isLeft && atRight)) {
-        final focused = _preferFocus(entry.focusScopeNode);
+        final focused = entry.focusChild();
 
         return focused ? KeyEventResult.handled : KeyEventResult.ignored;
       }
@@ -316,7 +331,13 @@ class ZoMenuEntry extends ZoOverlayEntry {
       return KeyEventResult.ignored;
     }
 
-    final values = options.map((i) => i.value);
+    final List<Object> values = [];
+
+    for (final opt in options) {
+      if (branchSelectable || !opt.isBranch) {
+        values.add(opt.value);
+      }
+    }
 
     if (_selectAllFlag) {
       controller.selector.unselectList(values);
@@ -348,11 +369,11 @@ class ZoMenuEntry extends ZoOverlayEntry {
   void closeDescendantMenus() {
     var child = _child;
 
+    _openOptions.unselectAll();
+
     while (child != null) {
       if (child.currentOpen) child.close();
-      if (child._openOptions.hasSelected()) {
-        child._openOptions.unselectAll();
-      }
+      child._openOptions.unselectAll();
 
       child = child._child;
     }
@@ -368,11 +389,31 @@ class ZoMenuEntry extends ZoOverlayEntry {
   void _bindEvents() {
     controller.selector.addListener(changed);
     _openOptions.addListener(changed);
+    hoverEvent.on(_onHover);
   }
 
   void _unbindEvents() {
     controller.selector.removeListener(changed);
     _openOptions.removeListener(changed);
+    hoverEvent.off(_onHover);
+  }
+
+  void _onHover(bool hover) {
+    // 处于hover状态时，确保当前层获得了焦点，否则键盘事件无效会不符合直觉
+    if (hover && !focusScopeNode.hasFocus) {
+      // 如果有子菜单刚开启，取消聚焦，防止菜单出现在鼠标现有位置导致异常的焦点行为
+      final lastTime = _getTopOverlay()._lastChildOpenTime;
+
+      if (lastTime != null) {
+        final diff = DateTime.now().difference(lastTime);
+
+        if (diff < const Duration(milliseconds: 100)) {
+          return;
+        }
+      }
+
+      focusScopeNode.requestScopeFocus();
+    }
   }
 
   void _onTap(ZoTriggerEvent event) {
@@ -415,31 +456,6 @@ class ZoMenuEntry extends ZoOverlayEntry {
   void _onFocusChanged(ZoTriggerToggleEvent event) {
     onFocusChanged?.call(event);
     _childMenuOpenCommonHandler(event);
-  }
-
-  /// 按以下顺序依次尝试聚焦节点
-  /// - 已存在的聚焦子节点
-  /// - 首个可聚焦子节点
-  /// - 自身
-  bool _preferFocus(FocusScopeNode node) {
-    if (node.focusedChild != null && node.focusedChild!.canRequestFocus) {
-      node.focusedChild!.requestFocus();
-      return true;
-    }
-
-    final firstNode = node.traversalChildren.firstOrNull;
-
-    if (firstNode != null && firstNode.canRequestFocus) {
-      firstNode.requestFocus();
-      return true;
-    }
-
-    if (node.canRequestFocus) {
-      node.requestFocus();
-      return true;
-    }
-
-    return false;
   }
 
   void _childMenuOpenCommonHandler(ZoTriggerToggleEvent event) {
@@ -508,6 +524,7 @@ class ZoMenuEntry extends ZoOverlayEntry {
 
     final child = _initOrUpdateChildOverlay(option, target);
 
+    _getTopOverlay()._lastChildOpenTime = DateTime.now();
     child.open();
   }
 
@@ -561,7 +578,11 @@ class ZoMenuEntry extends ZoOverlayEntry {
 
     final direction = currentDirection ?? ZoPopperDirection.rightTop;
 
-    final width = option.optionsWidth ?? _getTopOverlay().width;
+    final fallbackWidth = inheritWidth
+        ? _getTopOverlay().width
+        : ZoMenuEntry.defaultMenuWidth;
+
+    final width = option.optionsWidth ?? fallbackWidth;
 
     ZoMenuEntry child;
 
@@ -576,6 +597,7 @@ class ZoMenuEntry extends ZoOverlayEntry {
         // maxHeight: maxHeight,
         // maxHeightFactor: maxHeightFactor,
         width: width,
+        inheritWidth: inheritWidth,
         onTap: onTap,
         onActiveChanged: onActiveChanged,
         onFocusChanged: onFocusChanged,

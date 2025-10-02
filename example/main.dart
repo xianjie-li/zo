@@ -7,6 +7,8 @@ import "pages/menus_page.dart";
 import "pages/overlay_page2.dart";
 import "pages/play_page.dart";
 import "pages/router_links.dart";
+import "pages/select_page.dart";
+import "pages/tree_page/tree_page.dart";
 
 void main() {
   runApp(const MyApp());
@@ -141,7 +143,7 @@ class _MyAppState extends State<MyApp> {
         );
       },
       // home: const PlayPage(),
-      home: MenusPage(),
+      home: TreePage(),
     );
   }
 }
