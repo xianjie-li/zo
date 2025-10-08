@@ -12,12 +12,15 @@ class ZoButton extends StatelessWidget {
     this.primary = false,
     this.plain = false,
     this.size = ZoSize.medium,
+    this.constraints,
+    this.padding,
     this.color,
     this.onTap,
     this.onContextAction,
     this.focusNode,
     this.autofocus = false,
     this.canRequestFocus = true,
+    this.focusOnTap = true,
   });
 
   /// 按钮主要内容
@@ -38,8 +41,14 @@ class ZoButton extends StatelessWidget {
   /// 是否启用
   final bool enabled;
 
-  /// 尺寸
+  /// 预置尺寸
   final ZoSize size;
+
+  /// 自定义尺寸
+  final BoxConstraints? constraints;
+
+  /// 间距
+  final EdgeInsets? padding;
 
   /// 自定义颜色
   final Color? color;
@@ -58,6 +67,9 @@ class ZoButton extends StatelessWidget {
 
   /// 是否可获取焦点
   final bool canRequestFocus;
+
+  /// 是否可通过点击获得焦点, 需要同事启用点击相关的事件才能生效
+  final bool focusOnTap;
 
   dynamic _onTapHandle(ZoTriggerEvent event) {
     return onTap?.call();
@@ -127,11 +139,14 @@ class ZoButton extends StatelessWidget {
         activeBorder: showBorder
             ? Border.all(color: style.outlineColorVariant)
             : null,
-        padding: EdgeInsets.symmetric(horizontal: padding),
-        constraints: BoxConstraints(
-          minWidth: minWidth,
-          minHeight: minHeight,
-        ),
+        padding: this.padding ?? EdgeInsets.symmetric(horizontal: padding),
+        constraints:
+            constraints ??
+            BoxConstraints(
+              minWidth: minWidth,
+              minHeight: minHeight,
+            ),
+        focusOnTap: focusOnTap,
         child: Row(
           spacing: style.space1,
           mainAxisAlignment: MainAxisAlignment.center,

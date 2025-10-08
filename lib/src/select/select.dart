@@ -423,7 +423,8 @@ class ZoSelectState extends ZoCustomFormState<Iterable<Object>, ZoSelect> {
       Color? textColor;
 
       if (decoration.color != null) {
-        final useLightText = decoration.color!.computeLuminance() < 0.5;
+        final useLightText =
+            decoration.color!.computeLuminance() < lightLuminanceValue;
         if (useLightText && !isDarkMode) {
           textColor = Colors.white;
         }
@@ -564,6 +565,7 @@ class ZoSelectState extends ZoCustomFormState<Iterable<Object>, ZoSelect> {
   }
 
   @override
+  @protected
   Widget build(BuildContext context) {
     final enableInput = widget.localSearch || widget.onInputChanged != null;
 

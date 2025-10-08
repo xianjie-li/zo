@@ -1,149 +1,96 @@
-// Copyright 2013 The Flutter Authors
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file.
+import 'package:flutter/material.dart';
 
-import "package:flutter/gestures.dart";
-import "package:flutter/material.dart";
-import "package:two_dimensional_scrollables/two_dimensional_scrollables.dart";
+/// Flutter code sample for [TreeSliver].
 
-/// The class containing a TreeView that highlights the selected row. The
-/// default TreeView.treeNodeBuilder, makes tapping the leading icon of a parent
-/// toggle the node open and closed. The scrollbars will appear as the content
-/// exceeds the bounds of the viewport.
-class TreeExample extends StatefulWidget {
-  /// Creates a screen that demonstrates the TreeView widget.
-  const TreeExample({super.key});
+void main() => runApp(const TreeSliverExampleApp());
 
-  @override
-  State<TreeExample> createState() => TreeExampleState();
-}
-
-/// The state of the [TreeExample].
-class TreeExampleState extends State<TreeExample> {
-  /// The [TreeViewController] associated with this [TreeView].
-  @visibleForTesting
-  final TreeViewController treeController = TreeViewController();
-
-  /// The [ScrollController] associated with the horizontal axis.
-  @visibleForTesting
-  final ScrollController horizontalController = ScrollController();
-  TreeViewNode<String>? _selectedNode;
-  final ScrollController _verticalController = ScrollController();
-  final List<TreeViewNode<String>> _tree = <TreeViewNode<String>>[
-    TreeViewNode<String>(
-      "It's supercalifragilisticexpialidocious",
-      children: <TreeViewNode<String>>[
-        TreeViewNode<String>(
-          "Even though the sound of it is something quite atrocious",
-        ),
-        TreeViewNode<String>(
-          "If you say it loud enough you'll always sound precocious",
-        ),
-      ],
-    ),
-    TreeViewNode<String>(
-      "Supercalifragilisticexpialidocious",
-      children: <TreeViewNode<String>>[
-        TreeViewNode<String>(
-          "Um-dittle-ittl-um-dittle-I",
-          children: <TreeViewNode<String>>[
-            TreeViewNode<String>(
-              "Um-dittle-ittl-um-dittle-I",
-              children: <TreeViewNode<String>>[
-                TreeViewNode<String>(
-                  "Um-dittle-ittl-um-dittle-I",
-                  children: <TreeViewNode<String>>[
-                    TreeViewNode<String>("Um-dittle-ittl-um-dittle-I"),
-                  ],
-                ),
-              ],
-            ),
-          ],
-        ),
-      ],
-    ),
-  ];
-
-  Map<Type, GestureRecognizerFactory> _getTapRecognizer(
-    TreeViewNode<String> node,
-  ) {
-    return <Type, GestureRecognizerFactory>{
-      TapGestureRecognizer:
-          GestureRecognizerFactoryWithHandlers<TapGestureRecognizer>(
-            () => TapGestureRecognizer(),
-            (TapGestureRecognizer t) => t.onTap = () {
-              setState(() {
-                _selectedNode = node;
-              });
-            },
-          ),
-    };
-  }
-
-  Widget _getTree() {
-    return DecoratedBox(
-      decoration: BoxDecoration(border: Border.all()),
-      child: Scrollbar(
-        controller: horizontalController,
-        thumbVisibility: true,
-        child: Scrollbar(
-          controller: _verticalController,
-          thumbVisibility: true,
-          child: TreeView<String>(
-            controller: treeController,
-            verticalDetails: ScrollableDetails.vertical(
-              controller: _verticalController,
-            ),
-            horizontalDetails: ScrollableDetails.horizontal(
-              controller: horizontalController,
-            ),
-            tree: _tree,
-            onNodeToggle: (TreeViewNode<String> node) {
-              setState(() {
-                _selectedNode = node;
-              });
-            },
-            treeRowBuilder: (TreeViewNode<String> node) {
-              if (_selectedNode == node) {
-                return TreeView.defaultTreeRowBuilder(node).copyWith(
-                  recognizerFactories: _getTapRecognizer(node),
-                  backgroundDecoration: TreeRowDecoration(
-                    color: Colors.purple[100],
-                  ),
-                );
-              }
-              return TreeView.defaultTreeRowBuilder(
-                node,
-              ).copyWith(recognizerFactories: _getTapRecognizer(node));
-            },
-            // Exaggerated indentation to exceed viewport bounds.
-            indentation: TreeViewIndentationType.custom(50.0),
-          ),
-        ),
-      ),
-    );
-  }
-
-  @override
-  void dispose() {
-    _verticalController.dispose();
-    horizontalController.dispose();
-    super.dispose();
-  }
+class TreeSliverExampleApp extends StatelessWidget {
+  const TreeSliverExampleApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final Size screenSize = MediaQuery.sizeOf(context);
-    return Scaffold(
-      body: ScrollConfiguration(
-        behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-        child: Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: screenSize.width * 0.25,
-            vertical: 25.0,
-          ),
-          child: _getTree(),
+    return const MaterialApp(home: TreeSliverExample());
+  }
+}
+
+class TreeSliverExample extends StatefulWidget {
+  const TreeSliverExample({super.key});
+
+  @override
+  State<TreeSliverExample> createState() => _TreeSliverExampleState();
+}
+
+class _TreeSliverExampleState extends State<TreeSliverExample> {
+  TreeSliverNode<String>? _selectedNode;
+  final TreeSliverController controller = TreeSliverController();
+  final List<TreeSliverNode<String>> _tree = <TreeSliverNode<String>>[
+    TreeSliverNode<String>('First'),
+    TreeSliverNode<String>(
+      'Second',
+      children: <TreeSliverNode<String>>[
+        TreeSliverNode<String>(
+          'alpha',
+          children: <TreeSliverNode<String>>[
+            TreeSliverNode<String>('uno'),
+            TreeSliverNode<String>('dos'),
+            TreeSliverNode<String>('tres'),
+          ],
         ),
+        TreeSliverNode<String>('beta'),
+        TreeSliverNode<String>('kappa'),
+      ],
+    ),
+    TreeSliverNode<String>(
+      'Third',
+      expanded: true,
+      children: <TreeSliverNode<String>>[
+        TreeSliverNode<String>('gamma'),
+        TreeSliverNode<String>('delta'),
+        TreeSliverNode<String>('epsilon'),
+      ],
+    ),
+    TreeSliverNode<String>('Fourth'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('TreeSliver Demo')),
+      body: CustomScrollView(
+        slivers: <Widget>[
+          TreeSliver<String>(
+            tree: _tree,
+            controller: controller,
+            treeNodeBuilder:
+                (
+                  BuildContext context,
+                  TreeSliverNode<Object?> node,
+                  AnimationStyle animationStyle,
+                ) {
+                  Widget child = GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onTap: () {
+                      setState(() {
+                        controller.toggleNode(node);
+                        _selectedNode = node as TreeSliverNode<String>;
+                      });
+                    },
+                    child: TreeSliver.defaultTreeNodeBuilder(
+                      context,
+                      node,
+                      animationStyle,
+                    ),
+                  );
+                  if (_selectedNode == node as TreeSliverNode<String>) {
+                    child = ColoredBox(
+                      color: Colors.purple[100]!,
+                      child: child,
+                    );
+                  }
+                  return child;
+                },
+          ),
+        ],
       ),
     );
   }

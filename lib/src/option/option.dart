@@ -352,6 +352,14 @@ class ZoOptionView extends StatelessWidget {
     this.active = false,
     this.loading = false,
     this.highlight = false,
+    this.enabled = true,
+    this.interactive = true,
+    this.arrow = true,
+    this.leading,
+    this.trailing,
+    this.padding,
+    this.activeColor,
+    this.highlightColor,
     this.onTap,
     this.onActiveChanged,
     this.onFocusChanged,
@@ -374,6 +382,30 @@ class ZoOptionView extends StatelessWidget {
 
   /// 是否处于高亮状态
   final bool highlight;
+
+  /// 是否启用
+  final bool enabled;
+
+  /// 是否可进行交互, 与 enabled = false 不同的是它不设置禁用样式, 只是阻止交互行为
+  final bool interactive;
+
+  /// 启用启用列表右侧的子项标识箭头，会在包含子选项时显示
+  final bool arrow;
+
+  /// 自定义前导内容，默认取 option.leading
+  final Widget? leading;
+
+  /// 自定义尾随内容，默认取 option.trailing
+  final Widget? trailing;
+
+  /// 间距
+  final EdgeInsets? padding;
+
+  /// active 状态的背景色
+  final Color? activeColor;
+
+  /// highlight 状态的背景色
+  final Color? highlightColor;
 
   /// 点击, 若返回一个 future, 可进入loading状态
   final dynamic Function(ZoTriggerEvent event)? onTap;
@@ -401,18 +433,19 @@ class ZoOptionView extends StatelessWidget {
     }
 
     Widget? header;
-    Widget? leading;
-    Widget? trailing;
+    Widget? leadingNode;
+    Widget? trailingNode;
 
-    EdgeInsetsGeometry? padding = EdgeInsets.symmetric(
-      horizontal: style.space2,
-      vertical: style.space1 + 2,
-    );
+    EdgeInsets? padding =
+        this.padding ??
+        EdgeInsets.symmetric(
+          horizontal: style.space2,
+        );
 
     if (option.builder != null) {
       header = option.builder!(context);
       // 完全自定义时去掉默认的部分样式
-      padding = EdgeInsets.zero;
+      padding = this.padding ?? EdgeInsets.zero;
     } else {
       if (option.title != null) {
         header = DefaultTextStyle.merge(
@@ -422,34 +455,34 @@ class ZoOptionView extends StatelessWidget {
         );
       }
 
-      leading = option.leading;
-      trailing = option.trailing;
+      leadingNode = leading ?? option.leading;
+      trailingNode = trailing ?? option.trailing;
     }
 
     final ZoOptionEventData data = (option: option, context: context);
 
-    return Padding(
-      padding: const EdgeInsetsDirectional.symmetric(vertical: 1),
-      child: ZoTile(
-        header: header,
-        leading: leading,
-        trailing: trailing,
-        enabled: option.enabled,
-        arrow: hasChild,
-        active: active,
-        loading: loading,
-        highlight: highlight,
-        horizontalSpacing: style.space2,
-        interactive: option.interactive,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        disabledColor: Colors.transparent,
-        padding: padding,
-        iconTheme: const IconThemeData(size: ZoOptionView.iconSize),
-        onTap: onTap,
-        onActiveChanged: onActiveChanged,
-        onFocusChanged: onFocusChanged,
-        data: data,
-      ),
+    return ZoTile(
+      header: header,
+      leading: leadingNode,
+      trailing: trailingNode,
+      enabled: enabled && option.enabled,
+      arrow: arrow && hasChild,
+      active: active,
+      loading: loading,
+      highlight: highlight,
+      horizontalSpacing: style.space1,
+      interactive: interactive && option.interactive,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      disabledColor: Colors.transparent,
+      activeColor: activeColor,
+      highlightColor: highlightColor,
+      padding: padding,
+      decorationPadding: const EdgeInsets.symmetric(vertical: 1),
+      iconTheme: const IconThemeData(size: ZoOptionView.iconSize),
+      onTap: onTap,
+      onActiveChanged: onActiveChanged,
+      onFocusChanged: onFocusChanged,
+      data: data,
     );
   }
 }
@@ -714,6 +747,26 @@ class ZoOptionNode {
   final List<int> path;
 }
 
+/// 在调用 [ZoOptionController.each] 时传入
+class ZoOptionEachArgs {
+  ZoOptionEachArgs({
+    required this.option,
+    required this.node,
+    required this.index,
+  });
+
+  /// 当前选项
+  ZoOption option;
+
+  /// 当前节点
+  ZoOptionNode node;
+
+  /// 当前索引，索引可能不是连续的，因为前方节点可能会被过滤
+  int index;
+}
+
+typedef ZoOptionFilter = bool Function(ZoOptionNode args);
+
 /// 提供选中项管理、树形数据管理、高效的树节点查询、选项数据/展开管理等选项通用行为的处理
 ///
 /// 由于存在缓存信息，需要在必要时对它们进行更新，通常有三种情况：
@@ -730,8 +783,13 @@ class ZoOptionController {
     Iterable<Object>? openSelected,
     String? matchString,
     RegExp? matchRegexp,
+    ZoOptionFilter? filter,
+    this.each,
+    this.eachStart,
+    this.eachEnd,
   }) : _matchRegexp = matchRegexp,
        _matchString = matchString,
+       _filter = filter,
        _options = options {
     selector = Selector(
       selected: selected,
@@ -740,12 +798,14 @@ class ZoOptionController {
     );
 
     openSelector = Selector(
-      selected: selected,
+      selected: openSelected,
       valueGetter: (opt) => opt.value,
     );
 
     selector.addListener(() {
+      _selectChangedProcessing = true;
       refreshFilters();
+      _selectChangedProcessing = false;
     });
 
     openSelector.addListener(() {
@@ -755,8 +815,13 @@ class ZoOptionController {
     reload();
   }
 
-  /// 对于menus等不需要open状态的选项，可以设置为true来强制将所有项视为开启
+  /// 对于不需要管理 open 状态的选项，可以设置为 true 来强制将所有项视为开启
   final bool ignoreOpenStatus;
+
+  /// 当前是否由于选中心变更而正在执行 [refreshFilters], 该类型的变更计算只处理关联关系计算，
+  /// 选项的数量和结构没有变更，可以由此来辅助判断是否要跳过某些行为
+  bool get selectChangedProcessing => _selectChangedProcessing;
+  bool _selectChangedProcessing = false;
 
   /// 用于过滤选项的文本, 设置后只显示包含该文本的选项
   String? get matchString => _matchString;
@@ -775,6 +840,34 @@ class ZoOptionController {
     _matchStatus.clear();
     refreshFilters();
   }
+
+  /// 筛选阶段会对每个符合条件的选项调用，返回 false 时，选项不会包含在 [filteredFlatList],
+  /// 可以将该方法当做 [matchString] / [matchRegexp] 的扩展版本使用，提供更进一步的筛选能力
+  ///
+  /// 间接匹配：如果一个选项匹配, 其子级会跳过检测，直接视为匹配；子选项匹配也会使父级间接被匹配
+  ///
+  /// filter 以选项的实际顺序倒序调用
+  ZoOptionFilter? get filter => _filter;
+  ZoOptionFilter? _filter;
+  set filter(ZoOptionFilter? filter) {
+    _filter = filter;
+    _matchStatus.clear();
+    refreshFilters();
+  }
+
+  /// 内部通过 [refreshFilters] 对列表进行最终筛选时，会对满足显示条件的每个选项调用该方法，
+  /// 可以用来做一些外部的选项同步工作
+  ///
+  /// 提供此方法的目的是在一些需要遍历树的场景与控制器复用一次循环，避免在选项较多时性能浪费
+  ///
+  /// each 的循环顺序为倒序
+  ValueChanged<ZoOptionEachArgs>? each;
+
+  /// 在 [each] 开始之前调用
+  VoidCallback? eachStart;
+
+  /// 在 [each] 结束后调用
+  VoidCallback? eachEnd;
 
   /// 未经处理的原始选项， 设置后会更新当前选项缓存
   List<ZoOption> get options => _options;
@@ -942,7 +1035,7 @@ class ZoOptionController {
     refreshFilters();
   }
 
-  /// 重新计算 open 、match 相关的过滤状态，应在相关选项变更后调用
+  /// 重新根据 open 、match、filter 等过滤状态更新 [filteredFlatList]，应在相关选项变更后调用
   void refreshFilters() {
     final List<ZoOption> filteredList = [];
 
@@ -954,6 +1047,8 @@ class ZoOptionController {
     // 记录包含匹配子项的节点
     final HashMap<Object, bool> optionsHasMatchChild = HashMap();
 
+    eachStart?.call();
+
     // 倒序处理每一项，因为父节点会依赖子节点的匹配状态
     for (var i = flatList.length - 1; i >= 0; i--) {
       final opt = flatList[i];
@@ -961,6 +1056,8 @@ class ZoOptionController {
 
       final (:isOpen, :isMatch) = getFilterStatus(node);
       final isSelected = selector.isSelected(node.value);
+
+      if (isMatch && filter != null) {}
 
       var everyParentIsOpen = true;
       var parentHasMatch = false;
@@ -997,25 +1094,24 @@ class ZoOptionController {
       final isVisible =
           everyParentIsOpen && (isMatch || parentHasMatch || childHasMatch);
 
-      // 本身是匹配项，不作更改，但父级要设置为间接匹配项
-      if (isMatch) {
-        ZoOption? parent = node.parent;
-
-        while (parent != null) {
-          final parentNode = _nodes[parent.value]!;
-          optionsHasMatchChild[parentNode.value] = true;
-          parent = parentNode.parent;
-        }
-      }
-
       _visibleCache[node.value] = isVisible;
 
       if (isVisible) {
         filteredList.insert(0, opt);
+
+        each?.call(
+          ZoOptionEachArgs(
+            index: i,
+            option: opt,
+            node: node,
+          ),
+        );
       }
     }
 
     _filteredFlatList = filteredList;
+
+    eachEnd?.call();
   }
 
   /// 加载指定选项的子级, 如果数据已加载过会直接跳过
@@ -1127,11 +1223,15 @@ class ZoOptionController {
     return task != null;
   }
 
-  /// 判断选项是否与 [ZoOptionViewList.matchString] / [ZoOptionViewList.matchRegexp] 匹配
+  /// 判断选项是否与 [matchString] / [matchRegexp] / [filter] 匹配
   bool _isMatch(Object value) {
     final node = getNode(value);
 
     assert(node != null);
+
+    if (filter != null) {
+      if (filter!(node!)) return true;
+    }
 
     if (matchString == null && matchRegexp == null) {
       return true;
@@ -1210,4 +1310,73 @@ class ZoOptionController {
     selector.dispose();
     openSelector.dispose();
   }
+}
+
+/// 表示选项变更操作中，选项的移动位置
+enum ZoOptionMutationReferenceType {
+  /// 在目标前面，这通常是默认行为
+  before,
+
+  /// 在目标后面
+  after,
+
+  /// 作为目标的子级，在目标子级为空时使用，不为空时应该使用相对节点
+  inside,
+}
+
+/// 描述选项的变更操作
+abstract class ZoOptionMutationAction {
+  const ZoOptionMutationAction();
+}
+
+/// 描述选项的变更操作，包含参照节点
+abstract class ZoOptionMutationReferenceAction extends ZoOptionMutationAction {
+  const ZoOptionMutationReferenceAction({
+    this.reference,
+    this.referenceType = ZoOptionMutationReferenceType.before,
+  });
+
+  /// 参照位置
+  final ZoOption? reference;
+
+  /// 参照类型
+  final ZoOptionMutationReferenceType referenceType;
+}
+
+/// 描述新增操作
+class ZoOptionAddAction extends ZoOptionMutationReferenceAction {
+  const ZoOptionAddAction({
+    required this.options,
+    super.reference,
+    super.referenceType,
+  });
+
+  /// 新增的选项
+  final List<ZoOption> options;
+}
+
+/// 描述移除操作
+class ZoOptionRemoveAction extends ZoOptionMutationAction {
+  const ZoOptionRemoveAction({
+    required this.values,
+  });
+
+  /// 移除的选项
+  final List<Object> values;
+}
+
+/// 描述移动操作
+class ZoOptionMoveAction extends ZoOptionMutationReferenceAction {
+  const ZoOptionMoveAction({
+    required this.values,
+    required super.reference,
+    super.referenceType,
+  });
+
+  /// 待移动的选项
+  final List<Object> values;
+
+  /// 参照位置
+  @override
+  ZoOption get reference => super.reference!;
 }

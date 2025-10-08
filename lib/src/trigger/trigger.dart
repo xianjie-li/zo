@@ -152,6 +152,24 @@ class ZoTriggerDragEvent extends ZoTriggerEvent {
   }
 }
 
+/// [ZoTrigger] 内部的 focusNode 变更时触发，当渲染大量 trigger 时，可通过此事件获取 focusNode，
+/// 避免大量的重复创建
+///
+/// 会在创建、更新、销毁时触发
+class ZoTriggerFocusNodeChangedNotification extends Notification {
+  /// 焦点节点,
+  final FocusNode? focusNode;
+
+  /// 传递给 [ZoTrigger] 的 data
+  final dynamic data;
+
+  /// 构造函数
+  ZoTriggerFocusNodeChangedNotification({
+    this.focusNode,
+    this.data,
+  });
+}
+
 /// 一个通用的事件触发器, 它集成了几种最常用的事件类型, 可用于基础组件实现 popper / button 等组件的事件绑定
 class ZoTrigger extends StatefulWidget {
   const ZoTrigger({
@@ -172,6 +190,7 @@ class ZoTrigger extends StatefulWidget {
     this.focusNode,
     this.autofocus = false,
     this.canRequestFocus = true,
+    this.focusOnTap = true,
     this.changeCursor = false,
     this.behavior,
   });
@@ -215,7 +234,7 @@ class ZoTrigger extends StatefulWidget {
   /// 聚焦状态按下按键时触发
   final KeyEventResult Function(KeyEvent)? onKeyEvent;
 
-  /// 传递到时间对象的额外信息, 可在事件回调中通过 event.data 访问
+  /// 传递到事件对象的额外信息, 可在事件回调中通过 event.data 访问
   final dynamic data;
 
   /// 设置后, 将只能派发指定方向的拖动
@@ -231,6 +250,9 @@ class ZoTrigger extends StatefulWidget {
   ///
   /// 传入 [onFocusChanged] 此项才会生效
   final bool canRequestFocus;
+
+  /// 是否可通过点击获得焦点, 需要同事启用点击相关的事件才能生效
+  final bool focusOnTap;
 
   /// 是否变更显示的光标
   final bool changeCursor;
@@ -276,6 +298,21 @@ class _ZoTriggerState extends State<ZoTrigger> {
   /// 是否存在未结束的 tap 事件
   bool tapPending = false;
 
+  /// 焦点控制
+  late FocusNode focusNode;
+
+  @override
+  void initState() {
+    super.initState();
+
+    focusNode = widget.focusNode ?? FocusNode();
+
+    ZoTriggerFocusNodeChangedNotification(
+      focusNode: focusNode,
+      data: widget.data,
+    ).dispatch(context);
+  }
+
   @override
   void didUpdateWidget(covariant ZoTrigger oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -284,6 +321,32 @@ class _ZoTriggerState extends State<ZoTrigger> {
       WidgetsBinding.instance.addPostFrameCallback((t) {
         clearPendingEvent();
       });
+    }
+
+    if (oldWidget.focusNode != widget.focusNode) {
+      if (oldWidget.focusNode == null) {
+        // 前一个节点时组件内部创建的
+        focusNode.dispose();
+      }
+      focusNode = widget.focusNode ?? FocusNode();
+
+      ZoTriggerFocusNodeChangedNotification(
+        focusNode: focusNode,
+        data: widget.data,
+      ).dispatch(context);
+    }
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    ZoTriggerFocusNodeChangedNotification(
+      focusNode: null,
+      data: widget.data,
+    ).dispatch(context);
+
+    if (widget.focusNode != focusNode) {
+      focusNode.dispose();
     }
   }
 
@@ -310,6 +373,11 @@ class _ZoTriggerState extends State<ZoTrigger> {
     lastTapDownDetails = null;
 
     tapPending = false;
+
+    // 在外部事件触发之前获取焦点，避免在外部handle中需要控制焦点时发生冲突
+    if (widget.canRequestFocus && widget.focusOnTap) {
+      focusNode.requestFocus();
+    }
 
     final tapEvent = getTapEvent(details, kind: details.kind);
     widget.onTap?.call(tapEvent);
@@ -842,7 +910,7 @@ class _ZoTriggerState extends State<ZoTrigger> {
       child = Focus(
         canRequestFocus: widget.enabled && widget.canRequestFocus,
         autofocus: widget.autofocus,
-        focusNode: widget.focusNode,
+        focusNode: focusNode,
         onFocusChange: onFocusChanged,
         onKeyEvent: onKeyEvent,
         child: child,

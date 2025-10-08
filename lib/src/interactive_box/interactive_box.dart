@@ -21,9 +21,11 @@ class ZoInteractiveBox extends StatefulWidget {
     this.focusNode,
     this.autofocus = false,
     this.canRequestFocus = true,
+    this.focusOnTap = true,
     this.focusBorder = true,
     this.alignment,
     this.padding,
+    this.decorationPadding,
     this.width,
     this.height,
     this.constraints,
@@ -84,6 +86,9 @@ class ZoInteractiveBox extends StatefulWidget {
   /// 是否可获取焦点
   final bool canRequestFocus;
 
+  /// 是否可通过点击获得焦点, 需要同事启用点击相关的事件才能生效
+  final bool focusOnTap;
+
   /// 获取焦点时，是否为组件设置边框样式
   final bool focusBorder;
 
@@ -91,7 +96,10 @@ class ZoInteractiveBox extends StatefulWidget {
   final AlignmentGeometry? alignment;
 
   /// 边距
-  final EdgeInsetsGeometry? padding;
+  final EdgeInsets? padding;
+
+  /// 仅用于装饰的边距，不影响实际布局空间，用于多个相同组件并列时，添加间距，但是不影响事件触发的边距
+  final EdgeInsets? decorationPadding;
 
   /// 宽度
   final double? width;
@@ -149,7 +157,7 @@ class _ZoInteractiveBoxState extends State<ZoInteractiveBox> {
     if (color == null || widget.plain) return false;
     final curColor = widget.color ?? context.zoStyle.primaryColor;
     final lum = curColor.computeLuminance();
-    return lum < 0.5;
+    return lum < lightLuminanceValue;
   }
 
   void onActiveChanged(ZoTriggerToggleEvent event) {
@@ -336,9 +344,11 @@ class _ZoInteractiveBoxState extends State<ZoInteractiveBox> {
     );
   }
 
-  BoxBorder? getBorder(ZoStyle style) {
+  BoxBorder? getBorder(ZoStyle style, Color? color) {
     if (focus && widget.focusBorder) {
-      return Border.all(color: style.primaryColor);
+      return Border.all(
+        color: style.primaryColor,
+      );
     }
 
     if (focus || active) {
@@ -370,6 +380,8 @@ class _ZoInteractiveBoxState extends State<ZoInteractiveBox> {
 
     final decoration = widget.decoration ?? const BoxDecoration();
 
+    final decorationPadding = widget.decorationPadding ?? EdgeInsets.zero;
+
     return withTextAndIconColor(
       ZoTrigger(
         enabled: widget.enabled && widget.interactive,
@@ -384,6 +396,7 @@ class _ZoInteractiveBoxState extends State<ZoInteractiveBox> {
         onTapCancel: onTapCancel,
         focusNode: widget.focusNode,
         autofocus: widget.autofocus,
+        focusOnTap: widget.focusOnTap,
         data: widget.data,
         child: ZoProgress(
           open: isLoading,
@@ -395,11 +408,15 @@ class _ZoInteractiveBoxState extends State<ZoInteractiveBox> {
               // 背景层, 和内容分开, 防止被遮罩反馈影响显示
               Positioned.fill(
                 key: const ValueKey("BG"),
+                left: decorationPadding.left,
+                top: decorationPadding.top,
+                right: decorationPadding.right,
+                bottom: decorationPadding.bottom,
                 child: DecoratedBox(
                   decoration: decoration.copyWith(
                     color: color,
                     borderRadius: radius,
-                    border: getBorder(style),
+                    border: getBorder(style, color),
                   ),
                 ),
               ),
@@ -407,10 +424,14 @@ class _ZoInteractiveBoxState extends State<ZoInteractiveBox> {
               if (widget.interactive)
                 Positioned.fill(
                   key: const ValueKey("ACTIVE"),
+                  left: decorationPadding.left,
+                  top: decorationPadding.top,
+                  right: decorationPadding.right,
+                  bottom: decorationPadding.bottom,
                   child: IgnorePointer(
                     child: Opacity(
                       opacity: !isLoading && needHighlight ? 1 : 0,
-                      child: Container(
+                      child: DecoratedBox(
                         decoration: BoxDecoration(
                           borderRadius: radius,
                           color: maskColor,
@@ -423,6 +444,10 @@ class _ZoInteractiveBoxState extends State<ZoInteractiveBox> {
               if (widget.interactive)
                 Positioned.fill(
                   key: const ValueKey("FEEDBACK"),
+                  left: decorationPadding.left,
+                  top: decorationPadding.top,
+                  right: decorationPadding.right,
+                  bottom: decorationPadding.bottom,
                   child: IgnorePointer(
                     child: Opacity(
                       opacity: isLoading ? 0 : 1,

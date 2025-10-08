@@ -36,6 +36,7 @@ class ZoTile extends StatelessWidget {
     this.loading = false,
     this.interactive = true,
     this.padding,
+    this.decorationPadding,
     this.verticalSpacing,
     this.horizontalSpacing,
     this.footerSpacing,
@@ -47,8 +48,11 @@ class ZoTile extends StatelessWidget {
     this.focusNode,
     this.autofocus = false,
     this.canRequestFocus = true,
+    this.focusOnTap = true,
     this.focusBorder = true,
     this.disabledColor,
+    this.activeColor,
+    this.highlightColor,
     this.iconTheme,
     this.textStyle,
   });
@@ -86,7 +90,10 @@ class ZoTile extends StatelessWidget {
   final bool innerFoot;
 
   /// 间距
-  final EdgeInsetsGeometry? padding;
+  final EdgeInsets? padding;
+
+  /// 仅用于装饰的边距，不影响实际布局空间，用于多个相同组件并列时，添加间距，但是不影响事件触发的边距
+  final EdgeInsets? decorationPadding;
 
   /// 纵向内容间的间距
   final double? verticalSpacing;
@@ -141,11 +148,20 @@ class ZoTile extends StatelessWidget {
   /// 是否可获取焦点
   final bool canRequestFocus;
 
+  /// 是否可通过点击获得焦点, 需要同事启用点击相关的事件才能生效
+  final bool focusOnTap;
+
   /// 获取焦点时，是否为组件设置边框样式
   final bool focusBorder;
 
   /// 禁用状态的背景色
   final Color? disabledColor;
+
+  /// active 状态的背景色
+  final Color? activeColor;
+
+  /// highlight 状态的背景色
+  final Color? highlightColor;
 
   /// 调整图标样式
   final IconThemeData? iconTheme;
@@ -269,11 +285,11 @@ class ZoTile extends StatelessWidget {
   Color? _getBgColor(ZoStyle zoStyle) {
     if (active) {
       // return zoStyle.primaryColor.withAlpha(50);
-      return zoStyle.primaryColor;
+      return activeColor ?? zoStyle.primaryColor;
     }
 
     if (highlight) {
-      return zoStyle.highlightColor;
+      return highlightColor ?? zoStyle.highlightColor;
     }
 
     final statusColor = _getStatusColor(zoStyle);
@@ -353,6 +369,7 @@ class ZoTile extends StatelessWidget {
       focusNode: focusNode,
       autofocus: autofocus,
       canRequestFocus: canRequestFocus,
+      focusOnTap: focusOnTap,
       border: border,
       activeBorder: activeBorder,
       color: curColor,
@@ -362,6 +379,7 @@ class ZoTile extends StatelessWidget {
       iconTheme: iconTheme,
       textStyle: textStyle,
       padding: padding ?? EdgeInsets.all(style.space3),
+      decorationPadding: decorationPadding,
       radius: BorderRadius.circular(style.borderRadius),
       data: data,
       child: _withOuterFooter(style, mainContent),

@@ -350,6 +350,11 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
     _reverseStyle = reverseStyle;
   }
 
+  /// 主动获取指定的明暗主题
+  ZoStyle getSpecifiedTheme(Brightness brightness) {
+    return this.brightness == brightness ? this : reverseStyle;
+  }
+
   /// 根据当前配置获取 ThemeData, 若传入 theme, 会复制此 theme 后覆盖生成
   ThemeData toThemeData({ThemeData? theme}) {
     theme = theme ?? ThemeData();
