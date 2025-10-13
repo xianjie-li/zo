@@ -585,6 +585,8 @@ class _ZoTriggerState extends State<ZoTrigger> {
   }
 
   KeyEventResult onKeyEvent(FocusNode node, KeyEvent event) {
+    if (!widget.enabled) return KeyEventResult.ignored;
+
     final typeMatch = event is KeyRepeatEvent || event is KeyDownEvent;
     final hasHandle = widget.onTap != null || widget.onTapDown != null;
 

@@ -14,7 +14,46 @@ class TreePage extends StatefulWidget {
 }
 
 class _TreePageState extends State<TreePage> {
+  Future<List<ZoOption>> loadOptions(ZoOption option) async {
+    final List<ZoOption> list = [];
+
+    await Future.delayed(Duration(seconds: 1));
+
+    if (Random().nextDouble() > 0.4) {
+      return list;
+    }
+
+    for (int i = 0; i < 8; i++) {
+      list.add(
+        ZoOption(
+          value: "${option.value}-$i",
+          title: Text("选项-$i"),
+          leading: Icon(Icons.copy),
+        ),
+      );
+    }
+
+    return list;
+  }
+
   late List<ZoOption> options1 = [
+    ZoOption(
+      value: "value 0",
+      title: Text("Option 0"),
+      optionsWidth: 160,
+      options: [
+        ZoOption(
+          value: "value0.1",
+          title: Text("选项内容AAA"),
+          loadOptions: loadOptions,
+        ),
+        ZoOption(
+          value: "value0.2",
+          title: Text("选项内容AAA"),
+          loadOptions: loadOptions,
+        ),
+      ],
+    ),
     ZoOption(
       value: "value 1",
       title: Text("Option 1"),
@@ -154,6 +193,43 @@ class _TreePageState extends State<TreePage> {
     ),
   ];
 
+  late List<ZoOption> options2 = [
+    ZoOption(
+      value: "value 1",
+      title: Text("Option 1"),
+      optionsWidth: 160,
+      options: [
+        ZoOption(
+          value: "value1.1",
+          title: Text("选项内容AAA"),
+          leading: Icon(Icons.copy),
+        ),
+        ZoOption(
+          value: "value1.2",
+          title: Text("选项内容AAA"),
+          leading: Icon(Icons.copy),
+        ),
+      ],
+    ),
+    ZoOption(
+      value: "value 2",
+      title: Text("Option 2"),
+      optionsWidth: 160,
+      options: [
+        ZoOption(
+          value: "value2.1",
+          title: Text("选项内容AAA"),
+          leading: Icon(Icons.copy),
+        ),
+        ZoOption(
+          value: "value2.2",
+          title: Text("选项内容AAA"),
+          leading: Icon(Icons.copy),
+        ),
+      ],
+    ),
+  ];
+
   GlobalKey<ZoTreeState> treeKey = GlobalKey();
 
   @override
@@ -177,6 +253,7 @@ class _TreePageState extends State<TreePage> {
                 ),
               ),
               child: ZoTree(
+                maxHeight: 400,
                 key: treeKey,
                 options: options1,
                 value: const ["value 4"],
@@ -200,6 +277,9 @@ class _TreePageState extends State<TreePage> {
                 //     constraints: BoxConstraints(minHeight: 24),
                 //   );
                 // },
+                onContextAction: (event, triggerEvent) {
+                  print("event $event $triggerEvent");
+                },
                 trailingBuilder: (event) {
                   return ZoButton(
                     plain: true,
@@ -261,6 +341,31 @@ class _TreePageState extends State<TreePage> {
               onTap: () {
                 treeKey.currentState!.focusOption("value 5d1-2-6-1");
               },
+            ),
+            Container(
+              // height: 500,
+              constraints: BoxConstraints(maxHeight: 500),
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: style.outlineColor,
+                ),
+              ),
+              child: Align(
+                alignment: AlignmentGeometry.topLeft,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.red),
+                  ),
+                  child: ZoTree(
+                    options: options2,
+                    maxHeight: 400,
+                    // indentDots: false,
+                    // enable: false,
+                    // indentSize: Size(18, 18),
+                    // togglerIcon: Icons.arrow_right_alt_outlined,
+                  ),
+                ),
+              ),
             ),
           ],
         ),

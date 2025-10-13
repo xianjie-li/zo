@@ -361,6 +361,7 @@ class ZoOptionView extends StatelessWidget {
     this.activeColor,
     this.highlightColor,
     this.onTap,
+    this.onContextAction,
     this.onActiveChanged,
     this.onFocusChanged,
   });
@@ -409,6 +410,9 @@ class ZoOptionView extends StatelessWidget {
 
   /// 点击, 若返回一个 future, 可进入loading状态
   final dynamic Function(ZoTriggerEvent event)? onTap;
+
+  /// 触发上下文操作, 在鼠标操作中表示右键点击, 在触摸操作中表示长按
+  final ZoTriggerListener<ZoTriggerEvent>? onContextAction;
 
   /// 是否活动状态
   /// - 鼠标: 表示位于组件上方
@@ -480,6 +484,7 @@ class ZoOptionView extends StatelessWidget {
       decorationPadding: const EdgeInsets.symmetric(vertical: 1),
       iconTheme: const IconThemeData(size: ZoOptionView.iconSize),
       onTap: onTap,
+      onContextAction: onContextAction,
       onActiveChanged: onActiveChanged,
       onFocusChanged: onFocusChanged,
       data: data,
@@ -1161,7 +1166,7 @@ class ZoOptionController {
       );
 
       completer.complete();
-    } catch (e) {
+    } catch (e, stack) {
       _asyncOptionTask.remove(node.option.value);
 
       asyncLoadTrigger.emit(
@@ -1172,8 +1177,10 @@ class ZoOptionController {
         ),
       );
 
-      completer.completeError(e);
+      completer.completeError(e, stack);
     }
+
+    return completer.future;
   }
 
   /// 判断指定 node 的 filter 状态，会优先读取缓存
@@ -1353,6 +1360,8 @@ class ZoOptionAddAction extends ZoOptionMutationReferenceAction {
 
   /// 新增的选项
   final List<ZoOption> options;
+
+  /// 是否是由于异步选项加载导致的新增
 }
 
 /// 描述移除操作

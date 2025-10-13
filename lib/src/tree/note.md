@@ -73,9 +73,9 @@ State/SelectState添加of
 - x expand 自动展开父级
 - x 滚动跳转到指定项，支持偏移
 - x 聚焦指定项
-- 添加context事件
-- 自适应高度
-- 异步加载
+- x 添加context事件
+- x 自适应高度
+- x 异步加载
 - 筛选
 - 键盘交互
 - 拖动排序

@@ -1,4 +1,3 @@
-import "dart:async";
 import "dart:collection";
 import "dart:math";
 
@@ -10,7 +9,10 @@ import "../form/form_state.dart";
 
 /// 树形组件
 ///
-/// 支持 value / onChanged 进行选项控制，可以方便的集成为表单控件
+/// 表单控件支持：支持 [ZoTree.value] / [ZoTree.onChanged] 进行选项控制，可以方便的集成为表单控件
+///
+/// 异步选项：只在通过 [ZoTreeState.toggle] / [ZoTreeState.expand] 展开时才会触发异步选项获取，
+/// 全部展开等操作不会触发，这是为了避免存在大量异步加载选项时瞬间触发过多的加载请求
 class ZoTree extends ZoCustomFormWidget<Iterable<Object>> {
   const ZoTree({
     super.key,
@@ -23,13 +25,15 @@ class ZoTree extends ZoCustomFormWidget<Iterable<Object>> {
     this.implicitMultipleSelection = true,
     this.scrollController,
     this.onTap,
-    this.onContext,
+    this.onContextAction,
     this.expandByTapRow,
-    this.padding,
+    this.padding = const EdgeInsets.all(8),
+    this.maxHeight,
     this.indentSize = const Size(24, 24),
     this.togglerIcon,
     this.leadingBuilder,
     this.trailingBuilder,
+    this.onOptionLoadError,
     this.activeColor,
     this.highlightColor,
     this.expandAll = false,
@@ -64,13 +68,16 @@ class ZoTree extends ZoCustomFormWidget<Iterable<Object>> {
 
   /// 行上下文事件
   final void Function(ZoTreeEvent event, ZoTriggerEvent triggerEvent)?
-  onContext;
+  onContextAction;
 
   /// 默认情况下，行会在点击后展开，通过此项返回 false, 使其只能通过点击展开图标等操作进行展开
   final bool Function(ZoOptionNode node)? expandByTapRow;
 
   /// 间距
-  final EdgeInsets? padding;
+  final EdgeInsets padding;
+
+  /// 默认情况下组件使用可用的最大高度作为尺寸，在一些场景下，会需要根据内容决定尺寸，此时可通过设置最大高度来实现
+  final double? maxHeight;
 
   /// 宽度控制每一级缩进的尺寸，高度控制展开按钮的尺寸
   final Size indentSize;
@@ -83,6 +90,10 @@ class ZoTree extends ZoCustomFormWidget<Iterable<Object>> {
 
   /// 自定义行结尾节点
   final Widget Function(ZoTreeEvent event)? trailingBuilder;
+
+  /// 异步加载选项失败时触发
+  final void Function(Object error, [StackTrace? stackTrace])?
+  onOptionLoadError;
 
   /// active 状态的背景色
   final Color? activeColor;
@@ -159,6 +170,15 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
   /// 样式
   ZoStyle? _style;
 
+  /// 如果有值，需要将组件高度设置为该固定尺寸，用于实现 maxHeight
+  double? _fixedHeight;
+
+  /// 防止 _fixedHeight 频繁更新
+  final _fixedHeightUpdateDebouncer = Debouncer(delay: Durations.short1);
+
+  /// 控制组件整体的焦点
+  FocusNode _focusNode = FocusNode();
+
   @override
   @protected
   void initState() {
@@ -188,6 +208,8 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
 
     _calcUseLightText();
 
+    _updateFixedHeight();
+
     _isInit = false;
   }
 
@@ -198,6 +220,11 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
 
     if (oldWidget.options != widget.options) {
       controller.options = widget.options;
+      _updateFixedHeight();
+    }
+
+    if (oldWidget.maxHeight != widget.maxHeight) {
+      _updateFixedHeight();
     }
 
     if (oldWidget.activeColor != widget.activeColor) {
@@ -276,6 +303,8 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
       _treeSliverController.expandNode(sNode);
     }
 
+    _asyncLoadHandler(value);
+
     _expandAll = null;
   }
 
@@ -305,6 +334,7 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
       _expandSet.remove(value);
     } else {
       _expandSet.add(value);
+      _asyncLoadHandler(value);
     }
 
     _expandAll = null;
@@ -329,6 +359,9 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
 
     _expandSet.clear();
     controller.refreshFilters();
+
+    // 收起全部时不会触发 _onNodeToggle？
+    _fixedHeightUpdateDebouncer.run(_updateFixedHeight);
   }
 
   /// 获取所有选择的选项，可用于持久化存储, 仅记录手动展开的项，如果通过 [isAllExpanded] 展开了全部，
@@ -387,6 +420,41 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
     }
   }
 
+  /// 更新 _fixedHeight
+  void _updateFixedHeight() {
+    if (widget.maxHeight == null) {
+      _fixedHeight = null;
+      return;
+    }
+
+    final maxHeight = widget.maxHeight!;
+
+    double contentHeight = widget.padding.top + widget.padding.bottom;
+
+    _eachSliverNodes((sliverNode, optionNode) {
+      if (contentHeight > maxHeight) {
+        // 计算大于最大高度的内容是多余的，主动阻止它
+        return true;
+      }
+
+      if (optionNode != null) {
+        contentHeight += optionNode.option.height;
+      }
+
+      return false;
+    });
+
+    final newFixedHeight = min(contentHeight, maxHeight);
+
+    final isChanged = newFixedHeight != _fixedHeight;
+
+    _fixedHeight = newFixedHeight;
+
+    if (isChanged && !_isInit) {
+      setState(() {});
+    }
+  }
+
   /// 获取指定选项的滚动偏移，需要确保选项父级全部展开后调用
   double _getOptionOffset(Object value) {
     final node = controller.getNode(value);
@@ -395,6 +463,26 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
 
     double height = 0;
 
+    _eachSliverNodes((sliverNode, optionNode) {
+      if (sliverNode.content == value) {
+        return true;
+      }
+
+      if (optionNode != null) {
+        height += optionNode.option.height;
+      }
+
+      return false;
+    });
+
+    return height;
+  }
+
+  /// 递归遍历当前可见的 sliver node 树，若返回true会中断后续的遍历
+  void _eachSliverNodes(
+    bool Function(TreeSliverNode<Object> sliverNode, ZoOptionNode? optionNode)
+    fn,
+  ) {
     bool isBreak = false;
 
     void loop(List<TreeSliverNode<Object>> list) {
@@ -403,15 +491,13 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
 
         if (isBreak) return;
 
-        if (cur.content == value) {
-          isBreak = true;
-          return;
-        }
-
         final optNode = controller.getNode(cur.content);
 
-        if (optNode != null) {
-          height += optNode.option.height;
+        final b = fn(cur, optNode);
+
+        if (b) {
+          isBreak = true;
+          return;
         }
 
         if (cur.isExpanded && cur.children.isNotEmpty) {
@@ -421,8 +507,6 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
     }
 
     loop(_treeNodes);
-
-    return height;
   }
 
   /// 更新selector的选中项到value并进行rerender
@@ -602,6 +686,7 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
       padding: EdgeInsets.all(_style!.space1),
       activeColor: widget.activeColor,
       highlightColor: widget.highlightColor,
+      loading: controller.isAsyncOptionLoading(value),
       onTap: (event) {
         widget.onTap?.call(tEvent);
 
@@ -610,6 +695,9 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
         }
 
         _selectHandle(optNode);
+      },
+      onContextAction: (event) {
+        widget.onContextAction?.call(tEvent, event);
       },
       leading: Row(
         spacing: 4,
@@ -653,7 +741,7 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
   }
 
   /// 接收 FocusNode 的创建并缓存，用于后续聚焦操作，使用这种方式是为了避免大规模的创建 FocusNode 和管理
-  bool onFocusNodeNotification(
+  bool _onFocusNodeNotification(
     ZoTriggerFocusNodeChangedNotification notification,
   ) {
     if (notification.data is ZoOptionEventData) {
@@ -665,6 +753,54 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
     return false;
   }
 
+  void _onNodeToggle(TreeSliverNode<Object?> node) {
+    _fixedHeightUpdateDebouncer.run(_updateFixedHeight);
+  }
+
+  /// 执行异步加载操作
+  ///
+  /// - 展开时，如果有异步选项并且没有已加载数据对其进行加载，展开所有时不触发
+  /// - 如果已经在加载过程中则跳过
+  /// - 对选项显示加载标识，并在加载完成后自动展开
+  /// - 异步加载的数据触发变异事件时，需要携带特殊标记
+  void _asyncLoadHandler(Object value) async {
+    final optionNode = controller.getNode(value);
+
+    if (optionNode == null) return;
+
+    final option = optionNode.option;
+
+    // 非空时跳过
+    if (option.options != null && option.options!.isNotEmpty) return;
+
+    // 不存在异步加载器时跳过
+    if (option.loadOptions == null) return;
+
+    // 已经在进行异步加载
+    if (controller.isAsyncOptionLoading(value)) return;
+
+    try {
+      final future = controller.loadOptions(value);
+
+      // 更新组件以更新选项加载UI
+      setState(() {});
+
+      await future;
+    } catch (e, stack) {
+      widget.onOptionLoadError?.call(e, stack);
+    } finally {
+      // 刷新组件以更新选项加载UI
+      setState(() {});
+    }
+  }
+
+  /// 筛选：支持传入 match 值、 filter 函数，都可监听变更
+
+  /// 处理按键操作
+  KeyEventResult _onKeyEvent(FocusNode node, KeyEvent event) {
+    return KeyEventResult.ignored;
+  }
+
   @override
   @protected
   Widget build(BuildContext context) {
@@ -672,23 +808,32 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
 
     _activeTextColor = _getActiveTextColor();
 
-    return NotificationListener<ZoTriggerFocusNodeChangedNotification>(
-      onNotification: onFocusNodeNotification,
-      child: CustomScrollView(
-        controller: scrollController,
-        slivers: <Widget>[
-          SliverPadding(
-            padding: widget.padding ?? EdgeInsets.all(_style!.space2),
-            sliver: TreeSliver<Object>(
-              tree: _treeNodes,
-              controller: _treeSliverController,
-              treeNodeBuilder: _treeNodeBuilder,
-              treeRowExtentBuilder: _treeRowExtentBuilder,
-              toggleAnimationStyle: AnimationStyle.noAnimation,
-              indentation: TreeSliverIndentationType.none,
-            ),
+    return SizedBox(
+      height: _fixedHeight,
+      child: NotificationListener<ZoTriggerFocusNodeChangedNotification>(
+        onNotification: _onFocusNodeNotification,
+        child: Focus(
+          focusNode: _focusNode,
+          onKeyEvent: _onKeyEvent,
+          skipTraversal: true,
+          child: CustomScrollView(
+            controller: scrollController,
+            slivers: <Widget>[
+              SliverPadding(
+                padding: widget.padding,
+                sliver: TreeSliver<Object>(
+                  tree: _treeNodes,
+                  controller: _treeSliverController,
+                  treeNodeBuilder: _treeNodeBuilder,
+                  treeRowExtentBuilder: _treeRowExtentBuilder,
+                  toggleAnimationStyle: AnimationStyle.noAnimation,
+                  indentation: TreeSliverIndentationType.none,
+                  onNodeToggle: _onNodeToggle,
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

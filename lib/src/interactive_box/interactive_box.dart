@@ -72,7 +72,7 @@ class ZoInteractiveBox extends StatefulWidget {
   final ZoTriggerListener<ZoTriggerToggleEvent>? onFocusChanged;
 
   /// 触发上下文操作, 在鼠标操作中表示右键点击, 在触摸操作中表示长按
-  final void Function(ZoTriggerEvent event)? onContextAction;
+  final ZoTriggerListener<ZoTriggerEvent>? onContextAction;
 
   /// 传递到事件对象的额外信息, 可在事件回调中通过 event.data 访问
   final dynamic data;
@@ -386,8 +386,7 @@ class _ZoInteractiveBoxState extends State<ZoInteractiveBox> {
       ZoTrigger(
         enabled: widget.enabled && widget.interactive,
         changeCursor: widget.interactive,
-        canRequestFocus:
-            widget.interactive && widget.canRequestFocus && !isLoading,
+        canRequestFocus: widget.interactive && widget.canRequestFocus,
         onActiveChanged: onActiveChanged,
         onFocusChanged: onFocusChanged,
         onContextAction: onContextAction,
