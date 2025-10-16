@@ -724,10 +724,12 @@ class _ZoOptionViewListState extends State<ZoOptionViewList> {
 
 /// 根据选项预计算的辅助节点信息，包含所在层级、父级等
 class ZoOptionNode {
-  const ZoOptionNode({
+  ZoOptionNode({
     required this.value,
     required this.option,
-    required this.parent,
+    this.parent,
+    this.next,
+    this.prev,
     required this.level,
     required this.index,
     required this.path,
@@ -739,17 +741,23 @@ class ZoOptionNode {
   /// 当前选项
   final ZoOption option;
 
-  /// 父级选项
-  final ZoOption? parent;
+  /// 父节点
+  ZoOptionNode? parent;
+
+  /// 前一个节点
+  ZoOptionNode? prev;
+
+  /// 后一个节点
+  ZoOptionNode? next;
 
   /// 选项所在层级
-  final int level;
+  int level;
 
   /// 选项在父级选项中的索引
-  final int index;
+  int index;
 
   /// 用于访问该项的索引列表
-  final List<int> path;
+  List<int> path;
 }
 
 /// 在调用 [ZoOptionController.each] 时传入
@@ -770,7 +778,7 @@ class ZoOptionEachArgs {
   int index;
 }
 
-typedef ZoOptionFilter = bool Function(ZoOptionNode args);
+typedef ZoOptionFilter = bool Function(ZoOptionNode node);
 
 /// 提供选中项管理、树形数据管理、高效的树节点查询、选项数据/展开管理等选项通用行为的处理
 ///
@@ -787,13 +795,16 @@ class ZoOptionController {
     Iterable<Object>? selected,
     Iterable<Object>? openSelected,
     String? matchString,
+    bool caseSensitive = false,
     RegExp? matchRegexp,
     ZoOptionFilter? filter,
     this.each,
     this.eachStart,
     this.eachEnd,
+    this.onFilterComplete,
   }) : _matchRegexp = matchRegexp,
        _matchString = matchString,
+       _caseSensitive = caseSensitive,
        _filter = filter,
        _options = options {
     selector = Selector(
@@ -823,21 +834,41 @@ class ZoOptionController {
   /// 对于不需要管理 open 状态的选项，可以设置为 true 来强制将所有项视为开启
   final bool ignoreOpenStatus;
 
-  /// 当前是否由于选中心变更而正在执行 [refreshFilters], 该类型的变更计算只处理关联关系计算，
+  /// 当前是否由于选中项变更而正在执行 [refreshFilters], 该类型的变更计算只处理关联关系计算，
   /// 选项的数量和结构没有变更，可以由此来辅助判断是否要跳过某些行为
   bool get selectChangedProcessing => _selectChangedProcessing;
   bool _selectChangedProcessing = false;
 
   /// 用于过滤选项的文本, 设置后只显示包含该文本的选项
+  ///
+  /// 间接匹配：节点的父级、子级、自身任意一项匹配都会视为匹配
   String? get matchString => _matchString;
   String? _matchString;
+  String? _matchStringLowercase;
   set matchString(String? value) {
     _matchString = value;
+
+    if (_matchString != null) {
+      _matchStringLowercase = _matchString!.toLowerCase();
+    }
+
+    _matchStatus.clear();
+    refreshFilters();
+  }
+
+  /// 匹配时是否区分大小写, 仅用于 [matchString], [matchRegexp] 等过滤方式请通过自有参数实现
+  bool get caseSensitive => _caseSensitive;
+  bool _caseSensitive;
+  set caseSensitive(bool newCaseSensitive) {
+    if (_caseSensitive == newCaseSensitive) return;
+    _caseSensitive = newCaseSensitive;
     _matchStatus.clear();
     refreshFilters();
   }
 
   /// 用于过滤选项的正则, 设置后只显示匹配的选项
+  ///
+  /// 间接匹配：节点的父级、子级、自身任意一项匹配都会视为匹配
   RegExp? get matchRegexp => _matchRegexp;
   RegExp? _matchRegexp;
   set matchRegexp(RegExp? value) {
@@ -846,10 +877,10 @@ class ZoOptionController {
     refreshFilters();
   }
 
-  /// 筛选阶段会对每个符合条件的选项调用，返回 false 时，选项不会包含在 [filteredFlatList],
-  /// 可以将该方法当做 [matchString] / [matchRegexp] 的扩展版本使用，提供更进一步的筛选能力
+  /// 筛选阶段会对每个符合显示条件的选项调用，可以返回 false 将选项过滤掉,
+  /// 可将该方法当做 [matchString] / [matchRegexp] 的扩展版本使用，提供更进一步的筛选能力
   ///
-  /// 间接匹配：如果一个选项匹配, 其子级会跳过检测，直接视为匹配；子选项匹配也会使父级间接被匹配
+  /// 间接匹配：节点的父级、子级、自身任意一项匹配都会视为匹配
   ///
   /// filter 以选项的实际顺序倒序调用
   ZoOptionFilter? get filter => _filter;
@@ -873,6 +904,10 @@ class ZoOptionController {
 
   /// 在 [each] 结束后调用
   VoidCallback? eachEnd;
+
+  /// 在存在筛选条件时，如果存在匹配项, 会在完成筛选后调用此方法进行通知，回调会传入所有严格匹配的选项，
+  /// 用于上层组件处理展开、聚焦等交互优化
+  ValueChanged<List<ZoOptionNode>>? onFilterComplete;
 
   /// 未经处理的原始选项， 设置后会更新当前选项缓存
   List<ZoOption> get options => _options;
@@ -932,9 +967,11 @@ class ZoOptionController {
     _flatList = [];
     _nodes.clear();
 
+    ZoOptionNode? lastNode;
+
     void loop({
       required List<ZoOption> list,
-      ZoOption? parent,
+      ZoOptionNode? parent,
       required List<int> path,
     }) {
       final List<ZoOption> newList = parent != null ? [] : _processedOptions;
@@ -951,6 +988,10 @@ class ZoOptionController {
           index: i,
           path: [...path, i],
         );
+
+        node.prev = lastNode;
+        lastNode?.next = node;
+        lastNode = node;
 
         newList.add(cloned);
         _flatList.add(cloned);
@@ -971,7 +1012,7 @@ class ZoOptionController {
           if (cloned.options != null && cloned.options!.isNotEmpty) {
             loop(
               list: cloned.options!,
-              parent: cloned,
+              parent: node,
               path: node.path,
             );
           }
@@ -979,7 +1020,7 @@ class ZoOptionController {
       }
 
       if (parent != null) {
-        parent.options = newList;
+        parent.option.options = newList;
       }
     }
 
@@ -997,9 +1038,11 @@ class ZoOptionController {
     _flatList = [];
     _nodes.clear();
 
+    ZoOptionNode? lastNode;
+
     void loop({
       required List<ZoOption> list,
-      ZoOption? parent,
+      ZoOptionNode? parent,
       required List<int> path,
     }) {
       for (var i = 0; i < list.length; i++) {
@@ -1014,6 +1057,10 @@ class ZoOptionController {
           path: [...path, i],
         );
 
+        node.prev = lastNode;
+        lastNode?.next = node;
+        lastNode = node;
+
         _flatList.add(opt);
         _nodes[opt.value] = node;
 
@@ -1023,7 +1070,7 @@ class ZoOptionController {
           if (opt.options != null && opt.options!.isNotEmpty) {
             loop(
               list: opt.options!,
-              parent: opt,
+              parent: node,
               path: node.path,
             );
           }
@@ -1040,6 +1087,10 @@ class ZoOptionController {
     refreshFilters();
   }
 
+  String? _lastMatchString;
+  RegExp? _lastMatchRegexp;
+  ZoOptionFilter? _lastFilter;
+
   /// 重新根据 open 、match、filter 等过滤状态更新 [filteredFlatList]，应在相关选项变更后调用
   void refreshFilters() {
     final List<ZoOption> filteredList = [];
@@ -1054,6 +1105,21 @@ class ZoOptionController {
 
     eachStart?.call();
 
+    // 直接匹配的选项
+    final List<ZoOptionNode> exactMatchNode = [];
+
+    final filterChanged =
+        _lastMatchString != matchString ||
+        _lastMatchRegexp != matchRegexp ||
+        _lastFilter != filter;
+
+    _lastMatchString = matchString;
+    _lastMatchRegexp = matchRegexp;
+    _lastFilter = filter;
+
+    final needEmitFilterEvent =
+        filterChanged && !selectChangedProcessing && onFilterComplete != null;
+
     // 倒序处理每一项，因为父节点会依赖子节点的匹配状态
     for (var i = flatList.length - 1; i >= 0; i--) {
       final opt = flatList[i];
@@ -1062,17 +1128,18 @@ class ZoOptionController {
       final (:isOpen, :isMatch) = getFilterStatus(node);
       final isSelected = selector.isSelected(node.value);
 
-      if (isMatch && filter != null) {}
-
       var everyParentIsOpen = true;
       var parentHasMatch = false;
 
-      ZoOption? parent = node.parent;
+      ZoOptionNode? parent = node.parent;
+
+      if (isMatch && needEmitFilterEvent) {
+        exactMatchNode.insert(0, node);
+      }
 
       // 检测所有父级
       while (parent != null) {
-        final parentNode = _nodes[parent.value]!;
-        final parentFilter = getFilterStatus(parentNode);
+        final parentFilter = getFilterStatus(parent);
 
         if (!parentFilter.isOpen) {
           everyParentIsOpen = false;
@@ -1083,14 +1150,14 @@ class ZoOptionController {
         }
 
         if (isMatch) {
-          optionsHasMatchChild[node.value] = true;
+          optionsHasMatchChild[parent.value] = true;
         }
 
         if (isSelected) {
-          _branchesHasSelectedChild[parentNode.value] = true;
+          _branchesHasSelectedChild[parent.value] = true;
         }
 
-        parent = parentNode.parent;
+        parent = parent.parent;
       }
 
       final childHasMatch = optionsHasMatchChild[node.value] == true;
@@ -1115,6 +1182,10 @@ class ZoOptionController {
     }
 
     _filteredFlatList = filteredList;
+
+    if (needEmitFilterEvent && exactMatchNode.isNotEmpty) {
+      onFilterComplete!(exactMatchNode);
+    }
 
     eachEnd?.call();
   }
@@ -1219,7 +1290,7 @@ class ZoOptionController {
     return _branchesHasSelectedChild[value] ?? false;
   }
 
-  /// 选项是否可见
+  /// 选项是否可见, 即是否在 [filteredFlatList] 列表中
   bool isVisible(Object value) {
     return _visibleCache[value] ?? false;
   }
@@ -1250,7 +1321,12 @@ class ZoOptionController {
     if (text == null) return false;
 
     if (matchString != null) {
-      return text.contains(matchString!);
+      if (!caseSensitive && _matchStringLowercase != null) {
+        final lowerCaseText = text.toLowerCase();
+        return lowerCaseText.contains(_matchStringLowercase!);
+      } else {
+        return text.contains(matchString!);
+      }
     } else {
       return matchRegexp!.hasMatch(text);
     }
@@ -1298,6 +1374,28 @@ class ZoOptionController {
   /// 获取指定选项的节点信息，其中预缓存了一些树节点的有用信息
   ZoOptionNode? getNode(Object value) {
     return _nodes[value];
+  }
+
+  /// 获取前一个可见节点
+  ZoOptionNode? getPrevVisibleNode(Object value) {
+    var node = getNode(value)?.prev;
+
+    while (node != null && !isVisible(node.value)) {
+      node = node.prev;
+    }
+
+    return node;
+  }
+
+  /// 获取后一个可见节点
+  ZoOptionNode? getNextVisibleNode(Object value) {
+    var node = getNode(value)?.next;
+
+    while (node != null && !isVisible(node.value)) {
+      node = node.next;
+    }
+
+    return node;
   }
 
   /// 销毁对象

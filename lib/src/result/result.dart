@@ -40,6 +40,7 @@ class ZoResult extends StatelessWidget {
 
     return Row(
       spacing: style.space1,
+      mainAxisSize: MainAxisSize.min,
       children: [
         if (icon != null) icon!,
         if (title != null) title!,

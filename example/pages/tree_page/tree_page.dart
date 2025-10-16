@@ -232,6 +232,8 @@ class _TreePageState extends State<TreePage> {
 
   GlobalKey<ZoTreeState> treeKey = GlobalKey();
 
+  String? filterString;
+
   @override
   Widget build(BuildContext context) {
     final style = context.zoStyle;
@@ -256,6 +258,7 @@ class _TreePageState extends State<TreePage> {
                 maxHeight: 400,
                 key: treeKey,
                 options: options1,
+                matchString: filterString,
                 value: const ["value 4"],
                 // expands: const ["value 1", "value 2"],
                 expandTopLevel: true,
@@ -281,12 +284,7 @@ class _TreePageState extends State<TreePage> {
                   print("event $event $triggerEvent");
                 },
                 trailingBuilder: (event) {
-                  return ZoButton(
-                    plain: true,
-                    size: ZoSize.small,
-                    child: Text("删除"),
-                    constraints: BoxConstraints(minHeight: 24),
-                  );
+                  return TestCount();
                 },
                 // indentDots: false,
                 // enable: false,
@@ -337,10 +335,31 @@ class _TreePageState extends State<TreePage> {
               },
             ),
             ZoButton(
+              child: Text("jump 5d1-2-6-1 with animation"),
+              onTap: () {
+                treeKey.currentState!.jumpTo(
+                  "value 5d1-2-6-1",
+                  animation: true,
+                );
+              },
+            ),
+            ZoButton(
               child: Text("focus 5d1-2-6-1"),
               onTap: () {
                 treeKey.currentState!.focusOption("value 5d1-2-6-1");
               },
+            ),
+            SizedBox(
+              width: 180,
+              child: ZoInput<String>(
+                hintText: Text("输入筛选内容"),
+                value: filterString,
+                onChanged: (newValue) {
+                  setState(() {
+                    filterString = newValue;
+                  });
+                },
+              ),
             ),
             Container(
               // height: 500,
@@ -357,8 +376,8 @@ class _TreePageState extends State<TreePage> {
                     border: Border.all(color: Colors.red),
                   ),
                   child: ZoTree(
-                    options: options2,
-                    maxHeight: 400,
+                    options: [],
+                    maxHeight: 100,
                     // indentDots: false,
                     // enable: false,
                     // indentSize: Size(18, 18),
@@ -371,5 +390,29 @@ class _TreePageState extends State<TreePage> {
         ),
       ),
     );
+  }
+}
+
+class TestCount extends StatefulWidget {
+  const TestCount({super.key});
+
+  @override
+  State<TestCount> createState() => _TestCountState();
+}
+
+class _TestCountState extends State<TestCount> {
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+
+    count = createTempId();
+  }
+
+  late String count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(count);
   }
 }

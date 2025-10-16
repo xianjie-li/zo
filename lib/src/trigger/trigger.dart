@@ -53,7 +53,7 @@ class ZoTriggerEvent extends Notification {
   /// 触发事件的设备类型, 仅部分事件包含
   final PointerDeviceKind? deviceKind;
 
-  /// 除非事件的按键设备类型, 仅部分事件包含
+  /// 触发事件的按键设备类型, 仅部分事件包含
   final KeyEventDeviceType? keyEventDeviceType;
 
   @override
@@ -157,16 +157,23 @@ class ZoTriggerDragEvent extends ZoTriggerEvent {
 ///
 /// 会在创建、更新、销毁时触发
 class ZoTriggerFocusNodeChangedNotification extends Notification {
-  /// 焦点节点,
-  final FocusNode? focusNode;
+  /// 焦点节点
+  final FocusNode focusNode;
 
-  /// 传递给 [ZoTrigger] 的 data
+  /// 是否激活
+  ///
+  /// 为什么不使用直接将 FocusNode 设置为 null，而是提供 active?
+  /// - 在某些场景下，比如 Sliver 滚动中，同一个位置的组件可能很快速的卸载并挂载，组件会创建两个不同的 focusNode, 这可以避免由于挂载和卸载顺序的不对称导致的错误通知，即：可能存在新组件挂载后，前一个组件才卸载完成
+  final bool active;
+
+  /// 传递给 [ZoTrigger] 的 event.data
   final dynamic data;
 
   /// 构造函数
   ZoTriggerFocusNodeChangedNotification({
-    this.focusNode,
+    required this.focusNode,
     this.data,
+    required this.active,
   });
 }
 
@@ -310,6 +317,7 @@ class _ZoTriggerState extends State<ZoTrigger> {
     ZoTriggerFocusNodeChangedNotification(
       focusNode: focusNode,
       data: widget.data,
+      active: true,
     ).dispatch(context);
   }
 
@@ -333,21 +341,24 @@ class _ZoTriggerState extends State<ZoTrigger> {
       ZoTriggerFocusNodeChangedNotification(
         focusNode: focusNode,
         data: widget.data,
+        active: true,
       ).dispatch(context);
     }
   }
 
   @override
   void dispose() {
-    super.dispose();
     ZoTriggerFocusNodeChangedNotification(
-      focusNode: null,
+      focusNode: focusNode,
       data: widget.data,
+      active: false,
     ).dispatch(context);
 
     if (widget.focusNode != focusNode) {
       focusNode.dispose();
     }
+
+    super.dispose();
   }
 
   /// 在 enable 从 true 切换到 false 时, 需要强制结束未完成的事件

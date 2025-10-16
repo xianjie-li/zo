@@ -100,7 +100,7 @@ class MyAppState extends State<MyApp> {
 }
 ```
 
-2. 在代码中通过 `ZoLocalizations.of(context).myMsg` 或 `context.zoLocal.myMsg` 获取并使用
+2. 在代码中通过 `ZoLocalizations.of(context).myMsg` 或 `context.zoLocale.myMsg` 获取并使用
 
 
 3. (可选)如果要添加新的语言包, 需要继承 `ZoLocalizations` 并实现 `ZoLocalizationsDefault`, 然后在 `resourceMap` 中添加它, 比如:
