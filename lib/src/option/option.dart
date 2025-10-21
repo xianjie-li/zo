@@ -1376,26 +1376,52 @@ class ZoOptionController {
     return _nodes[value];
   }
 
-  /// 获取前一个可见节点
-  ZoOptionNode? getPrevVisibleNode(Object value) {
-    var node = getNode(value)?.prev;
+  /// 获取前一个节点
+  ZoOptionNode? getPrevNode(
+    ZoOptionNode node, [
+    bool includeInvisible = false,
+  ]) {
+    var curNode = node.prev;
 
-    while (node != null && !isVisible(node.value)) {
-      node = node.prev;
+    while (curNode != null &&
+        (!includeInvisible || !isVisible(curNode.value))) {
+      curNode = curNode.prev;
     }
 
-    return node;
+    return curNode;
   }
 
-  /// 获取后一个可见节点
-  ZoOptionNode? getNextVisibleNode(Object value) {
-    var node = getNode(value)?.next;
+  /// 获取后一个节点
+  ZoOptionNode? getNextNode(
+    ZoOptionNode node, [
+    bool includeInvisible = false,
+  ]) {
+    var curNode = node.prev;
 
-    while (node != null && !isVisible(node.value)) {
-      node = node.next;
+    while (curNode != null &&
+        (!includeInvisible || !isVisible(curNode.value))) {
+      curNode = curNode.next;
     }
 
-    return node;
+    return curNode;
+  }
+
+  /// 获取兄弟选项
+  List<ZoOption> getSiblings(
+    ZoOptionNode node, [
+    bool includeInvisible = true,
+  ]) {
+    final list = node.level == 0
+        ? _processedOptions
+        : node.parent?.option.options ?? [];
+
+    if (includeInvisible) {
+      return list;
+    }
+
+    return list.where((o) {
+      return isVisible(o.value);
+    }).toList();
   }
 
   /// 销毁对象

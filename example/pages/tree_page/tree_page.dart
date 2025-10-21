@@ -268,7 +268,7 @@ class _TreePageState extends State<TreePage> {
                 },
                 selectionType: ZoSelectionType.multiple,
                 implicitMultipleSelection: true,
-                branchSelectable: false,
+                // branchSelectable: false,
                 onTap: (node) {
                   print("tapRow: ${node}");
                 },

@@ -79,5 +79,10 @@ State/SelectState添加of
 - x 筛选
 - x empty
 - 键盘交互
+- 固定当前展开项
 - 拖动排序
 - onOptionsMutation
+
+指示器显示
+- 非分支节点
+- 顶层选项不显示

@@ -22,7 +22,7 @@ class ZoTree extends ZoCustomFormWidget<Iterable<Object>> {
     required this.options,
     this.onOptionsMutation,
     this.selectionType = ZoSelectionType.multiple,
-    this.branchSelectable = false,
+    this.branchSelectable = true,
     this.implicitMultipleSelection = true,
     this.scrollController,
     this.onTap,
@@ -48,6 +48,7 @@ class ZoTree extends ZoCustomFormWidget<Iterable<Object>> {
     this.expands = const [],
     this.enable = true,
     this.indentDots = true,
+    this.onlyLeafIndentDot = true,
     this.sortable = false,
   });
 
@@ -149,8 +150,11 @@ class ZoTree extends ZoCustomFormWidget<Iterable<Object>> {
   /// 设置为 false 可禁止选中、排序等操作
   final bool enable;
 
-  /// 为每个缩进渲染缩进标记
+  /// 渲染缩进标记 dot
   final bool indentDots;
+
+  /// 只为叶子节点渲染缩进标记 dot
+  final bool onlyLeafIndentDot;
 
   /// 是否可拖动节点进行排序
   final bool sortable;
@@ -219,6 +223,15 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
 
   /// 缓存已创建的树节点
   final HashMap<Object, TreeSliverNode<Object>> _nodeCache = HashMap();
+
+  /// 全选操作计数
+  int _allSelectActionCount = 0;
+
+  /// 当前聚焦选项的值
+  Object? currentFocusValue;
+
+  /// 最后一个通过非批量操作选中的节点的值
+  Object? lastSelectedNodeValue;
 
   /// 全选按键
   final allSelectActivator = ZoShortcutsHelper.platformAwareActivator(
@@ -518,6 +531,7 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
               focusOption(value);
             }
           });
+          setState(() {}); // 防止 addPostFrameCallback 之后没有绘制帧导致无法正常更新
         }
         return;
       } else {
@@ -704,25 +718,7 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
     }
   }
 
-  /// 构造选项前方的缩进点
-  Widget _builderIndentDots(int number) {
-    if (number == 0) return const SizedBox.shrink();
-    return Row(
-      children: [
-        for (int i = 0; i < number; i++)
-          SizedBox.square(
-            dimension: widget.indentSize.width,
-            child: widget.indentDots
-                ? const Center(
-                    child: _ZoTreeIndentDot(),
-                  )
-                : null,
-          ),
-      ],
-    );
-  }
-
-  /// 对指定的单个节点至少选中行为
+  /// 对指定的单个节点执行选中行为
   void _selectHandle(ZoOptionNode node) {
     if (!widget.enable) return;
 
@@ -733,14 +729,77 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
     if (!widget.branchSelectable && isBranch) return;
 
     if (widget.selectionType == ZoSelectionType.multiple) {
-      if (widget.implicitMultipleSelection) {
-        selector.setSelected([node.value]);
-      } else {
-        selector.toggle(node.value);
-      }
+      _multipleSelectHandle(node);
     } else {
       selector.setSelected([node.value]);
     }
+  }
+
+  /// 对多选的处理
+  void _multipleSelectHandle(ZoOptionNode node) {
+    final isSelected = selector.isSelected(node.value);
+
+    if (ZoShortcutsHelper.isSingleKeyPressed &&
+        ZoShortcutsHelper.isCommandPressed) {
+      selector.toggle(node.value);
+
+      if (!isSelected) {
+        lastSelectedNodeValue = node.value;
+      }
+      return;
+    }
+
+    if (ZoShortcutsHelper.isSingleKeyPressed &&
+        ZoShortcutsHelper.isShiftPressed &&
+        lastSelectedNodeValue != null) {
+      selector.setSelected(
+        _getRangeVisibleValues(lastSelectedNodeValue!, node.value),
+      );
+      return;
+    }
+
+    if (widget.implicitMultipleSelection) {
+      selector.setSelected([node.value]);
+    } else {
+      selector.toggle(node.value);
+    }
+
+    if (!isSelected) {
+      lastSelectedNodeValue = node.value;
+    }
+  }
+
+  /// 获取value1到value2区间的可见选项值
+  List<Object> _getRangeVisibleValues(Object value1, Object value2) {
+    final values = <Object>[];
+
+    if (value1 == value2) {
+      return [value1];
+    }
+
+    bool startFlag = false;
+
+    _eachSliverNodes((sliverNode, optionNode) {
+      final value = sliverNode.content;
+
+      if (startFlag) {
+        values.add(value);
+      }
+
+      if (value == value1 || value == value2) {
+        values.add(value);
+
+        if (!startFlag) {
+          startFlag = true;
+        } else {
+          return true;
+        }
+      }
+
+      return false;
+    });
+
+    return values;
   }
 
   /// 根据传入值获取选项应该使用的文本和图标颜色
@@ -760,6 +819,7 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
     return darkStyle.titleTextColor;
   }
 
+  /// 构造行节点
   Widget _treeNodeBuilder(
     BuildContext context,
     TreeSliverNode<Object?> node,
@@ -790,27 +850,41 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
 
     final tEvent = ZoTreeEvent(node: optNode, instance: this);
 
-    final leadingNodes = Row(
-      children: [
-        _builderIndentDots(indentSpaceNumber),
-        if (isBranch)
-          SizedBox(
-            height: widget.indentSize.height,
-            width: widget.indentSize.width,
-            child: AnimatedRotation(
-              turns: node.isExpanded ? 0.25 : 0.0,
-              duration: const Duration(milliseconds: 150),
-              child: Icon(
-                widget.togglerIcon ?? Icons.arrow_right_rounded,
-                size: widget.indentSize.height,
-                color: isSelected
-                    // 因为嵌入到了 ZoInteractiveBox 中，需要确保颜色与选项文本一致
-                    ? _activeTextColor
-                    : _style!.textColor,
+    final leadingNodes = GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: isBranch ? () => _onBranchLeadingTap(optNode) : null,
+      child: Row(
+        children: [
+          for (int i = 0; i < indentSpaceNumber; i++)
+            SizedBox.square(
+              dimension: widget.indentSize.width,
+              key: ValueKey(i),
+              child: _identDotBuilder(
+                index: i,
+                isBranch: isBranch,
+                indentSpaceNumber: indentSpaceNumber,
               ),
             ),
-          ),
-      ],
+          if (isBranch)
+            SizedBox(
+              key: const ValueKey("__Expand"),
+              height: widget.indentSize.height,
+              width: widget.indentSize.width,
+              child: AnimatedRotation(
+                turns: node.isExpanded ? 0.25 : 0.0,
+                duration: const Duration(milliseconds: 150),
+                child: Icon(
+                  widget.togglerIcon ?? Icons.arrow_right_rounded,
+                  size: widget.indentSize.height,
+                  color: isSelected
+                      // 因为嵌入到了 ZoInteractiveBox 中，需要确保颜色与选项文本一致
+                      ? _activeTextColor
+                      : _style!.textColor,
+                ),
+              ),
+            ),
+        ],
+      ),
     );
 
     return ZoOptionView(
@@ -818,7 +892,10 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
       option: optNode.option,
       arrow: false,
       active: isSelected,
-      padding: EdgeInsets.all(_style!.space1),
+      padding: EdgeInsets.symmetric(
+        horizontal: _style!.space1,
+        vertical: 0,
+      ),
       activeColor: widget.activeColor,
       highlightColor: widget.highlightColor,
       loading: controller.isAsyncOptionLoading(value),
@@ -853,6 +930,25 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
     if (node.content == null) return 0;
     final optNode = controller.getNode(node.content!)!;
     return optNode.option.height;
+  }
+
+  /// 渲染缩进 dot
+  Widget? _identDotBuilder({
+    required bool isBranch,
+    required int index,
+    required int indentSpaceNumber,
+  }) {
+    if (!widget.indentDots) return null;
+
+    final show = widget.onlyLeafIndentDot
+        ? !isBranch && index == indentSpaceNumber - 1
+        : true;
+
+    if (!show) return null;
+
+    return const Center(
+      child: _ZoTreeIndentIndicator(),
+    );
   }
 
   /// 更新 _useLightText 的值
@@ -904,6 +1000,12 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
     _selectHandle(node);
   }
 
+  /// 分支行前方节点点击时单独处理展开
+  void _onBranchLeadingTap(ZoOptionNode node) {
+    toggle(node.value);
+    focusOption(node.value);
+  }
+
   void _onContextAction(ZoTriggerEvent event) {
     final node = _getNodeByEvent(event);
 
@@ -912,9 +1014,6 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
       event,
     );
   }
-
-  /// 当前聚焦选项的值
-  Object? currentFocusValue;
 
   void _onFocusChanged(ZoTriggerToggleEvent event) {
     final node = _getNodeByEvent(event);
@@ -982,8 +1081,6 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
     widget.onFilterComplete?.call(matchList);
   }
 
-  int _allSelectCount = 0;
-
   /// 处理按键操作
   KeyEventResult _onKeyEvent(FocusNode node, KeyEvent event) {
     bool isAllSelect = false;
@@ -992,14 +1089,10 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
     if (event is KeyDownEvent) {
       isAllSelect = ZoShortcutsHelper.checkEvent(allSelectActivator, event);
 
-      // 不是单独按下按键时，更新当前的全选计数
-      if (!(ZoShortcutsHelper.isCommandPressed &&
-          ZoShortcutsHelper.isSingleKeyPressed)) {
-        if (isAllSelect) {
-          _allSelectCount++;
-        } else {
-          _allSelectCount = 0;
-        }
+      if (isAllSelect) {
+        _allSelectActionCount++;
+      } else {
+        _allSelectActionCount = 0;
       }
     }
 
@@ -1014,21 +1107,73 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
     return KeyEventResult.ignored;
   }
 
-  /// 全选操作：
+  /// 全选操作
   ///
-  /// 实现目标：
+  /// 实现目标
   /// 全选操作可重叠，第一次全选当前焦点所在层，下一次选中当前层的父级，依次执行直到根节点为止
   ///
-  /// 聚焦节点：
-  /// - 记录全选操作时聚焦的节点，首次全选操作先清空其他选中项
-  /// - 如果重复全选时焦点节点变更了，重置计数，并清空之前的选中项
+  /// 中断条件
+  /// 聚焦节点变更 or 全选按键非连续
   ///
   /// 操作类型：
   /// - 全选：选中当前参照节点所在层的所有节点，下一次操作改为移动到父级
   /// - 移动到父级：移动后，下一次操作改为全选当前层
   KeyEventResult _onShortcutsAllSelect() {
-    print("allSelectCount: ${_allSelectCount}");
-    return KeyEventResult.ignored;
+    if (currentFocusValue == null ||
+        widget.selectionType != ZoSelectionType.multiple) {
+      _allSelectActionCount = 0;
+      return KeyEventResult.ignored;
+    }
+
+    final focusNode = controller.getNode(currentFocusValue!);
+
+    assert(focusNode != null);
+
+    // 首次全选操作：清空当前所有选中，然后选中当前层所有节点
+    if (_allSelectActionCount == 1) {
+      final list = controller.getSiblings(focusNode!, false);
+      final values = list.map((o) => o.value);
+
+      selector.setSelected(values);
+
+      return KeyEventResult.handled;
+    }
+
+    // 除了第一层外，所有层因为存在父级自身和整层的选中，需要占用两个计数
+    var moveLevel = (_allSelectActionCount / 2).floor();
+
+    // 当前操作时选中父级自身
+    final isParentSelectAction = _allSelectActionCount / 2 % 1 == 0;
+
+    // 计数已超过当前层，跳过
+    final isOverflow = moveLevel > focusNode!.level;
+
+    if (isOverflow || moveLevel <= 0) {
+      return KeyEventResult.ignored;
+    }
+
+    // 查找当前要处理的层对应的父节点
+    ZoOptionNode? lastMoveParent = focusNode;
+
+    while (moveLevel > 0) {
+      moveLevel--;
+      lastMoveParent = lastMoveParent?.parent;
+    }
+
+    if (lastMoveParent == null) return KeyEventResult.ignored;
+
+    if (isParentSelectAction) {
+      selector.select(lastMoveParent.value);
+      return KeyEventResult.handled;
+    }
+
+    final list = controller.getSiblings(lastMoveParent, false);
+
+    final values = list.map((o) => o.value);
+
+    selector.selectList(values);
+
+    return KeyEventResult.handled;
   }
 
   /// 左键操作：收起当前层，如果已经收起，移动焦点到父节点
@@ -1128,14 +1273,9 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
 }
 
 /// 渲染树节点前方的缩进指示点
-class _ZoTreeIndentDot extends StatefulWidget {
-  const _ZoTreeIndentDot({super.key});
+class _ZoTreeIndentIndicator extends StatelessWidget {
+  const _ZoTreeIndentIndicator({super.key});
 
-  @override
-  State<_ZoTreeIndentDot> createState() => _ZoTreeIndentDotState();
-}
-
-class _ZoTreeIndentDotState extends State<_ZoTreeIndentDot> {
   @override
   Widget build(BuildContext context) {
     return SizedBox.square(
