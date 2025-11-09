@@ -1,6 +1,9 @@
 import "package:flutter/material.dart";
+import "package:flutter/rendering.dart";
 import "package:zo/src/button/button.dart";
 import "package:zo/src/dialog/dialog.dart";
+import "package:zo/src/dnd/base.dart";
+import "package:zo/src/dnd/dnd.dart";
 import "package:zo/src/trigger/trigger.dart";
 import "package:zo/zo.dart";
 
@@ -12,94 +15,202 @@ class PlayPage extends StatefulWidget {
 }
 
 class _PlayPageState extends State<PlayPage> {
-  late final ZoDialog dialog;
+  int acceptedData = 0;
 
   @override
   void initState() {
     super.initState();
-
-    dialog = ZoDialog(
-      barrier: false,
-      tapAwayClosable: false,
-      escapeClosable: false,
-      dismissMode: ZoOverlayDismissMode.close,
-      offset: Offset(100, 100),
-      builder: (context) {
-        return ZoTrigger(
-          child: Container(
-            width: 200,
-            height: 200,
-            color: Colors.pink.shade100,
-          ),
-          changeCursor: true,
-          // onTap: (value) {
-          //   print("onTap: $value");
-          // },
-          // onTapDown: (value) {
-          //   print("onTapDown: $value");
-          // },
-          // onActiveChanged: (value) {
-          //   print("onActiveChanged: $value");
-          // },
-          // onFocusChanged: (value) {
-          //   print("onFocusChanged: $value");
-          // },
-          // onContextMenu: (value) {
-          //   print("onContextMenu: $value");
-          // },
-          // onMove: (value) {
-          //   print("onMove: $value");
-          // },
-          onDrag: (event) {
-            dialog.offset = dialog.offset! + event.delta;
-
-            if (event.last) {
-              // dialog.offset = Offset.zero;
-            }
-          },
-          // onTrigger: (e) {},
-        );
-      },
-    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SingleChildScrollView(
-        padding: EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ZoButton(
-              child: Text('打开弹窗'),
-              onTap: () {
-                zoOverlay.open(dialog);
-              },
-            ),
-            ZoTrigger(
-              onTap: (value) {
-                print("点击1");
-              },
-              child: Container(
-                width: 150,
-                height: 150,
-                color: Colors.red,
-                child: ZoTrigger(
-                  onActiveChanged: (value) {
-                    print(value);
-                  },
-                  child: UnconstrainedBox(
-                    child: Container(
-                      width: 50,
-                      height: 50,
-                      color: Colors.blue,
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: NotificationListener<ZoDNDAcceptNotification>(
+            onNotification: (notification) {
+              print(
+                "${notification.dndEvent.type} ${notification.dndEvent.activePosition}",
+              );
+              return true;
+            },
+            child: Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                ZoDND(
+                  draggable: true,
+                  feedback: Text("选项1"),
+                  child: Container(
+                    height: 100.0,
+                    width: 100.0,
+                    color: Colors.lightGreenAccent,
+                    child: const Center(child: Text("DND A")),
+                  ),
+                ),
+                Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.black),
+                  ),
+                  height: 300,
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        Container(
+                          height: 100.0,
+                          width: 100.0,
+                          color: Colors.cyan,
+                          child: Center(
+                            child: Text(
+                              "Value is updated to: $acceptedData",
+                            ),
+                          ),
+                        ),
+                        SizedBox.square(dimension: 500),
+                        ZoDND(
+                          child: Container(
+                            height: 100.0,
+                            width: 100.0,
+                            color: Colors.lightGreenAccent,
+                            child: const Center(child: Text("DND B")),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-              ),
+                ZoDND(
+                  droppablePosition: const ZoDNDPosition.all(),
+                  child: Container(
+                    height: 100.0,
+                    width: 100.0,
+                    color: Colors.lightGreenAccent,
+                    child: const Center(child: Text("DND C")),
+                  ),
+                  // onDragStart: (event) {
+                  //   print("start: ${event.activeDND} ${event.activePosition}");
+                  // },
+                  // onDragMove: (event) {
+                  //   print("move: ${event.activeDND} ${event.activePosition}");
+                  // },
+                  // onDragEnd: (event) {
+                  //   print("end: ${event.activeDND} ${event.activePosition}");
+                  // },
+                  // onAccept: (event) {
+                  //   print("accept: ${event.activeDND} ${event.activePosition}");
+                  // },
+                ),
+                ZoDND(
+                  droppablePosition: const ZoDNDPosition.all(),
+                  child: Container(
+                    height: 200.0,
+                    width: 200.0,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.red),
+                    ),
+                    padding: EdgeInsets.all(40),
+                    child: ZoDND(
+                      droppablePosition: const ZoDNDPosition.all(),
+                      child: Container(
+                        color: Colors.lightGreenAccent,
+                        child: const Center(child: Text("DND C")),
+                      ),
+                    ),
+                  ),
+                ),
+                ZoDND(
+                  droppablePosition: const ZoDNDPosition(
+                    left: true,
+                    right: true,
+                  ),
+                  child: Container(
+                    height: 100.0,
+                    width: 100.0,
+                    color: Colors.lightGreenAccent,
+                    child: const Center(child: Text("left right")),
+                  ),
+                ),
+                ZoDND(
+                  droppablePosition: const ZoDNDPosition(
+                    top: true,
+                    bottom: true,
+                  ),
+                  child: Container(
+                    height: 100.0,
+                    width: 100.0,
+                    color: Colors.lightGreenAccent,
+                    child: const Center(child: Text("top bottom")),
+                  ),
+                ),
+                ZoDND(
+                  droppablePosition: const ZoDNDPosition(
+                    top: true,
+                    center: true,
+                  ),
+                  child: Container(
+                    height: 100.0,
+                    width: 100.0,
+                    color: Colors.lightGreenAccent,
+                    child: const Center(child: Text("center top")),
+                  ),
+                ),
+                ZoDND(
+                  droppablePosition: const ZoDNDPosition(
+                    top: true,
+                    center: true,
+                  ),
+                  draggable: true,
+                  data: "dnd 10",
+                  builder: (context, dndContext) {
+                    return Container(
+                      height: 100.0,
+                      width: 250.0,
+                      color: Colors.lightGreenAccent,
+                      child: Text(
+                        "dragging: ${dndContext.dragging} dragDND: ${dndContext.dragDND?.data} draggable: ${dndContext.draggable} active ${dndContext.activePosition}",
+                      ),
+                    );
+                  },
+                ),
+                ZoDND(
+                  droppablePosition: const ZoDNDPosition.all(),
+                  data: "dnd 11",
+                  builder: (context, dndContext) {
+                    return Container(
+                      height: 100.0,
+                      width: 250.0,
+                      color: Colors.lightGreenAccent,
+                      child: Text(
+                        "dragging: ${dndContext.dragging} dragDND: ${dndContext.dragDND?.data} draggable: ${dndContext.draggable} active ${dndContext.activePosition}",
+                      ),
+                    );
+                  },
+                ),
+                ZoDND(
+                  draggable: true,
+                  child: ZoButton(
+                    child: Text("hello"),
+                  ),
+                ),
+                SizedBox(
+                  height: 1000,
+                  width: double.infinity,
+                  child: Container(
+                    decoration: BoxDecoration(border: Border.all()),
+                  ),
+                ),
+                ZoDND(
+                  child: Container(
+                    height: 100.0,
+                    width: 100.0,
+                    color: Colors.lightGreenAccent,
+                    child: const Center(child: Text("DND D")),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

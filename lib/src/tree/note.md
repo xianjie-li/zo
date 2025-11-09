@@ -53,7 +53,6 @@ toggle(option)
 expand(option)
 collapse(option)
 selector
-controller
 scrollController
 remove(values)
 add(options, value?, insertAfter?)
@@ -78,11 +77,14 @@ State/SelectState添加of
 - x 异步加载
 - x 筛选
 - x empty
-- 键盘交互
-- 固定当前展开项
+- x 键盘交互
+- x 固定当前展开项
 - 拖动排序
 - onOptionsMutation
 
-指示器显示
-- 非分支节点
-- 顶层选项不显示
+x 包括固定区域高度的第一个完整可见节点，如果它有父节点，全部放到顶部显示
+- x 进行 _updateOptionOffsetCache 后更新固定项
+- x 点击和折叠时，跳转滚动位置到该选项, 点击选项不能进行折叠操作
+- x jump防折叠遮挡
+- x 设置是否启用、最大固定层级
+- x 键盘上移后更新滚动选项，防止固定选项遮挡聚焦

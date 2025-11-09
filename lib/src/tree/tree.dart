@@ -1,6 +1,7 @@
 import "dart:collection";
 import "dart:math";
 
+import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
 import "package:flutter/rendering.dart";
 import "package:flutter/services.dart";
@@ -49,6 +50,8 @@ class ZoTree extends ZoCustomFormWidget<Iterable<Object>> {
     this.enable = true,
     this.indentDots = true,
     this.onlyLeafIndentDot = true,
+    this.pinedActiveBranch = true,
+    this.pinedActiveBranchMaxLevel,
     this.sortable = false,
   });
 
@@ -156,6 +159,12 @@ class ZoTree extends ZoCustomFormWidget<Iterable<Object>> {
   /// 只为叶子节点渲染缩进标记 dot
   final bool onlyLeafIndentDot;
 
+  /// 将当前活动分支选项固定在顶部
+  final bool pinedActiveBranch;
+
+  /// 控制 [pinedActiveBranch] 可固定的最大层数
+  final int? pinedActiveBranchMaxLevel;
+
   /// 是否可拖动节点进行排序
   final bool sortable;
 
@@ -233,6 +242,26 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
   /// 最后一个通过非批量操作选中的节点的值
   Object? lastSelectedNodeValue;
 
+  /// 缓存的选项滚动偏移信息，不包含不可见选项
+  final HashMap<Object, double> _offsetCache = HashMap();
+
+  /// 按选项上下顺序排序的 _offsetCache 值列表，用于从上往下获取选项
+  final List<Object> _offsetCacheValueList = [];
+
+  /// 固定在顶部显示的选项
+  List<Object> _fixedOptions = [];
+
+  /// 固定选项中高度，由 _fixedOptionBuilder 动态计算
+  double _fixedOptionsHeight = 0;
+
+  /// 固定渲染容器上下的间距
+  final double _fixedOptionsPadding = 2;
+
+  /// 防止 _fixedOptions 频繁更新
+  final _fixedOptionsUpdateDebouncer = Throttler(
+    delay: const Duration(milliseconds: 150),
+  );
+
   /// 全选按键
   final allSelectActivator = ZoShortcutsHelper.platformAwareActivator(
     LogicalKeyboardKey.keyA,
@@ -247,6 +276,21 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
   /// 右键
   final rightActivator = const SingleActivator(
     LogicalKeyboardKey.arrowRight,
+  );
+
+  /// 上键
+  final upActivator = const SingleActivator(
+    LogicalKeyboardKey.arrowUp,
+  );
+
+  /// 下键
+  final downActivator = const SingleActivator(
+    LogicalKeyboardKey.arrowDown,
+  );
+
+  /// 清空选中
+  final clearActivator = const SingleActivator(
+    LogicalKeyboardKey.escape,
   );
 
   @override
@@ -280,10 +324,13 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
     );
 
     selector.addListener(_onSelectChanged);
+    scrollController.addListener(_onScrollChanged);
 
     _calcUseLightText();
 
     _updateFixedHeight();
+
+    _updateOptionOffsetCache();
 
     _isInit = false;
   }
@@ -330,15 +377,27 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
     if (oldWidget.activeColor != widget.activeColor) {
       _calcUseLightText();
     }
+
+    if (widget.scrollController != oldWidget.scrollController) {
+      scrollController.removeListener(_onScrollChanged);
+
+      if (oldWidget.scrollController != null) {
+        oldWidget.scrollController!.removeListener(_onScrollChanged);
+      }
+
+      scrollController.addListener(_onScrollChanged);
+    }
   }
 
   @override
   @protected
   dispose() {
     selector.removeListener(_onSelectChanged);
+    scrollController.removeListener(_onScrollChanged);
     _controller.dispose();
     _style = null;
     expandSet.clear();
+    _fixedOptionsUpdateDebouncer.cancel();
     _innerScrollController.dispose();
     _focusNode.dispose();
     super.dispose();
@@ -358,6 +417,24 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
     if (node == null) return false;
 
     return _treeSliverController.isExpanded(node);
+  }
+
+  /// 检测节点的所有父节点是否展开
+  bool isExpandedAllParents(Object value) {
+    final node = controller.getNode(value);
+
+    if (node == null) return false;
+
+    var parent = node.parent;
+
+    while (parent != null) {
+      if (!isExpanded(parent.value)) {
+        return false;
+      }
+      parent = parent.parent;
+    }
+
+    return true;
   }
 
   /// 是否已展开所有选项
@@ -452,12 +529,6 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
     isExpandAll = true;
   }
 
-  /// 重置展开状态，但不触发刷新操作
-  void _resetExpand() {
-    isExpandAll = null;
-    expandSet.clear();
-  }
-
   /// 收起全部
   void collapseAll() {
     // _treeSliverController.collapseAll(); 存在报错，先使用自定义实现
@@ -465,9 +536,6 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
     _resetExpand();
 
     controller.refreshFilters();
-
-    // 收起全部时不会触发 _onNodeToggle？
-    _fixedHeightUpdateDebouncer.run(_updateFixedHeight);
   }
 
   /// 获取所有选择的选项，可用于持久化存储, 仅记录手动展开的项，如果通过 [isAllExpanded] 展开了全部，
@@ -493,7 +561,7 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
   /// - [smartScroll] 将选项滚动到最接近的视口边缘，如果选项完全可见则跳过滚动
   void jumpTo(
     Object value, {
-    double offset = 34,
+    double offset = 12,
     bool animation = false,
     bool autoFocus = true,
     bool smartScroll = true,
@@ -509,13 +577,18 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
 
     final itemTop = _getOptionOffset(value) + widget.padding.top;
 
-    var position = max(itemTop - offset, 0.0);
+    final fixedOptionData = _getOptionFixedOptions(value);
+
+    // 根据选项顶部的固定区域尺寸调整后的offset
+    final adjustOffset = offset + fixedOptionData.fixedHeight;
+
+    var position = max(itemTop - adjustOffset, 0.0);
 
     if (smartScroll) {
       final scrollOffset = scrollController.offset;
       final viewportHeight = scrollController.position.viewportDimension;
 
-      final visibleTop = scrollOffset;
+      final visibleTop = scrollOffset + fixedOptionData.fixedHeight;
       final visibleBottom = scrollOffset + viewportHeight;
 
       final itemBottom = itemTop + node.option.height;
@@ -535,6 +608,7 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
         }
         return;
       } else {
+        // 选项在下方时，跳转到底部
         final midLine = scrollOffset + viewportHeight / 2;
         final itemMid = itemTop + node.option.height / 2;
 
@@ -570,6 +644,12 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
         });
       }
     }
+  }
+
+  /// 重置展开状态，但不触发刷新操作
+  void _resetExpand() {
+    isExpandAll = null;
+    expandSet.clear();
   }
 
   /// 更新 _fixedHeight
@@ -714,6 +794,11 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
     _childrenMap.clear();
 
     if (!_isInit) {
+      _updateFixedHeight();
+      _updateOptionOffsetCache();
+    }
+
+    if (!_isInit) {
       setState(() {});
     }
   }
@@ -760,12 +845,14 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
 
     if (widget.implicitMultipleSelection) {
       selector.setSelected([node.value]);
+
+      lastSelectedNodeValue = node.value;
     } else {
       selector.toggle(node.value);
-    }
 
-    if (!isSelected) {
-      lastSelectedNodeValue = node.value;
+      if (!isSelected) {
+        lastSelectedNodeValue = node.value;
+      }
     }
   }
 
@@ -823,8 +910,9 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
   Widget _treeNodeBuilder(
     BuildContext context,
     TreeSliverNode<Object?> node,
-    AnimationStyle animationStyle,
-  ) {
+    AnimationStyle animationStyle, {
+    bool isFixedBuilder = false,
+  }) {
     final value = node.content;
 
     if (value == null) return const SizedBox.shrink();
@@ -838,11 +926,14 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
     // 是否分支节点
     final isBranch = option.isBranch;
 
-    final indentSpaceNumber = isBranch ? node.depth! : node.depth! + 1;
-
-    final expandByRow = widget.expandByTapRow == null
+    bool expandByRow = widget.expandByTapRow != null
         ? true
         : widget.expandByTapRow!(optNode);
+
+    // 固定渲染时只能通过折叠按钮展开关闭
+    if (isFixedBuilder) {
+      expandByRow = false;
+    }
 
     final isSelected =
         widget.selectionType != ZoSelectionType.none &&
@@ -850,9 +941,57 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
 
     final tEvent = ZoTreeEvent(node: optNode, instance: this);
 
-    final leadingNodes = GestureDetector(
+    return ZoOptionView(
+      key: ValueKey(node.content),
+      option: optNode.option,
+      arrow: false,
+      active: isSelected,
+      padding: EdgeInsets.symmetric(
+        horizontal: _style!.space1,
+        vertical: 0,
+      ),
+      activeColor: widget.activeColor,
+      highlightColor: widget.highlightColor,
+      loading: controller.isAsyncOptionLoading(value),
+      onTap: (event) => _onOptionTap(event, expandByRow),
+      onContextAction: _onContextAction,
+      onFocusChanged: _onFocusChanged,
+      leading: Row(
+        spacing: 4,
+        children: [
+          // 有子级并且未按行展开，渲染交互按钮
+          _buildLeadingNode(
+            optNode: optNode,
+            node: node,
+            isFixedBuilder: isFixedBuilder,
+            isBranch: isBranch,
+            isSelected: isSelected,
+            expandByRow: expandByRow,
+          ),
+          ?option.leading,
+          ?widget.leadingBuilder?.call(tEvent),
+        ],
+      ),
+      trailing: widget.trailingBuilder?.call(tEvent),
+    );
+  }
+
+  /// 构造选项的前置节点
+  Widget _buildLeadingNode({
+    required ZoOptionNode optNode,
+    required TreeSliverNode<Object?> node,
+    required bool isFixedBuilder,
+    required bool isBranch,
+    required bool isSelected,
+    required bool expandByRow,
+  }) {
+    final indentSpaceNumber = isBranch ? node.depth! : node.depth! + 1;
+
+    final leadingNode = GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: isBranch ? () => _onBranchLeadingTap(optNode) : null,
+      onTap: isBranch
+          ? () => _onToggleButtonTap(optNode, isFixedBuilder)
+          : null,
       child: Row(
         children: [
           for (int i = 0; i < indentSpaceNumber; i++)
@@ -887,40 +1026,15 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
       ),
     );
 
-    return ZoOptionView(
-      key: ValueKey(node.content),
-      option: optNode.option,
-      arrow: false,
-      active: isSelected,
-      padding: EdgeInsets.symmetric(
-        horizontal: _style!.space1,
-        vertical: 0,
-      ),
-      activeColor: widget.activeColor,
-      highlightColor: widget.highlightColor,
-      loading: controller.isAsyncOptionLoading(value),
-      onTap: _onOptionTap,
-      onContextAction: _onContextAction,
-      onFocusChanged: _onFocusChanged,
-      leading: Row(
-        spacing: 4,
-        children: [
-          // 有子级并且未按行展开，渲染交互按钮
-          isBranch && !expandByRow
-              ? ZoInteractiveBox(
-                  plain: true,
-                  child: leadingNodes,
-                  onTap: (event) {
-                    toggle(value);
-                  },
-                )
-              : leadingNodes,
-          ?option.leading,
-          ?widget.leadingBuilder?.call(tEvent),
-        ],
-      ),
-      trailing: widget.trailingBuilder?.call(tEvent),
-    );
+    // 有子级并且未按行展开，渲染交互按钮
+    if (isBranch && !expandByRow) {
+      return ZoInteractiveBox(
+        plain: true,
+        child: leadingNode,
+      );
+    }
+
+    return leadingNode;
   }
 
   double _treeRowExtentBuilder(
@@ -949,6 +1063,90 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
     return const Center(
       child: _ZoTreeIndentIndicator(),
     );
+  }
+
+  /// 根据 _fixedOptions 构造固定在顶部的选项
+  Widget? _fixedOptionBuilder() {
+    if (_fixedOptions.isEmpty) return const SizedBox.shrink();
+
+    final List<Widget> ls = [];
+
+    for (var optionValue in _fixedOptions) {
+      final node = controller.getNode(optionValue);
+      TreeSliverNode<Object?>? sliverNode;
+      try {
+        // 初始化阶段节点可能还未挂载到控制器，直接跳过即可
+        sliverNode = _treeSliverController.getNodeFor(optionValue);
+      } catch (e) {
+        continue;
+      }
+
+      if (node == null || sliverNode == null) continue;
+
+      // 构造选项节点，组件目前固定无动画，如果后续要支持应该需要调整此处
+      final fixedNode = ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: node.option.height,
+        ),
+        child: _treeNodeBuilder(
+          context,
+          sliverNode,
+          AnimationStyle.noAnimation,
+          isFixedBuilder: true,
+        ),
+      );
+
+      ls.add(fixedNode);
+    }
+
+    if (ls.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            color: _style?.surfaceColor,
+          ),
+          padding: EdgeInsets.fromLTRB(
+            widget.padding.left,
+            _fixedOptionsPadding,
+            widget.padding.right,
+            _fixedOptionsPadding,
+          ),
+          height: _fixedOptionsHeight,
+          child: Column(
+            children: ls,
+          ),
+        ),
+        // 在底部绘制阴影
+        Container(
+          height: 8,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: _style!.shadowGradientColors,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget? _emptyBuilder() {
+    if (_treeNodes.isNotEmpty) return null;
+
+    return widget.empty ??
+        Center(
+          // 防止贴合顶部
+          heightFactor: 8,
+          child: ZoResult(
+            simpleResult: true,
+            icon: const Icon(Icons.info_outline),
+            title: Text(context.zoLocale.noData),
+          ),
+        );
   }
 
   /// 更新 _useLightText 的值
@@ -981,27 +1179,49 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
   }
 
   void _onNodeToggle(TreeSliverNode<Object?> node) {
-    _fixedHeightUpdateDebouncer.run(_updateFixedHeight);
+    _fixedHeightUpdateDebouncer.run(() {
+      _updateFixedHeight();
+
+      // 展开操作触发情况： _onNodeToggle
+      // toggle: true
+      // collapseAll: false, 需要单独处理
+      // expandAll: true
+      _updateOptionOffsetCache();
+    });
   }
 
-  void _onOptionTap(ZoTriggerEvent event) {
+  void _onOptionTap(ZoTriggerEvent event, bool expandByRow) {
     final node = _getNodeByEvent(event);
 
     widget.onTap?.call(ZoTreeEvent(node: node, instance: this));
 
-    final expandByRow = widget.expandByTapRow == null
-        ? true
-        : widget.expandByTapRow!(node);
+    // 按下特定修饰键时，避免进行展开或收起操作，体验会更好
+    final isModifierKeyPressed =
+        ZoShortcutsHelper.isCommandPressed || ZoShortcutsHelper.isShiftPressed;
 
-    if (expandByRow) {
+    if (expandByRow && !isModifierKeyPressed) {
       toggle(node.value);
     }
 
     _selectHandle(node);
   }
 
-  /// 分支行前方节点点击时单独处理展开
-  void _onBranchLeadingTap(ZoOptionNode node) {
+  /// 选项前方展开按钮和缩进区域点击
+  void _onToggleButtonTap(ZoOptionNode node, bool isFixedBuilder) {
+    // 顶部固定选项关闭处理，将滚动位置调整到选项当前位置
+    if (isFixedBuilder) {
+      collapse(node.value);
+
+      jumpTo(
+        node.value,
+        offset: 0,
+        autoFocus: true,
+        smartScroll: false,
+      );
+
+      return;
+    }
+
     toggle(node.value);
     focusOption(node.value);
   }
@@ -1081,6 +1301,107 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
     widget.onFilterComplete?.call(matchList);
   }
 
+  /// 滚动中触发
+  void _onScrollChanged() {
+    _fixedOptionsUpdateDebouncer.run(_updateFixedOptions);
+  }
+
+  /// 更新要显示的固定项
+  void _updateFixedOptions() {
+    if (!widget.pinedActiveBranch) {
+      if (_fixedOptions.isNotEmpty) {
+        setState(() {
+          _fixedOptions = [];
+          _fixedOptionsHeight = 0;
+        });
+      }
+      return;
+    }
+
+    List<Object> newFixedOptions = [];
+    double newFixedOptionsHeight = 0;
+
+    for (final optValue in _offsetCacheValueList) {
+      // 获取父级和占用的fixed高度
+      final (:parents, :fixedHeight, :node) = _getOptionFixedOptions(optValue);
+
+      if (node == null) continue;
+
+      // 展开的选项检测顶部可见性、未展开的检测底部可见性
+      final optionOffset = isExpanded(optValue)
+          ? _offsetCache[optValue]!
+          : _offsetCache[optValue]! + node.option.height;
+
+      final offset = scrollController.position.pixels + fixedHeight;
+
+      if (optionOffset > offset) {
+        newFixedOptions = parents;
+        newFixedOptionsHeight = fixedHeight;
+        break;
+      }
+    }
+
+    if (!listEquals(newFixedOptions, _fixedOptions)) {
+      setState(() {
+        _fixedOptions = newFixedOptions;
+        _fixedOptionsHeight = newFixedOptionsHeight;
+      });
+    }
+  }
+
+  /// 获取指定选项父级及其占用的顶部固定高度
+  ({List<Object> parents, double fixedHeight, ZoOptionNode? node})
+  _getOptionFixedOptions(
+    Object optionValue,
+  ) {
+    final node = controller.getNode(optionValue);
+    final parents = <Object>[];
+    double fixedHeight = _fixedOptionsPadding * 2;
+
+    if (node == null || !widget.pinedActiveBranch) {
+      return (parents: parents, fixedHeight: fixedHeight, node: node);
+    }
+
+    var parentNode = node.parent;
+
+    while (parentNode != null) {
+      if (widget.pinedActiveBranchMaxLevel != null) {
+        if (parentNode.level > widget.pinedActiveBranchMaxLevel! - 1) {
+          parentNode = parentNode.parent;
+          continue;
+        }
+      }
+
+      parents.insert(0, parentNode.value);
+      fixedHeight += parentNode.option.height;
+
+      parentNode = parentNode.parent;
+    }
+
+    return (parents: parents, fixedHeight: fixedHeight, node: node);
+  }
+
+  /// 更新 [_offsetCache]，应在任何高度、顺序变更后调用
+  void _updateOptionOffsetCache() {
+    _offsetCache.clear();
+    _offsetCacheValueList.clear();
+
+    double offset = widget.padding.top;
+
+    _eachSliverNodes((sliverNode, optionNode) {
+      if (optionNode != null) {
+        _offsetCache[optionNode.value] = offset;
+        _offsetCacheValueList.add(optionNode.value);
+        offset += optionNode.option.height;
+      }
+      return false;
+    });
+
+    if (!_isInit) {
+      _updateFixedOptions();
+    }
+  }
+
   /// 处理按键操作
   KeyEventResult _onKeyEvent(FocusNode node, KeyEvent event) {
     bool isAllSelect = false;
@@ -1098,10 +1419,16 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
 
     if (isAllSelect) {
       return _onShortcutsAllSelect();
+    } else if (ZoShortcutsHelper.checkEvent(upActivator, event)) {
+      return _onShortcutsUp();
+    } else if (ZoShortcutsHelper.checkEvent(downActivator, event)) {
+      return _onShortcutsDown();
     } else if (ZoShortcutsHelper.checkEvent(leftActivator, event)) {
       return _onShortcutsLeft();
     } else if (ZoShortcutsHelper.checkEvent(rightActivator, event)) {
       return _onShortcutsRight();
+    } else if (ZoShortcutsHelper.checkEvent(clearActivator, event)) {
+      return _onShortcutsClear();
     }
 
     return KeyEventResult.ignored;
@@ -1187,7 +1514,7 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
       final node = controller.getNode(currentFocusValue!);
 
       if (node != null && node.parent != null) {
-        jumpTo(node.parent!.value, offset: 0);
+        jumpTo(node.parent!.value);
 
         return KeyEventResult.handled;
       }
@@ -1208,14 +1535,77 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
     final isExpand = isExpanded(node.value);
 
     if (!isBranch || isExpand) {
-      if (node.next != null) {
-        jumpTo(node.next!.value, offset: 0);
+      final next = controller.getNextNode(
+        node,
+        filter: (node) => !node.option.enabled,
+      );
+
+      if (next != null) {
+        jumpTo(next.value);
       }
     } else if (!isExpand) {
       expand(node.value);
       return KeyEventResult.handled;
     }
 
+    return KeyEventResult.ignored;
+  }
+
+  /// 上键操作：跳转到前一个可见节点，这与默认焦点行为一样，但默认行为有时候调整顺序会有异常，
+  /// 且会被顶部固定选项遮挡，改为自行实现
+  KeyEventResult _onShortcutsUp() {
+    if (currentFocusValue == null) return KeyEventResult.ignored;
+
+    final node = controller.getNode(currentFocusValue!);
+
+    if (node == null) return KeyEventResult.ignored;
+
+    final prev = controller.getPrevNode(
+      node,
+      filter: (node) =>
+          !node.option.enabled ||
+          !controller.isVisible(node.value) ||
+          !isExpandedAllParents(node.value),
+    );
+
+    if (prev == null) return KeyEventResult.ignored;
+
+    jumpTo(prev.value);
+
+    // 反正固定项未更新导致遮挡
+    _updateFixedOptions();
+    return KeyEventResult.handled;
+  }
+
+  // 下键操作：跳转到下一个可见节点，这与默认焦点行为一样，但默认行为有时候调整顺序会有异常，改为自行实现
+  KeyEventResult _onShortcutsDown() {
+    if (currentFocusValue == null) return KeyEventResult.ignored;
+
+    final node = controller.getNode(currentFocusValue!);
+
+    if (node == null) return KeyEventResult.ignored;
+
+    final next = controller.getNextNode(
+      node,
+      filter: (node) =>
+          !node.option.enabled ||
+          !controller.isVisible(node.value) ||
+          !isExpandedAllParents(node.value),
+    );
+
+    if (next == null) return KeyEventResult.ignored;
+
+    jumpTo(next.value);
+
+    return KeyEventResult.handled;
+  }
+
+  /// 清空选中
+  KeyEventResult _onShortcutsClear() {
+    if (selector.hasSelected()) {
+      selector.unselectAll();
+      return KeyEventResult.handled;
+    }
     return KeyEventResult.ignored;
   }
 
@@ -1255,17 +1645,10 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree> {
               ),
             ),
           ),
-          if (_treeNodes.isEmpty)
-            widget.empty ??
-                Center(
-                  // 防止贴合顶部
-                  heightFactor: 8,
-                  child: ZoResult(
-                    simpleResult: true,
-                    icon: const Icon(Icons.info_outline),
-                    title: Text(context.zoLocale.noData),
-                  ),
-                ),
+          // 空反馈节点
+          ?_emptyBuilder(),
+          // 顶部固定选项
+          ?_fixedOptionBuilder(),
         ],
       ),
     );

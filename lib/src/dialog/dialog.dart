@@ -48,6 +48,7 @@ class ZoDialog extends ZoOverlayEntry {
     super.preventOverflow = false,
     super.transitionType,
     super.animationWrap,
+    super.customWrap,
     super.curve,
     super.duration,
   }) : _draggable = draggable,

@@ -41,7 +41,7 @@ class ZoTriggerEvent extends Notification {
   /// 对应的 trigger 配置
   final ZoTrigger trigger;
 
-  /// 屏幕坐标
+  /// 全局位置
   final Offset position;
 
   /// 距离目标左上角的位置
@@ -198,6 +198,7 @@ class ZoTrigger extends StatefulWidget {
     this.autofocus = false,
     this.canRequestFocus = true,
     this.focusOnTap = true,
+    this.defaultCursor,
     this.changeCursor = false,
     this.behavior,
   });
@@ -261,7 +262,10 @@ class ZoTrigger extends StatefulWidget {
   /// 是否可通过点击获得焦点, 需要同事启用点击相关的事件才能生效
   final bool focusOnTap;
 
-  /// 是否变更显示的光标
+  /// 默认显示的光标
+  final MouseCursor? defaultCursor;
+
+  /// 是否显示适合当前事件的光标类型
   final bool changeCursor;
 
   /// 命中测试行为
@@ -826,9 +830,7 @@ class _ZoTriggerState extends State<ZoTrigger> {
 
   /// 取消正在进行的 drag 事件
   void cancelDrag() {
-    if (lastDragEvent != null) {
-      onPanCancel();
-    }
+    onPanCancel();
   }
 
   /// 设置拖动光标
@@ -868,12 +870,12 @@ class _ZoTriggerState extends State<ZoTrigger> {
     /// 所以在必要时才绑定, 比如在包含 tab 事件时, drag 会延迟到第一次拖动才触发 start, 而不是在按下时
     final needForceBindTap = enableTap || enableActive;
 
-    final dragEnable = widget.onDrag != null;
+    final enableDrag = widget.onDrag != null;
 
     final enableMouse =
         // tap / drag 事件需要定制光标, 所以需要启用 MouseRegion
         enableTap ||
-        dragEnable ||
+        enableDrag ||
         widget.onActiveChanged != null ||
         widget.onMove != null;
 
@@ -895,15 +897,15 @@ class _ZoTriggerState extends State<ZoTrigger> {
       onSecondaryTapDown: enable && contextActionEnable
           ? onSecondaryTapDown
           : null,
-      onPanStart: enable ? onPanStart : null,
-      onPanEnd: enable ? onPanEnd : null,
-      onPanCancel: enable ? onPanCancel : null,
-      onPanUpdate: enable ? onPanUpdate : null,
+      onPanStart: enable && enableDrag ? onPanStart : null,
+      onPanEnd: enable && enableDrag ? onPanEnd : null,
+      onPanCancel: enable && enableDrag ? onPanCancel : null,
+      onPanUpdate: enable && enableDrag ? onPanUpdate : null,
       behavior: widget.behavior,
       child: child,
     );
 
-    // 部分仅在 touch 设备绑定, 防止影响 tap 的触发
+    // 部分仅在 touch 设备处理的事件, 单独使用一个 GestureDetector, 否则会导致 tap 触发存在一定延迟
     if (contextActionEnable || needForceBindTap) {
       child = GestureDetector(
         onLongPressStart: enable && contextActionEnable
@@ -935,14 +937,14 @@ class _ZoTriggerState extends State<ZoTrigger> {
       final enterExitEnable =
           enable && (widget.onActiveChanged != null || widget.onMove != null);
 
-      MouseCursor cursor = MouseCursor.defer;
+      MouseCursor cursor = widget.defaultCursor ?? MouseCursor.defer;
 
       if (widget.changeCursor) {
         if (currentCursor != null) {
           cursor = currentCursor!;
         } else if (!widget.enabled) {
           cursor = SystemMouseCursors.forbidden;
-        } else if (dragEnable) {
+        } else if (enableDrag) {
           cursor = SystemMouseCursors.grab;
         } else if (enableTap) {
           cursor = SystemMouseCursors.click;

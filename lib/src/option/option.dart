@@ -1291,6 +1291,8 @@ class ZoOptionController {
   }
 
   /// 选项是否可见, 即是否在 [filteredFlatList] 列表中
+  ///
+  /// 当 [ignoreOpenStatus] 设置为 true 是，由于 open 状态不影响可见性，可能会产生不符合直觉的返回，但这是正常的
   bool isVisible(Object value) {
     return _visibleCache[value] ?? false;
   }
@@ -1376,31 +1378,37 @@ class ZoOptionController {
     return _nodes[value];
   }
 
-  /// 获取前一个节点
+  /// 获取前一个节点，[filter] 可过滤掉不满足条件的选项·
   ZoOptionNode? getPrevNode(
-    ZoOptionNode node, [
-    bool includeInvisible = false,
-  ]) {
+    ZoOptionNode node, {
+    bool Function(ZoOptionNode node)? filter,
+  }) {
     var curNode = node.prev;
 
-    while (curNode != null &&
-        (!includeInvisible || !isVisible(curNode.value))) {
-      curNode = curNode.prev;
+    while (curNode != null) {
+      if (filter != null && !filter(curNode)) {
+        break;
+      } else {
+        curNode = curNode.prev;
+      }
     }
 
     return curNode;
   }
 
-  /// 获取后一个节点
+  /// 获取后一个节点，[filter] 可过滤掉不满足条件的选项·
   ZoOptionNode? getNextNode(
-    ZoOptionNode node, [
-    bool includeInvisible = false,
-  ]) {
-    var curNode = node.prev;
+    ZoOptionNode node, {
+    bool Function(ZoOptionNode node)? filter,
+  }) {
+    var curNode = node.next;
 
-    while (curNode != null &&
-        (!includeInvisible || !isVisible(curNode.value))) {
-      curNode = curNode.next;
+    while (curNode != null) {
+      if (filter != null && !filter(curNode)) {
+        break;
+      } else {
+        curNode = curNode.next;
+      }
     }
 
     return curNode;

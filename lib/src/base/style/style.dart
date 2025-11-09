@@ -43,6 +43,7 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
     Color? outlineColorVariant,
     Color? shadowColor,
     Color? shadowColorVariant,
+    List<Color>? shadowGradientColors,
     BoxShadow? shadow,
     BoxShadow? shadowVariant,
     BoxShadow? overlayShadow,
@@ -115,10 +116,16 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
         outlineColorVariant ??
         (darkMode ? Colors.grey[700]! : const Color(0xFFC6C6C6));
     this.shadowColor =
-        shadowColor ?? (darkMode ? Colors.black : Colors.black.withAlpha(36));
+        shadowColor ??
+        (darkMode ? Colors.black.withAlpha(100) : Colors.black.withAlpha(36));
     this.shadowColorVariant =
         shadowColorVariant ??
-        (darkMode ? Colors.black : Colors.black.withAlpha(56));
+        (darkMode ? Colors.black.withAlpha(120) : Colors.black.withAlpha(56));
+
+    this.shadowGradientColors = [
+      Colors.black.withAlpha(30),
+      Colors.transparent,
+    ];
 
     this.shadow = BoxShadow(
       color: this.shadowColor,
@@ -242,6 +249,7 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
   /// 阴影
   late final Color shadowColor;
   late final Color shadowColorVariant;
+  late final List<Color> shadowGradientColors;
 
   /// 用于高于常规层的阴影
   late final BoxShadow shadow;
@@ -433,6 +441,7 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
     Color? outlineColorVariant,
     Color? shadowColor,
     Color? shadowColorVariant,
+    List<Color>? shadowGradientColors,
     BoxShadow? shadow,
     BoxShadow? shadowVariant,
     BoxShadow? overlayShadow,
@@ -492,6 +501,7 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
       outlineColorVariant: outlineColorVariant ?? this.outlineColorVariant,
       shadowColor: shadowColor ?? this.shadowColor,
       shadowColorVariant: shadowColorVariant ?? this.shadowColorVariant,
+      shadowGradientColors: shadowGradientColors ?? this.shadowGradientColors,
       shadow: shadow ?? this.shadow,
       shadowVariant: shadowVariant ?? this.shadowVariant,
       overlayShadow: overlayShadow ?? this.overlayShadow,
@@ -569,6 +579,7 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
       ),
       shadowColor: other.shadowColor,
       shadowColorVariant: other.shadowColorVariant,
+      shadowGradientColors: other.shadowGradientColors,
       shadow: other.shadow,
       shadowVariant: other.shadowVariant,
       overlayShadow: other.overlayShadow,

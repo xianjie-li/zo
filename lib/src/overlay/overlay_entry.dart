@@ -37,6 +37,7 @@ class ZoOverlayEntry extends ChangeNotifier {
     bool preventOverflow = true,
     ZoTransitionType? transitionType,
     ZoOverlayAnimationWrap? animationWrap,
+    ZoOverlayCustomWrap? customWrap,
     Curve curve = ZoTransition.defaultCurve,
     Duration duration = ZoTransition.defaultDuration,
   }) : _groupId = groupId ?? UniqueKey(),
@@ -45,6 +46,7 @@ class ZoOverlayEntry extends ChangeNotifier {
        _onOpenChanged = onOpenChanged,
        _dismissMode = dismissMode,
        _animationWrap = animationWrap,
+       _customWrap = customWrap,
        _transitionType = transitionType,
        _preventOverflow = preventOverflow,
        _direction = direction,
@@ -562,7 +564,7 @@ class ZoOverlayEntry extends ChangeNotifier {
     changed();
   }
 
-  /// 动画类型
+  /// 动画类型，默认使用fade动画
   ZoTransitionType? get transitionType => _transitionType;
   ZoTransitionType? _transitionType;
   set transitionType(ZoTransitionType? value) {
@@ -578,7 +580,7 @@ class ZoOverlayEntry extends ChangeNotifier {
     changed();
   }
 
-  /// 动画持续时间
+  /// 动画持续时间, 设置为0后可关闭动画
   Duration get duration => _duration;
   Duration _duration;
   set duration(Duration value) {
@@ -592,6 +594,14 @@ class ZoOverlayEntry extends ChangeNotifier {
   ZoOverlayAnimationWrap? _animationWrap;
   set animationWrap(ZoOverlayAnimationWrap? value) {
     _animationWrap = value;
+    changed();
+  }
+
+  /// 在层节点的根包裹自定义节点
+  ZoOverlayCustomWrap? get customWrap => _customWrap;
+  ZoOverlayCustomWrap? _customWrap;
+  set customWrap(ZoOverlayCustomWrap? customWrap) {
+    _customWrap = customWrap;
     changed();
   }
 }

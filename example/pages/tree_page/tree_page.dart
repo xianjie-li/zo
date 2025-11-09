@@ -191,6 +191,13 @@ class _TreePageState extends State<TreePage> {
       leading: Icon(Icons.copy),
       enabled: false,
     ),
+    ZoOption(
+      value: "value 9",
+      title: Text(
+        "选项内容AAA选项内容AAA选项内",
+      ),
+      leading: Icon(Icons.copy),
+    ),
   ];
 
   late List<ZoOption> options2 = [
@@ -305,9 +312,9 @@ class _TreePageState extends State<TreePage> {
               },
             ),
             ZoButton(
-              child: Text("value 3 是否展开"),
+              child: Text("value 2 是否展开"),
               onTap: () {
-                print(treeKey.currentState!.isExpanded("value 3"));
+                print(treeKey.currentState!.isExpanded("value 2"));
               },
             ),
             ZoButton(

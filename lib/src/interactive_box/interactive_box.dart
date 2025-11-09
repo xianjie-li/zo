@@ -346,9 +346,7 @@ class _ZoInteractiveBoxState extends State<ZoInteractiveBox> {
 
   BoxBorder? getBorder(ZoStyle style, Color? color) {
     if (focus && widget.focusBorder) {
-      return Border.all(
-        color: style.primaryColor,
-      );
+      return Border.all(color: style.primaryColor, width: 2);
     }
 
     if (focus || active) {

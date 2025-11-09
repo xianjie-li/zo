@@ -13,16 +13,16 @@ class RenderTrigger extends SingleChildRenderObjectWidget {
     required super.child,
   });
 
-  /// 布局完成后, 在下一个渲染帧触发, 此时可安全访问渲染对象的 [size] 属性
+  /// 布局完成后, 在下一个渲染帧触发
   final void Function(RenderBox box)? onLayout;
 
-  /// 布局完成后同步触发, 此时不可通过 setState 等方法修改状态
+  /// 布局完成后同步触发, 该回调中不可通过 setState 等方法修改状态
   final void Function(RenderBox box)? onLayoutImmediately;
 
   /// 绘制完成后, 在下一个渲染帧触发
   final void Function(RenderBox box)? onPaint;
 
-  /// child 绘制完成后同步触发, 此时不可通过 setState 等方法修改状态
+  /// child 绘制完成后同步触发, 该回调中不可通过 setState 等方法修改状态
   ///
   /// 与 [onLayoutImmediately] 调用实际大部分情况下一致
   final void Function(RenderBox box)? onPaintImmediately;

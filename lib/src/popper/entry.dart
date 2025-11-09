@@ -48,6 +48,7 @@ class ZoPopperEntry extends ZoOverlayEntry {
     super.preventOverflow,
     super.transitionType,
     super.animationWrap,
+    super.customWrap,
     super.curve,
     super.duration,
   }) : _padding = padding,

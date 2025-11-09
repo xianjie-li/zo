@@ -2,6 +2,7 @@ import "package:flutter/material.dart";
 import "package:flutter_localizations/flutter_localizations.dart";
 import "package:zo/zo.dart";
 
+import "pages/base_page.dart";
 import "pages/button_page.dart";
 import "pages/menus_page.dart";
 import "pages/overlay_page2.dart";
@@ -142,8 +143,8 @@ class _MyAppState extends State<MyApp> {
           ),
         );
       },
-      // home: const PlayPage(),
-      home: TreePage(),
+      home: const PlayPage(),
+      // home: TreePage(),
     );
   }
 }

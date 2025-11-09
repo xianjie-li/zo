@@ -51,6 +51,7 @@ class ZoMenuEntry extends ZoOverlayEntry {
     super.preventOverflow = true,
     super.transitionType,
     super.animationWrap,
+    super.customWrap,
     super.curve,
     super.duration = Duration.zero,
   }) : _option = option,
