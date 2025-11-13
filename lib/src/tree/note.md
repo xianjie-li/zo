@@ -1,4 +1,3 @@
-
 tree控制器提供一个遍历工具
 
 尺寸：使用父级允许的最大尺寸
@@ -79,6 +78,7 @@ State/SelectState添加of
 - x empty
 - x 键盘交互
 - x 固定当前展开项
+- x 优化代码
 - 拖动排序
 - onOptionsMutation
 

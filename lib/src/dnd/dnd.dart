@@ -1,19 +1,39 @@
+/// 支持边缘放置的dnd实现，核心成员
+/// - [ZoDND] - 拖动与放置，会将位置、可见性、可拖放等信息通过 [_ZoDNDNode] 同步到 [_ZoDNDManager]
+/// - [_ZoDNDManager] - 核心逻辑实现区域，管理所有dnd节点
+/// - [ZoDNDPosition] - 控制或表示dnd不同位置的启用状态
+/// - [ZoDNDBuildContext] - dnd的自定义构造器参数，包含了当前拖动状态，用来根据状态构造不同的子级作为反馈
+/// - [ZoDNDEvent] - 核心事件
+/// - [ZoDNDEventNotification] - 通过树向上冒泡 [ZoDNDEvent]
+library;
+
+import "dart:async";
+import "dart:collection";
+
 import "package:flutter/material.dart";
+import "package:flutter/rendering.dart";
+import "package:flutter/services.dart";
 import "package:visibility_detector/visibility_detector.dart";
-import "package:zo/src/dnd/manager.dart";
 import "package:zo/zo.dart";
 
-import "base.dart";
+part "base.dart";
+part "auto_scroll.dart";
+part "manager.dart";
 
-/// 实现拖动放置行为，与常见的dnd库不同的是，一个dnd节点即可以是拖动节点，也可以是放置节点，
+/// 实现拖动与放置，与常见的dnd库不同的是，一个dnd节点即可以是拖动节点，也可以是放置节点，
 /// 并且支持区分放置位置，比如放置目标的上方、下方、中间等，这在一些需要拖动排序的场景下会很有用
 ///
-/// 自定义拖动位置：通过 [ZoDND.customHandler] 和 [ZoDNDHandler] 可以自定义拖动位置。
+/// 自定义拖动位置：通过设置 [ZoDND.customHandler] 为 true 并在子级放置 [ZoDNDHandler] 组件自定义拖动位置。
 ///
-/// 放置反馈：通过 [ZoDND.builder] 根据状态渲染放置的位置反馈等，也可以使用 [ZoDNDFeedback] 便捷实现反馈
+/// 放置反馈：
+/// - 通过 [ZoDND.builder] 根据状态渲染放置的位置反馈
+/// - 对于不同的放置方向，可通过 [ZoDND.directionIndicator] 显示反馈
+/// - [ZoDND.draggingOpacity] 可以控制在拖动时显示半透明禁用效果
 ///
 /// 拖动事件：每个 dnd 组件均支持 拖动和放置事件，也可以通过 [ZoDNDEventNotification] 和 [ZoDNDAcceptNotification]
 /// 在组件树上层统一接收事件通知
+///
+/// 分组：使用 [groupId] 将dnd简单分组，不同组之间的dnd互不干扰。
 class ZoDND extends StatefulWidget {
   const ZoDND({
     super.key,
@@ -29,16 +49,22 @@ class ZoDND extends StatefulWidget {
     this.feedback,
     this.feedbackOpacity = 0.4,
     this.feedbackOffset,
+    this.feedbackWrap,
+    this.directionIndicator = true,
+    this.directionIndicatorOffset,
+    this.draggingOpacity = 0.5,
     this.cursor,
     this.onDragStart,
     this.onDragMove,
     this.onDragEnd,
     this.onAccept,
+    this.onExpand,
   }) : assert(child != null || builder != null);
 
-  /// 要显示的子级，如果需要根据拖动状态动态构造内容，请使用 [builder]
+  /// 子级，如果需要根据拖动状态动态构造内容，请使用 [builder]
   final Widget? child;
 
+  /// 构造子级，可以通过 dndContext 来动态构造子级，比如显示拖动中、可放置等反馈样式
   final Widget Function(BuildContext context, ZoDNDBuildContext dndContext)?
   builder;
 
@@ -61,7 +87,7 @@ class ZoDND extends StatefulWidget {
   final ZoDNDPosition Function(ZoDND currentDND, ZoDND? dragDND)?
   droppablePositionDetector;
 
-  /// 自定义可拖动位置，默认为整个dnd节点，可以设置为true禁用默认行为，然后在内部放置 DNDHandler 组件绑定可拖动位置
+  /// 自定义可拖动位置，默认为整个dnd节点，可以设置为true禁用默认行为，然后在内部放置 [ZoDNDHandler] 组件绑定可拖动位置
   final bool customHandler;
 
   /// 自定义反馈节点，默认会以当前子级作为反馈节点
@@ -72,6 +98,19 @@ class ZoDND extends StatefulWidget {
 
   /// 默认 [feedback] 会使用开始拖动时指针相对位置作为偏移，可使用此项覆盖偏移位置
   final Offset? feedbackOffset;
+
+  /// 为 feedback 节点自定义包装组件，默认会将 [child] / [builder] 的构造内容单独渲染一份在 overlay 下，
+  /// 可能存在上下文状态丢失(比如主题、文本样式等)，可以通过此方法手动添加
+  final WidgetChildBuilder? feedbackWrap;
+
+  /// 当一个节点被拖动到组件上方非 [ZoDNDPosition.center] 的位置时，显示位置标记
+  final bool directionIndicator;
+
+  /// 控制 [directionIndicator] 的显示偏移，正数时会原理组件，负数时会偏移到组件内部更远
+  final double? directionIndicatorOffset;
+
+  /// 拖动时为组件添加透明度
+  final double draggingOpacity;
 
   /// 鼠标在组件上方时显示的光标类型
   final MouseCursor? cursor;
@@ -88,6 +127,10 @@ class ZoDND extends StatefulWidget {
   /// 某个节点在当前节点区域成功放置时触发
   final void Function(ZoDNDEvent event)? onAccept;
 
+  /// 当前节点启用 [ZoDNDPosition.center] 位置的放置时，如果将一个节点拖动带当前节点对应位置一段时间后，
+  /// 会触发C此事件，用来对树形结构等进行展开
+  final void Function(ZoDNDEvent event)? onExpand;
+
   @override
   State<ZoDND> createState() => _ZoDNDState();
 }
@@ -96,7 +139,7 @@ class _ZoDNDState extends State<ZoDND> {
   /// 标识 dnd 节点的唯一id
   final id = createTempId();
 
-  late ZoDNDNode node;
+  late _ZoDNDNode node;
 
   /// 根据参数获取可拖动状态
   bool getDraggable() {
@@ -112,7 +155,7 @@ class _ZoDNDState extends State<ZoDND> {
     if (widget.droppablePositionDetector != null) {
       return widget.droppablePositionDetector!(
         widget,
-        ZoDNDManager.instance.dragNode?.dnd,
+        _ZoDNDManager.instance.dragNode?.dnd,
       );
     }
 
@@ -123,7 +166,7 @@ class _ZoDNDState extends State<ZoDND> {
   void initState() {
     super.initState();
 
-    node = ZoDNDNode(
+    node = _ZoDNDNode(
       id: id,
       dnd: widget,
       draggable: getDraggable(),
@@ -131,15 +174,17 @@ class _ZoDNDState extends State<ZoDND> {
       updateWidget: () {
         setState(() {});
       },
+      getScrollParent: getScrollParent,
     );
 
-    ZoDNDManager.instance.add(node);
+    _ZoDNDManager.instance.add(node);
   }
 
   @override
   void didUpdateWidget(covariant ZoDND oldWidget) {
     super.didUpdateWidget(oldWidget);
 
+    node.dnd = widget;
     node.draggable = getDraggable();
     node.droppablePosition = getDroppablePosition();
   }
@@ -154,7 +199,7 @@ class _ZoDNDState extends State<ZoDND> {
   @override
   void dispose() {
     super.dispose();
-    ZoDNDManager.instance.remove(node.id);
+    _ZoDNDManager.instance.remove(node.id);
     node.dispose();
     updateRectThrottler.cancel();
     visibilityInfo = null;
@@ -211,14 +256,29 @@ class _ZoDNDState extends State<ZoDND> {
     node.visibleRect = globalRect;
   }
 
+  /// 获取滚动父级的信息
+  (ScrollableState, Rect)? getScrollParent() {
+    final scrollState = Scrollable.maybeOf(context);
+
+    if (scrollState == null || !mounted) return null;
+
+    final obj = scrollState.context.findRenderObject() as RenderBox?;
+
+    if (obj == null || !obj.attached) return null;
+
+    final Rect globalRect = obj.localToGlobal(Offset.zero) & obj.size;
+
+    return (scrollState, globalRect);
+  }
+
   void onDrag(ZoTriggerDragEvent event) {
-    ZoDNDManager.instance.dragHandle(id: id, event: event, context: context);
+    _ZoDNDManager.instance._dragHandle(id: id, event: event, context: context);
   }
 
   Widget buildChild(BuildContext context) {
     if (widget.child != null) return widget.child!;
 
-    final manager = ZoDNDManager.instance;
+    final manager = _ZoDNDManager.instance;
     final dragDND = manager.dragNode?.dnd;
 
     final selfActive = manager.activeNode == node;
@@ -237,20 +297,159 @@ class _ZoDNDState extends State<ZoDND> {
     return widget.builder!(context, dndContext);
   }
 
+  Widget buildTrigger(BuildContext context) {
+    if (widget.customHandler) {
+      return buildChild(context);
+    }
+
+    return ZoTrigger(
+      defaultCursor: widget.cursor,
+      enabled: node.draggable,
+      onDrag: onDrag,
+      child: buildChild(context),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return RenderTrigger(
       onPaintImmediately: onPaint,
-      child: VisibilityDetector(
-        key: Key(id),
-        onVisibilityChanged: onVisibilityChanged,
-        child: ZoTrigger(
-          defaultCursor: widget.cursor,
-          enabled: node.draggable,
-          onDrag: onDrag,
-          child: buildChild(context),
+      child: _DNDNodeProvider(
+        node: node,
+        child: Opacity(
+          opacity: _ZoDNDManager.instance.dragNode == node
+              ? widget.draggingOpacity
+              : 1,
+          child: VisibilityDetector(
+            key: Key(id),
+            onVisibilityChanged: onVisibilityChanged,
+            child: buildTrigger(context),
+          ),
         ),
       ),
+    );
+  }
+}
+
+/// 自定义拖动位置，将 [ZoDND.customHandler] 设置为true，并在其子级放置此节点实现自定义拖动位置
+class ZoDNDHandler extends StatelessWidget {
+  const ZoDNDHandler({
+    super.key,
+    required this.child,
+  });
+
+  /// 渲染子级
+  final Widget child;
+
+  void onDrag(ZoTriggerDragEvent event) {
+    final (_ZoDNDNode node, BuildContext context) = event.data;
+
+    _ZoDNDManager.instance._dragHandle(
+      id: node.id,
+      event: event,
+      context: context,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final nodeProvider = _DNDNodeProvider.maybeOf(context);
+
+    // 节点被复制为 feedback 时，会丢失上下文，直接原样渲染组件
+    if (nodeProvider == null) return child;
+
+    final node = nodeProvider.node;
+    final dndWidget = nodeProvider.node.dnd;
+
+    return ZoTrigger(
+      data: (node, context),
+      defaultCursor: dndWidget.cursor,
+      enabled: node.draggable,
+      onDrag: onDrag,
+      child: child,
+    );
+  }
+}
+
+/// 由dnd内部向下分发 node 信息, 并在 DNDHandler 等组件中获取使用
+class _DNDNodeProvider extends InheritedWidget {
+  const _DNDNodeProvider({
+    super.key,
+    required this.node,
+    required super.child,
+  });
+
+  final _ZoDNDNode node;
+
+  static _DNDNodeProvider? maybeOf(BuildContext context) {
+    final _DNDNodeProvider? result = context
+        .dependOnInheritedWidgetOfExactType<_DNDNodeProvider>();
+    return result;
+  }
+
+  @override
+  bool updateShouldNotify(_DNDNodeProvider oldWidget) {
+    return oldWidget.node != node;
+  }
+}
+
+/// 位置指示器
+class _DirectionIndicator extends StatelessWidget {
+  const _DirectionIndicator({
+    super.key,
+    required this.width,
+    required this.height,
+    required this.isVertical,
+  });
+
+  /// 控制线条宽度
+  final double width;
+
+  /// 控制线条高度
+  final double height;
+
+  /// 横向或纵向
+  final bool isVertical;
+
+  static double circularSize = 8;
+
+  static double circularBorderWidth = 2;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = context.zoStyle;
+
+    final circularMainOffset = -(circularSize - circularBorderWidth);
+
+    final circularCrossOffset = circularMainOffset / 2;
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          width: width,
+          height: height,
+          decoration: BoxDecoration(
+            color: style.primaryColor,
+            borderRadius: BorderRadius.circular(4),
+          ),
+        ),
+        Positioned(
+          left: isVertical ? circularMainOffset : circularCrossOffset,
+          top: isVertical ? circularCrossOffset : circularMainOffset,
+          width: circularSize,
+          height: circularSize,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: style.primaryColor,
+                width: circularBorderWidth,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

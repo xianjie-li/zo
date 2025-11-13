@@ -112,26 +112,49 @@ class Debouncer {
 /// 节流
 class Throttler {
   final Duration delay;
-  Timer? _timer;
-  bool _isReady = true;
 
-  Throttler({required this.delay});
+  /// 是否执行尾随请求，假设正在对滚动操作进行节流，可能会因为接到导致没有对最终的滚动位置进行响应，
+  /// 设置后会在所有操作结束后必定执行一次操作
+  final bool trailing;
+
+  Timer? _timer;
+
+  /// 是否存在被拦截的操作
+  bool _hasBlocked = false;
+
+  Throttler({
+    required this.delay,
+    this.trailing = true,
+  });
 
   void run(VoidCallback action) {
-    if (!_isReady) {
+    if (_timer != null) {
+      _hasBlocked = true;
       return;
     }
 
     action();
-    _isReady = false;
-    // 启动计时器，在 delay 时间后恢复 _isReady
-    _timer = Timer(delay, () {
-      _isReady = true;
-    });
+
+    void delayCall() {
+      // 延迟一段时间后重新接收执行，如果期间存在新的执行请求，在末尾执行
+      _timer = Timer(delay, () {
+        // 处理被拦截操作
+        if (trailing && _hasBlocked) {
+          _hasBlocked = false;
+          action();
+
+          // 重新设置计时器
+          delayCall();
+        } else {
+          _timer = null;
+        }
+      });
+    }
+
+    delayCall();
   }
 
   void cancel() {
     _timer?.cancel();
-    _isReady = true;
   }
 }

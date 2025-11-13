@@ -1,5 +1,4 @@
-import "package:flutter/material.dart";
-import "dnd.dart";
+part of "dnd.dart";
 
 /// 可用的放置位置
 class ZoDNDPosition {
@@ -98,10 +97,14 @@ class ZoDNDBuildContext {
 
 /// dnd事件类型, 详细说明见 [ZoDND] 组件对应事件
 enum ZoDNDEventType {
-  dragStart,
-  dragMove,
-  dragEnd,
+  start,
+  move,
+  end,
   accept,
+
+  /// dnd启用了center位置，并且拖动一个节点在center位置一段时间后触发，
+  /// 在树形组件场景下，用来短暂悬停后展开当前节点层级
+  expand,
 }
 
 /// 拖动时持续触发的事件
@@ -131,7 +134,7 @@ class ZoDNDDropEvent extends ZoDNDEvent {
   const ZoDNDDropEvent({
     required super.type,
     required super.dragDND,
-    required super.activeDND,
+    required ZoDND super.activeDND,
     required super.activePosition,
   });
 

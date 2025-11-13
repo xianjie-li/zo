@@ -57,10 +57,6 @@ final zoOverlay = ZoOverlay();
 typedef ZoOverlayAnimationWrap =
     Widget Function(Widget child, ZoOverlayEntry entry);
 
-/// 根节点包装器
-typedef ZoOverlayCustomWrap =
-    Widget Function(BuildContext context, Widget child);
-
 /// ZoOverlayView 组件发送的通知类型
 enum _ViewTriggerType {
   /// 包含 barrier 的层显示或隐藏, 其他层应可响应事件并显示或隐藏自身的 barrier

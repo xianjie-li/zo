@@ -3,6 +3,7 @@ import "package:zo/src/button/button.dart";
 
 import "base_page.dart";
 import "button_page.dart";
+import "dnd_page.dart";
 import "fetcher_page.dart";
 import "input_page.dart";
 import "input_page2.dart";
@@ -115,6 +116,11 @@ class RouterLinks extends StatelessWidget {
               plain: true,
               child: const Text("Tree"),
               onTap: () => toPage(context, const TreePage()),
+            ),
+            ZoButton(
+              plain: true,
+              child: const Text("DND"),
+              onTap: () => toPage(context, const DNDPage()),
             ),
           ],
         ),

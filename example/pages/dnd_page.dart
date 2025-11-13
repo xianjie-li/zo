@@ -6,14 +6,14 @@ import "package:zo/src/dnd/dnd.dart";
 import "package:zo/src/trigger/trigger.dart";
 import "package:zo/zo.dart";
 
-class PlayPage extends StatefulWidget {
-  const PlayPage({super.key});
+class DNDPage extends StatefulWidget {
+  const DNDPage({super.key});
 
   @override
-  State<PlayPage> createState() => _PlayPageState();
+  State<DNDPage> createState() => _DNDPageState();
 }
 
-class _PlayPageState extends State<PlayPage> {
+class _DNDPageState extends State<DNDPage> {
   int acceptedData = 0;
 
   @override

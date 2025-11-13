@@ -37,7 +37,7 @@ class ZoOverlayEntry extends ChangeNotifier {
     bool preventOverflow = true,
     ZoTransitionType? transitionType,
     ZoOverlayAnimationWrap? animationWrap,
-    ZoOverlayCustomWrap? customWrap,
+    WidgetChildBuilder? customWrap,
     Curve curve = ZoTransition.defaultCurve,
     Duration duration = ZoTransition.defaultDuration,
   }) : _groupId = groupId ?? UniqueKey(),
@@ -598,9 +598,9 @@ class ZoOverlayEntry extends ChangeNotifier {
   }
 
   /// 在层节点的根包裹自定义节点
-  ZoOverlayCustomWrap? get customWrap => _customWrap;
-  ZoOverlayCustomWrap? _customWrap;
-  set customWrap(ZoOverlayCustomWrap? customWrap) {
+  WidgetChildBuilder? get customWrap => _customWrap;
+  WidgetChildBuilder? _customWrap;
+  set customWrap(WidgetChildBuilder? customWrap) {
     _customWrap = customWrap;
     changed();
   }

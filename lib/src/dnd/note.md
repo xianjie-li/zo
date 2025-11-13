@@ -11,13 +11,20 @@
 - x feedback
 - x 光标变更
 - x accept 触发时需要满足放置条件
-- 嵌套 dnd & groupId测试
-- DNDHandler: 作为拖动把手, 通过 Notification 发送事件
-- DNDFeedback: 简化放置目标的反馈实现
-- esc取消拖动
-- 自动滚动
-- 悬停打开事件
-
+- x 嵌套 dnd & groupId测试
+- x DNDHandler: 自定义拖动把手
+- x DNDFeedback: 简化放置目标的反馈实现
+  - x 提供 dnd context 给用于自定义放置到中间的样式（高亮）、拖动中（禁用）样式
+  - x 提供 dnd.directionIndicator / dnd.directionIndicator 显示对应方向上的放置标识
+  - x 提供 dnd.draggingOpacity 添加拖动中透明度显示
+- x accept 触发条件
+- x escape 取消拖动
+- x 自动滚动: 
+  - x 开始拖动时，通知所有dnd上报滚动父级的信息，因为滚动容器在拖动过程动态变更的可能性较小，这能满足大部分场景且性能较好
+  - x 拖动时，检测所有rect，如果滚动在任一rect边缘， 获取其对应的滚动父级，执行自动滚动，记录当前距离边缘的距离，越近滚动越快
+  - x 拖动结束、滚动父级变更、不可滚动时（atEdge），停止自动滚动
+- x 在视口外放置时组件未更新
+- x 悬停打开事件: 命中center并持续一段时间未移出时，触发打开事件
 
 ## 难点
 
@@ -27,7 +34,7 @@
 visibility_detector
 
 自动滚动实现？
-拖动并在一个滚动容器边缘移动时，如果自动进行滚动
+拖动并在一个滚动容器边缘移动时，自动进行滚动
 
 通过 Scrollable.of(context) 查找父级 ScrollableState，可以检测滚动容器、控制位置等
 
