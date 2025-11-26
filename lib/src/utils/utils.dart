@@ -158,3 +158,11 @@ class Throttler {
     _timer?.cancel();
   }
 }
+
+/// 判断指定颜色是否应使用浅色文本
+bool useLighterText(Color color) {
+  // 如果颜色包含较大的透明度，则使用浅色文本
+  if (color.a < 0.5) return false;
+
+  return color.computeLuminance() < 0.5;
+}

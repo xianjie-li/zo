@@ -85,9 +85,9 @@ class ZoAdaptiveLayout<Val> extends StatelessWidget {
       assert(values![ZoAdaptiveLayoutPointType.xs] != null);
     }
 
-    var style = context.zoStyle;
+    final style = context.zoStyle;
 
-    var points = [
+    final points = [
       (ZoAdaptiveLayoutPointType.xs, 0.0),
       (
         ZoAdaptiveLayoutPointType.sm,
@@ -115,7 +115,7 @@ class ZoAdaptiveLayout<Val> extends StatelessWidget {
     dynamic curVal;
 
     for (var i = points.length - 1; i >= 0; i--) {
-      var (type, pointVal) = points[i];
+      final (type, pointVal) = points[i];
       if (curPoint == null && constraints.maxWidth >= pointVal) {
         curPoint = points[i];
 
@@ -124,7 +124,7 @@ class ZoAdaptiveLayout<Val> extends StatelessWidget {
       }
 
       if (curPoint != null) {
-        var valConf = values![type];
+        final valConf = values![type];
 
         if (valConf != null) {
           curVal = valConf;
@@ -140,13 +140,13 @@ class ZoAdaptiveLayout<Val> extends StatelessWidget {
       curVal = values![curPoint.$1];
     }
 
-    var point = curPoint.$1;
+    final point = curPoint.$1;
 
-    var isSmall =
+    final isSmall =
         point == ZoAdaptiveLayoutPointType.xs ||
         point == ZoAdaptiveLayoutPointType.sm;
 
-    var isMedium =
+    final isMedium =
         point == ZoAdaptiveLayoutPointType.md ||
         point == ZoAdaptiveLayoutPointType.lg;
 

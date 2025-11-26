@@ -35,6 +35,7 @@ mixin _TreeShortcutsMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
   /// 清空选中
   final clearActivator = const SingleActivator(
     LogicalKeyboardKey.escape,
+    includeRepeats: false,
   );
 
   /// 处理按键操作

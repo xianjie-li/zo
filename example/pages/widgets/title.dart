@@ -8,8 +8,8 @@ class PageTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(top: 32, bottom: 8),
-      child: Text(title, style: TextStyle(fontSize: 20)),
+      padding: const EdgeInsets.only(top: 32, bottom: 8),
+      child: Text(title, style: const TextStyle(fontSize: 20)),
     );
   }
 }

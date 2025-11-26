@@ -151,15 +151,6 @@ class _ZoInteractiveBoxState extends State<ZoInteractiveBox> {
 
   AnimationController? controller;
 
-  /// 判断指定颜色是否应使用浅色文本
-  bool useLighterText(Color? color) {
-    // 无颜色 或 plain 按钮跳过
-    if (color == null || widget.plain) return false;
-    final curColor = widget.color ?? context.zoStyle.primaryColor;
-    final lum = curColor.computeLuminance();
-    return lum < lightLuminanceValue;
-  }
-
   void onActiveChanged(ZoTriggerToggleEvent event) {
     widget.onActiveChanged?.call(event);
 
@@ -278,9 +269,7 @@ class _ZoInteractiveBoxState extends State<ZoInteractiveBox> {
           textColor = Colors.white;
         } else {
           // 固定取黑色文本
-          textColor = style.brightness == Brightness.light
-              ? style.textColor
-              : style.reverseStyle.textColor;
+          textColor = style.lightStyle.textColor;
         }
       } else if (widget.color != null) {
         // 无背景色的带主色按钮, 使用主色

@@ -19,10 +19,13 @@ mixin _ZoDNDAutoScrollMixin {
   /// 当前活动的滚动位置控制器
   ScrollPosition? _activeScrollPosition; // <-- 跟踪当前正在滚动的 Position
 
+  /// 正在自动滚动
+  bool _autoScrolling = false;
+
   /// 处理拖动到滚动容器边缘时的自动滚动
   void _autoDragScrollHandle({
     required ZoTriggerDragEvent event,
-    required List<_ZoDNDNode> groupNodes,
+    required List<ZoDNDNode> groupNodes,
   }) {
     // 开始拖动时，获取所有滚动节点信息
     if (event.first) {
@@ -209,6 +212,9 @@ mixin _ZoDNDAutoScrollMixin {
           pos.minScrollExtent,
           pos.maxScrollExtent,
         );
+
+        _autoScrolling = true;
+
         pos.jumpTo(newOffset);
       } else {
         _stopAutoScroll();
@@ -222,6 +228,7 @@ mixin _ZoDNDAutoScrollMixin {
     _scrollTimer = null;
     _currentScrollSpeed = Offset.zero;
     _activeScrollPosition = null;
+    _autoScrolling = false;
   }
 
   /// 检测 rect2 是否有任意一个轴小于 rect1

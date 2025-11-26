@@ -1,59 +1,56 @@
 part of "dnd.dart";
 
-/// 管理所有 dnd 节点并处理命中等逻辑
-class _ZoDNDManager with _ZoDNDAutoScrollMixin {
-  static final _ZoDNDManager instance = _ZoDNDManager._internal();
+/// 管理所有 dnd 节点并处理命中等逻辑, 这是一个单例对象，应始终通过 [instance] 使用
+///
+/// 很少需要使用 [ZoDNDManager], 仅特定进阶场景需要使用，例如：在拖动时动态更新 feedback
+class ZoDNDManager with _ZoDNDAutoScrollMixin {
+  static final ZoDNDManager instance = ZoDNDManager._internal();
 
-  static _ZoDNDManager _internal() {
+  static ZoDNDManager _internal() {
     // 减小可见性反馈间隔
     VisibilityDetectorController.instance.updateInterval = Durations.short2;
-    return _ZoDNDManager();
+    return ZoDNDManager();
   }
 
   /// 视为边缘位置的尺寸比例
   final _edgeRatio = 0.24;
 
   /// 以id 为 key 存储的 dnd 节点信息，对于已经卸载的 dnd 应该将其移除，防止 map 过于庞大
-  final HashMap<String, _ZoDNDNode> _dndNodes = HashMap();
+  final HashMap<String, ZoDNDNode> _dndNodes = HashMap();
 
   /// 当前视图id，设置后，getGroup 等api会将结果限制到匹配的视口, 防止不同视口的dnd互相干扰
   /// 通常需要在节点开始拖动时，将拖动节点的viewId设置为当前视图id，防止错误的匹配到其他窗口
   int? currentViewId;
 
   /// 正在拖动的节点
-  _ZoDNDNode? dragNode;
+  ZoDNDNode? dragNode;
 
   /// 当前存在激活位置的节点
-  _ZoDNDNode? activeNode;
+  ZoDNDNode? activeNode;
 
   /// 当前 activeNode 的激活位置
-  var activePosition = const ZoDNDPosition();
+  ZoDNDPosition activePosition = const ZoDNDPosition();
 
   /// 移除指定DND
-  void remove(String id) {
+  void _remove(String id) {
     _dndNodes.remove(id);
   }
 
-  /// 获取指定DND
-  _ZoDNDNode? get(String id) {
-    return _dndNodes[id];
-  }
-
   /// 添加DND, 如果对应的 node.id 已存在则替换
-  void add(_ZoDNDNode node) {
+  void _add(ZoDNDNode node) {
     _dndNodes[node.id] = node;
   }
 
-  /// 检测node的关键信息是否都有效，这通常意味着节点时可见的
-  bool isValidNode(_ZoDNDNode node) {
+  /// 检测node的关键信息是否都有效，这通常意味着节点是可见的
+  bool isValidNode(ZoDNDNode node) {
     return node.visibleRect != null &&
         node.viewId != null &&
         node.renderBox != null;
   }
 
   /// 获取指定组的所有有效DND, 若已设置 [currentViewId] 会将结果限制到该 viewId 下
-  List<_ZoDNDNode> getGroup(Object? groupId) {
-    final List<_ZoDNDNode> list = [];
+  List<ZoDNDNode> getGroup(Object? groupId) {
+    final List<ZoDNDNode> list = [];
 
     for (final entry in _dndNodes.entries) {
       final node = entry.value;
@@ -67,17 +64,17 @@ class _ZoDNDManager with _ZoDNDAutoScrollMixin {
     return list;
   }
 
-  /// 获取指定位置命中的dnd以及该组所有dnd节点
-  (_ZoDNDNode?, List<_ZoDNDNode>) findHitDNDs(
+  /// 获取指定位置命中的dnd以及该组所有dnd节点，filter 可排除特定节点，但仍会包含在返回的第二项列表中
+  (ZoDNDNode?, List<ZoDNDNode>) findHitDNDs(
     Offset position, {
     Object? groupId,
-    bool Function(_ZoDNDNode node)? filter,
+    bool Function(ZoDNDNode node)? filter,
   }) {
     assert(currentViewId != null);
 
     final list = getGroup(groupId);
 
-    final HashSet<_ZoDNDNode> matchList = HashSet();
+    final HashSet<ZoDNDNode> matchList = HashSet();
 
     for (final node in list) {
       if (node.visibleRect != null && node.visibleRect!.contains(position)) {
@@ -104,7 +101,7 @@ class _ZoDNDManager with _ZoDNDAutoScrollMixin {
       currentViewId!,
     );
 
-    final renderBoxMap = HashMap<RenderBox, _ZoDNDNode>();
+    final renderBoxMap = HashMap<RenderBox, ZoDNDNode>();
 
     for (final node in matchList) {
       renderBoxMap[node.renderBox!] = node;
@@ -124,7 +121,7 @@ class _ZoDNDManager with _ZoDNDAutoScrollMixin {
 
   /// 判定当前命中的位置, 调用者需要确保节点处于可见状态
   ZoDNDPosition detectHitPosition({
-    required _ZoDNDNode node,
+    required ZoDNDNode node,
     required Offset position,
   }) {
     final droppablePosition = node.droppablePosition;
@@ -176,7 +173,7 @@ class _ZoDNDManager with _ZoDNDAutoScrollMixin {
   }
 
   /// 通知给定node的widget更新
-  void _updateNodes(List<_ZoDNDNode?> nodes) {
+  void _updateNodes(List<ZoDNDNode?> nodes) {
     for (final node in nodes) {
       node?.updateWidget();
     }
@@ -185,13 +182,20 @@ class _ZoDNDManager with _ZoDNDAutoScrollMixin {
   /// 显示 feedback 的层
   ZoOverlayEntry? _feedbackEntry;
 
+  /// 临时指定要显示的反馈节点，在拖动结束后会自动清理
+  Widget? _tempFeedback;
+
   /// feedback偏移
   Offset? _feedbackOffset;
+
+  void updateFeedback(Widget feedback) {
+    _tempFeedback = feedback;
+  }
 
   /// feedback的创建显示等处理
   void _feedbackHandle({
     required ZoTriggerDragEvent event,
-    required _ZoDNDNode dragNode,
+    required ZoDNDNode dragNode,
     required BuildContext context,
   }) {
     if (event.first) {
@@ -232,10 +236,15 @@ class _ZoDNDManager with _ZoDNDAutoScrollMixin {
         child = dnd.child!;
       }
 
+      if (_feedbackEntry != null) {
+        _feedbackEntry!.disposeSelf();
+      }
+
       _feedbackEntry = ZoOverlayEntry(
         offset: event.position - _feedbackOffset!,
         tapAwayClosable: false,
         escapeClosable: false,
+        alwaysOnTop: true,
         requestFocus: false,
         preventOverflow: false,
         duration: Duration.zero,
@@ -246,7 +255,9 @@ class _ZoDNDManager with _ZoDNDAutoScrollMixin {
           );
         },
         builder: (context) {
-          if (isCustomFeedback) return child;
+          if (isCustomFeedback || _tempFeedback != null) {
+            return _tempFeedback ?? child;
+          }
 
           final wrappedChild = dragNode.dnd.feedbackWrap == null
               ? child
@@ -266,13 +277,15 @@ class _ZoDNDManager with _ZoDNDAutoScrollMixin {
       );
 
       zoOverlay.open(_feedbackEntry!);
-    } else if (event.last) {
+    } else if (event.last || event.canceled) {
       // 销毁
       if (_feedbackEntry != null) {
         _feedbackEntry!.disposeSelf();
         _feedbackEntry = null;
         _feedbackOffset = null;
       }
+
+      _tempFeedback = null;
     } else {
       // 更新位置
       if (_feedbackEntry != null) {
@@ -286,12 +299,13 @@ class _ZoDNDManager with _ZoDNDAutoScrollMixin {
   ZoOverlayEntry? _directionIndicatorEntry;
 
   /// 方向指示器处理
-  void _directionIndicatorHandle({
+  void _dropIndicatorHandle({
     required ZoTriggerDragEvent event,
-    required _ZoDNDNode dragNode,
+    required ZoDNDNode dragNode,
     required BuildContext context,
     required ZoDNDPosition activePosition,
   }) {
+    // 销毁
     if (event.last ||
         event.canceled ||
         (event.first && _directionIndicatorEntry != null)) {
@@ -299,29 +313,23 @@ class _ZoDNDManager with _ZoDNDAutoScrollMixin {
         _directionIndicatorEntry!.disposeSelf();
         _directionIndicatorEntry = null;
       }
-
       return;
     }
 
-    final showIndicator = activeNode?.dnd.directionIndicator ?? false;
+    final indicatorEnable = activeNode?.dnd.dropIndicator ?? false;
 
-    final shouldShow =
-        showIndicator &&
-        (activePosition.top ||
-            activePosition.right ||
-            activePosition.bottom ||
-            activePosition.left);
+    // 是否显示
+    final shouldShow = indicatorEnable && activePosition.any;
 
-    final nodeRect = activeNode?.rect;
+    final activeNodeRect = activeNode?.rect;
 
-    // 没有要显示的东西
-    if (!shouldShow || activeNode == null || nodeRect == null) {
+    final indicatorPadding = activeNode?.dnd.dropIndicatorPadding;
+
+    // 条件不符合，隐藏指示器
+    if (!shouldShow || activeNode == null || activeNodeRect == null) {
       // 清空显示
       if (_directionIndicatorEntry != null) {
-        _directionIndicatorEntry!.offset = Offset.zero;
-        _directionIndicatorEntry!.builder = (context) {
-          return const SizedBox.shrink();
-        };
+        _tempHideDropIndicator();
       }
 
       return;
@@ -330,42 +338,64 @@ class _ZoDNDManager with _ZoDNDAutoScrollMixin {
     // 显示在哪个方向
     ZoPopperDirection direction = ZoPopperDirection.bottom;
 
-    // Indicator 的宽或高
-    var size = 0.0;
-
     // 参照位置
-    final rect = nodeRect.inflate(dragNode.dnd.directionIndicatorOffset ?? 0);
+    var rect = activeNodeRect;
 
-    var isVertical = false;
+    // 根据 indicatorPadding 调整参照位置
+    if (indicatorPadding != null) {
+      final w =
+          activeNodeRect.width + indicatorPadding.left + indicatorPadding.right;
+      final h =
+          activeNodeRect.height +
+          indicatorPadding.top +
+          indicatorPadding.bottom;
 
-    if (activePosition.left) {
+      rect = Rect.fromLTWH(
+        activeNodeRect.left - indicatorPadding.left,
+        activeNodeRect.top - indicatorPadding.top,
+        w,
+        h,
+      );
+    }
+
+    // Indicator 的宽或高
+    Size size = Size.zero;
+
+    // Indicator 线条的厚度
+    const thickness = 2.0;
+
+    if (activePosition.center) {
+      // 按实际尺寸定位到左上角
+      direction = ZoPopperDirection.rightTop;
+      size = rect.size;
+      rect = Rect.fromLTWH(rect.left, rect.top, 0, 0);
+    } else if (activePosition.left) {
       direction = ZoPopperDirection.left;
-      size = nodeRect.height;
+      size = Size(thickness, rect.height);
     } else if (activePosition.right) {
       direction = ZoPopperDirection.right;
-      size = nodeRect.height;
+      size = Size(thickness, rect.height);
     } else if (activePosition.top) {
       direction = ZoPopperDirection.top;
-      size = nodeRect.width;
-      isVertical = true;
+      size = Size(rect.width, thickness);
     } else if (activePosition.bottom) {
       direction = ZoPopperDirection.bottom;
-      size = nodeRect.width;
-      isVertical = true;
+      size = Size(rect.width, thickness);
     }
 
     Widget builder(BuildContext context) {
       return _DirectionIndicator(
-        width: isVertical ? size : 2,
-        height: isVertical ? 2 : size,
-        isVertical: isVertical,
+        width: size.width,
+        height: size.height,
+        thickness: thickness,
+        activePosition: activePosition,
+        indicatorRadius: activeNode!.dnd.dropIndicatorRadius,
       );
     }
 
     // 确保层已创建
     if (_directionIndicatorEntry == null) {
       _directionIndicatorEntry = ZoOverlayEntry(
-        builder: builder,
         rect: rect,
         direction: direction,
         tapAwayClosable: false,
@@ -373,6 +403,12 @@ class _ZoDNDManager with _ZoDNDAutoScrollMixin {
         requestFocus: false,
         preventOverflow: false,
         duration: Duration.zero,
+        customWrap: (context, child) {
+          return IgnorePointer(
+            child: child,
+          );
+        },
+        builder: builder,
       );
 
       zoOverlay.open(_directionIndicatorEntry!);
@@ -385,20 +421,33 @@ class _ZoDNDManager with _ZoDNDAutoScrollMixin {
     });
   }
 
+  /// 临时隐藏当前的放置指示器，如果该次拖动重新满足了显示条件会重新显示
+  void _tempHideDropIndicator() {
+    if (_directionIndicatorEntry == null ||
+        _directionIndicatorEntry!.offset == Offset.zero) {
+      return;
+    }
+
+    _directionIndicatorEntry!.offset = Offset.zero;
+    _directionIndicatorEntry!.builder = (context) {
+      return const SizedBox.shrink();
+    };
+  }
+
   /// 最后一次传入 _escapeHandle 的拖动事件
   ZoTriggerDragEvent? _lastEscapeHandleEvent;
 
   /// 处理拖动过程的按键
   bool _draggingKeyHandle(KeyEvent event) {
-    if (event is KeyDownEvent) {
-      if (event.logicalKey == LogicalKeyboardKey.escape) {
-        if (_lastEscapeHandleEvent != null) {
-          _lastEscapeHandleEvent!.cancel();
-          return true;
-        }
+    if (event.logicalKey == LogicalKeyboardKey.escape) {
+      if (event is KeyDownEvent && _lastEscapeHandleEvent != null) {
+        _lastEscapeHandleEvent!.cancel();
+        _lastEscapeHandleEvent = null;
+        return true;
       }
     }
-    // 6. 对于所有其他按键，返回 false
+
+    // 对于所有其他按键，返回 false
     return false;
   }
 
@@ -424,11 +473,14 @@ class _ZoDNDManager with _ZoDNDAutoScrollMixin {
   /// 悬停展开计时器
   Timer? _dragExpandTimer;
 
+  /// 最后触发expand的项，避免同一项重复触发
+  String? _lastExpandId;
+
   /// 处理拖动到中心悬停后的展开操作
   void _dragExpandHandle({
     required ZoTriggerDragEvent event,
     required ZoDNDPosition activePosition,
-    required _ZoDNDNode dragNode,
+    required ZoDNDNode dragNode,
     required BuildContext context,
   }) {
     // 拖到中间：添加计时器 任意拖动会清理计时器
@@ -437,6 +489,10 @@ class _ZoDNDManager with _ZoDNDAutoScrollMixin {
     if (_dragExpandTimer != null) {
       _dragExpandTimer!.cancel();
       _dragExpandTimer = null;
+    }
+
+    if (activeNode?.id == _lastExpandId) {
+      return;
     }
 
     // 当前在中间位置时，添加计时器
@@ -455,8 +511,53 @@ class _ZoDNDManager with _ZoDNDAutoScrollMixin {
 
         ZoDNDEventNotification(expandEvent).dispatch(context);
 
+        _lastExpandId = dragNode.id;
         _dragExpandTimer = null;
       });
+    }
+  }
+
+  /// 清理尚未关闭的拖拽事件
+  void _clearDragEvents({
+    required List<ZoDNDNode> groupNodes,
+    required BuildContext context,
+  }) {
+    final dragEnd = ZoDNDEvent(
+      type: ZoDNDEventType.end,
+      dragDND: dragNode!.dnd,
+      activeDND: activeNode?.dnd,
+      activePosition: const ZoDNDPosition(),
+    );
+
+    for (final node in groupNodes) {
+      node.dnd.onDragEnd?.call(dragEnd);
+      node.updateWidget();
+    }
+
+    ZoDNDEventNotification(dragEnd).dispatch(context);
+  }
+
+  /// 在拖动过程中显示合适的光标, 另一个主要目的是拦截下方事件，防止 hover 等样式触发
+  void _changeCursorHandle({
+    required ZoTriggerDragEvent event,
+  }) {
+    if (event.last) {
+      GlobalCursor.hide();
+      return;
+    }
+
+    // 鼠标在一个不可放置节点上方时，设置光标位禁用样式
+    final cantDrop = activeNode != null && !activeNode!.droppablePosition.any;
+
+    if (cantDrop) {
+      if (GlobalCursor.currentCursor != SystemMouseCursors.forbidden) {
+        GlobalCursor.show(SystemMouseCursors.forbidden, true);
+      }
+      return;
+    }
+
+    if (GlobalCursor.currentCursor != MouseCursor.defer) {
+      GlobalCursor.show(MouseCursor.defer, true);
     }
   }
 
@@ -475,16 +576,29 @@ class _ZoDNDManager with _ZoDNDAutoScrollMixin {
 
     currentViewId = dragNode!.viewId;
 
+    // 实时通知子级更新位置信息
+    for (final element in _dndNodes.entries) {
+      element.value.updateRect();
+    }
+
     final (hitNode, groupNodes) = findHitDNDs(
       event.position,
       groupId: dragNode!.dnd.groupId,
-      filter: (node) => node.id != dragNode!.id,
+      // 需要处理命中自身的情况，改为不过滤
+      // filter: (node) => node.id != dragNode!.id,
     );
 
     currentViewId = null;
 
     final prevActiveNode = activeNode;
     final prevActivePosition = activePosition;
+
+    final isEnd = !dragNode!.draggable || event.canceled;
+
+    _autoDragScrollHandle(
+      event: event,
+      groupNodes: groupNodes,
+    );
 
     _feedbackHandle(
       event: event,
@@ -497,31 +611,40 @@ class _ZoDNDManager with _ZoDNDAutoScrollMixin {
       context: context,
     );
 
-    _autoDragScrollHandle(
-      event: event,
-      groupNodes: groupNodes,
-    );
+    /// 正在自动滚动时跳过更新事件
+    if (_autoScrolling && !isEnd && !event.first) {
+      _tempHideDropIndicator();
+      return;
+    }
 
-    // 中途取消
-    if (!dragNode!.draggable || event.canceled) {
+    // 结束
+    if (isEnd) {
       event.cancel();
 
       const nilPosition = ZoDNDPosition();
 
-      // 清理
-      _directionIndicatorHandle(
+      _dropIndicatorHandle(
         event: event,
         dragNode: dragNode!,
         context: context,
         activePosition: nilPosition,
       );
 
-      // 清理
       _dragExpandHandle(
         event: event,
         dragNode: dragNode!,
         context: context,
         activePosition: nilPosition,
+      );
+
+      _clearDragEvents(
+        groupNodes: groupNodes,
+        context: context,
+      );
+
+      // 根据拖动状态实时更新光标样式, 这里主要用于清理
+      _changeCursorHandle(
+        event: event,
       );
 
       dragNode!.updateWidget();
@@ -539,19 +662,30 @@ class _ZoDNDManager with _ZoDNDAutoScrollMixin {
 
     activePosition = const ZoDNDPosition();
 
-    // 检测命中节点
+    // 检测命中节点的位置
     if (hitNode != null) {
-      activePosition = detectHitPosition(
-        node: hitNode,
-        position: event.position,
-      );
-
       activeNode = hitNode;
+
+      // 需要检测命中位置
+      if (hitNode != dragNode) {
+        activePosition = detectHitPosition(
+          node: hitNode,
+          position: event.position,
+        );
+      }
     } else {
       activeNode = null;
     }
 
+    // 根据拖动状态实时更新光标样式
+    _changeCursorHandle(
+      event: event,
+    );
+
     if (event.first) {
+      // 取消现有组件的聚焦, 防止按键冲突
+      FocusManager.instance.primaryFocus?.unfocus();
+
       final startEvent = ZoDNDEvent(
         type: ZoDNDEventType.start,
         dragDND: dragNode!.dnd,
@@ -561,7 +695,9 @@ class _ZoDNDManager with _ZoDNDAutoScrollMixin {
 
       for (final node in groupNodes) {
         node.dnd.onDragStart?.call(startEvent);
-        node.updateWidget();
+
+        // 初始帧有时不会触发，立即更新组件
+        node.updateWidget(true);
       }
 
       ZoDNDEventNotification(startEvent).dispatch(context);
@@ -577,8 +713,6 @@ class _ZoDNDManager with _ZoDNDAutoScrollMixin {
         node.dnd.onDragEnd?.call(dragEnd);
         node.updateWidget();
       }
-
-      dragNode?.updateWidget();
 
       ZoDNDEventNotification(dragEnd).dispatch(context);
     } else {
@@ -597,7 +731,7 @@ class _ZoDNDManager with _ZoDNDAutoScrollMixin {
       ZoDNDEventNotification(dragMove).dispatch(context);
     }
 
-    _directionIndicatorHandle(
+    _dropIndicatorHandle(
       event: event,
       dragNode: dragNode!,
       context: context,
@@ -611,7 +745,7 @@ class _ZoDNDManager with _ZoDNDAutoScrollMixin {
       activePosition: activePosition,
     );
 
-    // 结束拖动是，根据需要清理和触发事件
+    // 结束拖动，根据需要清理和触发事件
     if (event.last) {
       if (activeNode != null && activePosition.any) {
         final acceptEvent = ZoDNDDropEvent(
@@ -641,9 +775,9 @@ class _ZoDNDManager with _ZoDNDAutoScrollMixin {
   }
 }
 
-/// 由 [_ZoDNDManager] 管理的 dnd 节点信息
-class _ZoDNDNode {
-  _ZoDNDNode({
+/// 由 [ZoDNDManager] 管理的 dnd 节点信息
+class ZoDNDNode {
+  ZoDNDNode({
     required this.id,
     required this.dnd,
     this.rect,
@@ -654,6 +788,7 @@ class _ZoDNDNode {
     required this.droppablePosition,
     required this.updateWidget,
     required this.getScrollParent,
+    required this.updateRect,
   });
 
   /// dnd实例id
@@ -680,14 +815,18 @@ class _ZoDNDNode {
   /// 当前dnd节点的可放置位置信息
   ZoDNDPosition droppablePosition;
 
-  /// 主动更新 dnd 组件
-  VoidCallback updateWidget;
+  /// 主动更新 dnd 组件, 会在下一帧更新，传入 immediate 可立即更新
+  void Function([bool immediate]) updateWidget;
+
+  /// 更新位置信息, 默认会附带节流操作，传入 immediate 可立即更新
+  void Function([bool immediate]) updateRect;
 
   /// 获取节点的滚动父级信息
   (ScrollableState, Rect)? Function() getScrollParent;
 
   dispose() {
     renderBox = null;
+    visibleRect = null;
     rect = null;
   }
 }

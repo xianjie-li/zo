@@ -3,7 +3,6 @@ library;
 
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
-import "package:zo/src/form/form_state.dart";
 import "package:zo/zo.dart";
 
 /// 下拉选择组件
@@ -423,8 +422,7 @@ class ZoSelectState extends ZoCustomFormState<Iterable<Object>, ZoSelect> {
       Color? textColor;
 
       if (decoration.color != null) {
-        final useLightText =
-            decoration.color!.computeLuminance() < lightLuminanceValue;
+        final useLightText = useLighterText(decoration.color!);
         if (useLightText && !isDarkMode) {
           textColor = Colors.white;
         }

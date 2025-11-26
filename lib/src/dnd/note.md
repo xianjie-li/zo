@@ -2,10 +2,18 @@
 
 统一管理所有 dnd 的行为，减少 dnd 负责的工作
 
+## 实现
+
+- [ZoDND] - 拖动与放置，会将位置、可见性、可拖放等信息通过 [_ZoDNDNode] 同步到 [_ZoDNDManager]
+- [_ZoDNDManager] - 核心逻辑实现区域，管理所有dnd节点
+- [ZoDNDPosition] - 控制或表示dnd不同位置的启用状态
+- [ZoDNDBuildContext] - dnd的自定义构造器参数，包含了当前拖动状态，用来根据状态构造不同的子级作为反馈
+- [ZoDNDEvent] - 核心事件
+- [ZoDNDEventNotification] - 通过树向上冒泡 [ZoDNDEvent]
+
 ## DND
 
-拖动项，应用中可以存在复数个 DND，通过 groupId 进行分组，同组别的可以互相拖放，并且只响应当前组的事件, 包含一个默认组
-尽量将操作外放到 Manager 处理
+拖动项，应用中可以存在复数个 DND，通过 groupId 进行分组，同组别的可以互相拖放，并且只响应当前组的事件, 包含一个默认组，尽量将操作外放到 Manager 处理
 
 - x DNDNotification
 - x feedback

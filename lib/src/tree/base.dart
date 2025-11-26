@@ -102,16 +102,16 @@ mixin _TreeBaseMixin on ZoCustomFormState<Iterable<Object>, ZoTree> {
     final option = optionNode.option;
 
     // 非空时跳过
-    if (option.options != null && option.options!.isNotEmpty) return;
+    if (option.children != null && option.children!.isNotEmpty) return;
 
     // 不存在异步加载器时跳过
-    if (option.loadOptions == null) return;
+    if (option.loader == null) return;
 
     // 已经在进行异步加载
-    if (controller.isAsyncOptionLoading(value)) return;
+    if (controller.isAsyncLoading(value)) return;
 
     try {
-      final future = controller.loadOptions(value);
+      final future = controller.loadChildren(value);
 
       // 更新组件以更新选项加载UI
       setState(() {});

@@ -65,12 +65,15 @@ class ZoOverlayEntry extends ChangeNotifier {
   double changeId = 0;
 
   /// 当前所在的 overlay
-  ZoOverlay? overlay;
+  ZoOverlay? get overlay => _overlay;
+  ZoOverlay? _overlay;
 
   /// 当前层的定位对象, 用于一些进阶操作, 比如跳过 widget 层更新位置, 获取层的尺寸/位置等
   ///
   /// 在层挂载后设置, 销毁后移除
-  OverlayPositionedRenderObject? positionedRenderObject;
+  OverlayPositionedRenderObject? get positionedRenderObject =>
+      _positionedRenderObject;
+  OverlayPositionedRenderObject? _positionedRenderObject;
 
   /// 在层处于 hover 状态时, 此项会被设置为 true
   bool get hover => _hover;
@@ -92,7 +95,8 @@ class ZoOverlayEntry extends ChangeNotifier {
   }
 
   /// 记录了最近一次 open 变为 true 的时间
-  DateTime? lastOpenTime;
+  DateTime? get lastOpenTime => _lastOpenTime;
+  DateTime? _lastOpenTime;
 
   /// 与 [onOpenChanged] 触发时机相同
   final openChangedEvent = EventTrigger<bool>();
@@ -106,11 +110,8 @@ class ZoOverlayEntry extends ChangeNotifier {
   /// 与 [onHoverChanged] 触发时机相同
   final hoverEvent = EventTrigger<bool>();
 
-  /// 用于手动焦点控制
-  FocusScopeNode focusScopeNode = FocusScopeNode();
-
-  /// 如果是一个 [route] 层, 在开启时, 会将层对应的路由设置到此项
-  ZoOverlayRoute? _attachRoute;
+  /// 用于手动对层的焦点控制
+  final FocusScopeNode focusScopeNode = FocusScopeNode();
 
   /// 表示当前是一个 route overlay, 它会在 open 时向路由栈 push 一个新的路由,
   /// 用户可通过 Navigator.pop() 等路由 api 来关闭路由层
@@ -118,6 +119,9 @@ class ZoOverlayEntry extends ChangeNotifier {
   /// 局限性：当通过 moveToTop / moveToBottom 等方法改变路由层的位置时, 只会改变其视觉位置,
   /// 路由栈顺序不会改变, 所以在执行返回等路由操作时, 仍然会以其打开的顺序进行关闭
   final bool route;
+
+  /// 如果是一个 [route] 层, 在开启时, 会将层对应的路由设置到此项
+  ZoOverlayRoute? _attachRoute;
 
   /// 使层始终显示在最顶部
   ///
@@ -156,7 +160,6 @@ class ZoOverlayEntry extends ChangeNotifier {
     changeId = math.Random().nextDouble();
     if (!_lockNotify) {
       notifyListeners();
-      // print("changed: ${1123}");
     }
   }
 
@@ -275,6 +278,9 @@ class ZoOverlayEntry extends ChangeNotifier {
     }, false);
   }
 
+  bool isDisposed() => _isDisposed;
+  bool _isDisposed = false;
+
   /// 完全移除层, 被销毁的层不能被再次使用, 此类仅用于子类用于销毁操作，不可由外部直接调用，
   /// 请改为使用 [disposeSelf] 或 [ZoOverlay.dispose]
   @override
@@ -287,18 +293,26 @@ class ZoOverlayEntry extends ChangeNotifier {
       );
     }
 
+    _disposeByParent = false;
+
+    // 防止多次销毁，某些时候对用户是不可控的，比如设置关闭层自动销毁后，用户触发tapAway关闭了层，
+    // 随后在 dispose 钩子中又再次关闭，故将这种多次销毁的行为设置为允许的
+    if (_isDisposed) return;
+
     onDispose?.call();
     disposeEvent.emit();
 
-    overlay = null;
+    _overlay = null;
     _attachRoute = null;
-
-    _disposeByParent = false;
 
     openChangedEvent.clear();
     delayClosedEvent.clear();
     disposeEvent.clear();
     hoverEvent.clear();
+
+    focusScopeNode.dispose();
+
+    _isDisposed = true;
 
     super.dispose();
   }
@@ -405,7 +419,7 @@ class ZoOverlayEntry extends ChangeNotifier {
     if (value == _localOpen) return;
 
     if (value) {
-      lastOpenTime = DateTime.now();
+      _lastOpenTime = DateTime.now();
     }
 
     _localOpen = value;

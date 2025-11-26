@@ -11,6 +11,8 @@ class SelectPage extends StatefulWidget {
 }
 
 class _SelectPageState extends State<SelectPage> {
+  final GlobalKey<ZoSelectState> _key = GlobalKey();
+
   Future<List<ZoOption>> loadOptions(ZoOption option) async {
     final List<ZoOption> list = [];
 
@@ -41,7 +43,7 @@ class _SelectPageState extends State<SelectPage> {
     ZoOption(
       value: "Option 2",
       title: Text("Option 2"),
-      options: [
+      children: [
         ZoOption(
           value: "Option 2-1",
           title: Text("Option 2-1"),
@@ -55,16 +57,16 @@ class _SelectPageState extends State<SelectPage> {
     ZoOption(
       value: "Option 3",
       title: Text("Option 3"),
-      options: [
+      children: [
         ZoOption(
           value: "Option 3-1",
           title: Text("Option 3-1"),
-          loadOptions: loadOptions,
+          loader: loadOptions,
         ),
         ZoOption(
           value: "Option 3-2",
           title: Text("Option 3-2"),
-          loadOptions: loadOptions,
+          loader: loadOptions,
         ),
       ],
     ),
@@ -72,6 +74,7 @@ class _SelectPageState extends State<SelectPage> {
 
   @override
   Widget build(BuildContext context) {
+    print(123);
     return Scaffold(
       body: SingleChildScrollView(
         clipBehavior: Clip.none,
@@ -84,6 +87,7 @@ class _SelectPageState extends State<SelectPage> {
             SizedBox(
               width: 400,
               child: ZoSelect(
+                key: _key,
                 selectionType: ZoSelectionType.multiple,
                 options: options,
                 // trailing: Icon(Icons.arrow_drop_down_rounded),
@@ -101,6 +105,12 @@ class _SelectPageState extends State<SelectPage> {
                 // },
                 // onCreateOption: (value) {},
               ),
+            ),
+            ZoButton(
+              child: Text("输出选中"),
+              onTap: () {
+                print(_key.currentState?.menuEntry.selectedDatas.selected);
+              },
             ),
             SizedBox(
               width: 400,

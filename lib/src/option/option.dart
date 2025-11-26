@@ -1,17 +1,10 @@
-/// 提供选项相关Widget需要的核心组件:
-/// - 通用类型： [ZoSelectionType] / [ZoOptionSelectedData] 等
-/// - 统一的选项接口: [ZoOption]
-/// - 统一的选项渲染Widget: [ZoOptionViewList] / [ZoOptionView]
-/// - 通用的选项逻辑控制器: [ZoOptionController] 选中项管理， 树形数据处理， 高效的父子逻辑查询、选项数据管理等
-library;
-
 import "dart:async";
 import "dart:collection";
 
 import "package:flutter/material.dart";
 import "package:zo/zo.dart";
 
-// # # # # # # # 通用类型 # # # # # # #
+part "view.dart";
 
 /// 选择类型
 enum ZoSelectionType {
@@ -25,10 +18,11 @@ enum ZoSelectionType {
   none,
 }
 
-/// event.data 的类型
-typedef ZoOptionEventData = ({ZoOption option, BuildContext context});
+/// 子数据加载器
+typedef ZoRowDataLoader<ZoOption> =
+    Future<List<ZoOption>> Function(ZoOption option);
 
-/// 异步选项加载时的事件对象
+/// 异步数据加载状态变更时的事件对象
 class ZoOptionLoadEvent {
   const ZoOptionLoadEvent({
     required this.option,
@@ -37,7 +31,7 @@ class ZoOptionLoadEvent {
     this.loading = false,
   });
 
-  /// 本次加载对应的选项
+  /// 本次加载对应的父选项
   final ZoOption option;
 
   /// 获取到的选项数据
@@ -69,18 +63,18 @@ class ZoOptionSelectedData {
   /// 所有选中的叶子节点
   final List<ZoOption> selectedLeaf;
 
-  /// 当前已知选项中不存在的选中项
+  /// 当前已知数据中不存在的选中项
   final Set<Object> unlistedSelected;
 
   /// 当前所有选项
   final List<ZoOption> options;
 
-  /// 根据选中项和完整选项创建 [ZoOptionSelectedData] 实例
+  /// 根据选中项和完整数据创建 [ZoOptionSelectedData] 实例
   factory ZoOptionSelectedData.fromSelected(
     Iterable<Object> selected,
     List<ZoOption> options,
   ) {
-    final List<ZoOption> selected = [];
+    final List<ZoOption> selectedList = [];
     final List<ZoOption> selectedBranch = [];
     final List<ZoOption> selectedLeaf = [];
 
@@ -93,22 +87,22 @@ class ZoOptionSelectedData {
     void call(
       List<ZoOption> list,
     ) {
-      for (final option in list) {
-        existSet.add(option.value);
+      for (final row in list) {
+        existSet.add(row.value);
 
-        final isSelected = selectedSet.contains(option.value);
+        final isSelected = selectedSet.contains(row.value);
 
-        if (option.options != null && option.options!.isNotEmpty) {
-          call(option.options!);
+        if (row.children != null && row.children!.isNotEmpty) {
+          call(row.children!);
         }
 
         if (isSelected) {
-          selected.add(option);
+          selectedList.add(row);
 
-          if (option.isBranch) {
-            selectedBranch.add(option);
+          if (row.isBranch) {
+            selectedBranch.add(row);
           } else {
-            selectedLeaf.add(option);
+            selectedLeaf.add(row);
           }
         }
       }
@@ -119,7 +113,7 @@ class ZoOptionSelectedData {
     final unlistedSelected = selectedSet.difference(existSet);
 
     return ZoOptionSelectedData(
-      selected: selected,
+      selected: selectedList,
       selectedBranch: selectedBranch,
       selectedLeaf: selectedLeaf,
       unlistedSelected: unlistedSelected,
@@ -128,23 +122,22 @@ class ZoOptionSelectedData {
   }
 }
 
-// # # # # # # # 选项 # # # # # # #
-
-/// 表示 menu / select / tree 等组件的单个选项
+/// menu / select / tree 等组件使用的单个选项配置
 class ZoOption {
   ZoOption({
     required this.value,
     this.title,
+    this.children,
+    this.loader,
+    this.enabled = true,
+    this.height = ZoOption.defaultHeight,
+    this.matchString,
+    this.data,
     this.builder,
     this.leading,
     this.trailing,
-    this.height = ZoOption.defaultHeight,
-    this.enabled = true,
     this.interactive = true,
-    this.options,
-    this.loadOptions,
     this.optionsWidth,
-    this.matchString,
   }) : assert(
          title != null || builder != null,
          "Must provide either title or builder",
@@ -156,10 +149,36 @@ class ZoOption {
   /// 表示该项的唯一值
   Object value;
 
-  /// 标题内容, 必须传入 [title] 或 [builder] 之一来配置显示的内容
+  /// 标题内容, 用于对数据进行过滤等，在菜单类组件中会作为标题显示
   Widget? title;
 
-  /// 自定义内容构造器, 会覆盖 [title] / [description] 等选项
+  /// 子选项, 没有 [children] 和 [loader] 的项视为叶子节点
+  List<ZoOption>? children;
+
+  /// 用于异步加载子选项，没有 [children] 和 [loader] 的项视为叶子节点
+  ZoRowDataLoader<ZoOption>? loader;
+
+  /// 是否启用
+  bool enabled;
+
+  /// 高度
+  ///
+  /// 每个选项都会有一个确切的高度, 用来在包含大量的数据时实现动态加载&卸载
+  double height;
+
+  /// 在搜索 / 过滤等功能中用作匹配该项的字符串, 如果未设置, 会尝试从 [title] 中获取文本,
+  /// 但要求其必须是一个 Text 组件
+  String? matchString;
+
+  /// 可在此额外挂载一些信息，例如选项原始数据
+  Object? data;
+
+  /// 当前是否为分支节点
+  bool get isBranch {
+    return children != null || loader != null;
+  }
+
+  /// 自定义内容构造器, 会覆盖 [title] 等选项
   Widget Function(BuildContext context)? builder;
 
   /// 前导内容
@@ -168,74 +187,18 @@ class ZoOption {
   /// 尾随内容
   Widget? trailing;
 
-  /// 选项高度
-  ///
-  /// 每个选项都会有一个确切的高度, 用来在包含大量的选项时实现动态加载
-  double height;
-
-  /// 是否启用
-  bool enabled;
-
   /// 是否可参与交互, 用于分割线 / 分组等渲染
   bool interactive;
-
-  /// 子选项, 没有子选项和 [loadOptions] 的项视为叶子节点
-  List<ZoOption>? options;
-
-  /// 设置时, 用于异步加载子项
-  Future<List<ZoOption>> Function(ZoOption option)? loadOptions;
 
   /// 子菜单的宽度, 默认与父菜单相同, 对 menu 这类的组件有效, 对 tree 等组件可能无效
   double? optionsWidth;
 
-  /// 在搜索 / 过滤等功能中用作匹配该项的字符串, 如果未设置, 会尝试从 [title] 中获取文本,
-  /// 但要求其必须是一个 Text 组件
-  String? matchString;
-
   @override
   String toString() {
-    return """ZoOption(value: $value, title: $title, options: [${options?.length ?? 0}]""";
+    return """ZoOption(value: $value, title: $title, options: [${children?.length ?? 0}]""";
   }
 
-  /// 根据传入值复制当前选项
-  ///
-  /// [options] 子项会原样移动, 不会进行复制
-  ZoOption copyWith({
-    Object? value,
-    Widget? title,
-    Widget Function(BuildContext context)? builder,
-    Widget? leading,
-    Widget? trailing,
-    double? height,
-    bool? enabled,
-    bool? interactive,
-    List<ZoOption>? options,
-    Future<List<ZoOption>> Function(ZoOption option)? loadOptions,
-    double? optionsWidth,
-    String? matchString,
-  }) {
-    return ZoOption(
-      value: value ?? this.value,
-      title: title ?? this.title,
-      builder: builder ?? this.builder,
-      leading: leading ?? this.leading,
-      trailing: trailing ?? this.trailing,
-      height: height ?? this.height,
-      enabled: enabled ?? this.enabled,
-      interactive: interactive ?? this.interactive,
-      options: options ?? this.options,
-      loadOptions: loadOptions ?? this.loadOptions,
-      optionsWidth: optionsWidth ?? this.optionsWidth,
-      matchString: matchString ?? this.matchString,
-    );
-  }
-
-  /// 当前选项是否是分支节点
-  bool get isBranch {
-    return options != null || loadOptions != null;
-  }
-
-  /// 将选项转换为 json 对象, 只会保留 title / value / children 等关键字段
+  /// 将选项信息转换为 json 对象, 只会保留 title / value / children 等关键字段
   ///
   /// [matchStringFallback] - 默认情况下 title 会依次从 [title] > [matchString] 获取,
   /// 设置为 false 可禁止从 [matchString] 获取 title
@@ -251,9 +214,9 @@ class ZoOption {
     return {
       valueField: value,
       titleField: ?getTitleText(),
-      if (!skipChildren && options != null && options!.isNotEmpty)
+      if (!skipChildren && children != null && children!.isNotEmpty)
         childrenField: toJsonList(
-          options!,
+          children!,
           matchStringFallback: matchStringFallback,
           skipChildren: skipChildren,
           titleField: titleField,
@@ -263,16 +226,16 @@ class ZoOption {
     };
   }
 
-  /// 将指定选项列表转换为 json 对象, 参数的详细说明见 [toJson] 方法
+  /// 将指定列表转换为 json 对象, 参数的详细说明见 [toJson] 方法
   static List<Map<String, dynamic>> toJsonList(
-    Iterable<ZoOption> options, {
+    Iterable<ZoOption> rows, {
     bool matchStringFallback = true,
     bool skipChildren = false,
     String titleField = "title",
     String valueField = "value",
     String childrenField = "children",
   }) {
-    return options
+    return rows
         .map(
           (e) => e.toJson(
             matchStringFallback: matchStringFallback,
@@ -294,6 +257,41 @@ class ZoOption {
       return matchString;
     }
     return null;
+  }
+
+  /// 根据传入值复制当前选项
+  ///
+  /// [children] 子项会原样移动, 不会进行复制
+  ZoOption copyWith({
+    Object? value,
+    Widget? title,
+    Widget Function(BuildContext context)? builder,
+    Widget? leading,
+    Widget? trailing,
+    double? height,
+    bool? enabled,
+    bool? interactive,
+    List<ZoOption>? children,
+    ZoRowDataLoader<ZoOption>? loader,
+    double? optionsWidth,
+    String? matchString,
+    Object? data,
+  }) {
+    return ZoOption(
+      value: value ?? this.value,
+      title: title ?? this.title,
+      builder: builder ?? this.builder,
+      leading: leading ?? this.leading,
+      trailing: trailing ?? this.trailing,
+      height: height ?? this.height,
+      enabled: enabled ?? this.enabled,
+      interactive: interactive ?? this.interactive,
+      children: children ?? this.children,
+      loader: loader ?? this.loader,
+      optionsWidth: optionsWidth ?? this.optionsWidth,
+      matchString: matchString ?? this.matchString,
+      data: data ?? this.data,
+    );
   }
 }
 
@@ -342,387 +340,7 @@ class ZoOptionDivider extends ZoOption {
   static const double defaultHeight = 24;
 }
 
-// # # # # # # # 渲染 # # # # # # #
-
-/// 根据 [ZoOption] 构造的单个列表项, 它还对外暴露选项的各种交互事件
-class ZoOptionView extends StatelessWidget {
-  const ZoOptionView({
-    super.key,
-    required this.option,
-    this.active = false,
-    this.loading = false,
-    this.highlight = false,
-    this.enabled = true,
-    this.interactive = true,
-    this.arrow = true,
-    this.leading,
-    this.trailing,
-    this.padding,
-    this.activeColor,
-    this.highlightColor,
-    this.onTap,
-    this.onContextAction,
-    this.onActiveChanged,
-    this.onFocusChanged,
-  });
-
-  /// 图标尺寸
-  static const double iconSize = 18;
-
-  /// 一个空的 leading, 用于与带缩进的选项对对齐
-  static const Widget emptyLeading = SizedBox(width: ZoOptionView.iconSize);
-
-  /// 需要构造的选项
-  final ZoOption option;
-
-  /// 是否处于活动状态, 可用于表示交互和选中状态
-  final bool active;
-
-  /// 是否处于加载状态
-  final bool loading;
-
-  /// 是否处于高亮状态
-  final bool highlight;
-
-  /// 是否启用
-  final bool enabled;
-
-  /// 是否可进行交互, 与 enabled = false 不同的是它不设置禁用样式, 只是阻止交互行为
-  final bool interactive;
-
-  /// 启用启用列表右侧的子项标识箭头，会在包含子选项时显示
-  final bool arrow;
-
-  /// 自定义前导内容，默认取 option.leading
-  final Widget? leading;
-
-  /// 自定义尾随内容，默认取 option.trailing
-  final Widget? trailing;
-
-  /// 间距
-  final EdgeInsets? padding;
-
-  /// active 状态的背景色
-  final Color? activeColor;
-
-  /// highlight 状态的背景色
-  final Color? highlightColor;
-
-  /// 点击, 若返回一个 future, 可进入loading状态
-  final dynamic Function(ZoTriggerEvent event)? onTap;
-
-  /// 触发上下文操作, 在鼠标操作中表示右键点击, 在触摸操作中表示长按
-  final ZoTriggerListener<ZoTriggerEvent>? onContextAction;
-
-  /// 是否活动状态
-  /// - 鼠标: 表示位于组件上方
-  /// - 触摸设备: 按下触发, 松开或移动时关闭
-  final ZoTriggerListener<ZoTriggerToggleEvent>? onActiveChanged;
-
-  /// 焦点变更事件
-  final ZoTriggerListener<ZoTriggerToggleEvent>? onFocusChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final style = context.zoStyle;
-
-    var hasChild = false;
-
-    if (option.options != null && option.options!.isNotEmpty) {
-      hasChild = true;
-    }
-
-    if (option.loadOptions != null) {
-      hasChild = true;
-    }
-
-    Widget? header;
-    Widget? leadingNode;
-    Widget? trailingNode;
-
-    EdgeInsets? padding =
-        this.padding ??
-        EdgeInsets.symmetric(
-          horizontal: style.space2,
-        );
-
-    if (option.builder != null) {
-      header = option.builder!(context);
-      // 完全自定义时去掉默认的部分样式
-      padding = this.padding ?? EdgeInsets.zero;
-    } else {
-      if (option.title != null) {
-        header = DefaultTextStyle.merge(
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          child: option.title!,
-        );
-      }
-
-      leadingNode = leading ?? option.leading;
-      trailingNode = trailing ?? option.trailing;
-    }
-
-    final ZoOptionEventData data = (option: option, context: context);
-
-    return ZoTile(
-      header: header,
-      leading: leadingNode,
-      trailing: trailingNode,
-      enabled: enabled && option.enabled,
-      arrow: arrow && hasChild,
-      active: active,
-      loading: loading,
-      highlight: highlight,
-      horizontalSpacing: style.space1,
-      interactive: interactive && option.interactive,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      disabledColor: Colors.transparent,
-      activeColor: activeColor,
-      highlightColor: highlightColor,
-      padding: padding,
-      decorationPadding: const EdgeInsets.symmetric(vertical: 1),
-      iconTheme: const IconThemeData(size: ZoOptionView.iconSize),
-      onTap: onTap,
-      onContextAction: onContextAction,
-      onActiveChanged: onActiveChanged,
-      onFocusChanged: onFocusChanged,
-      data: data,
-    );
-  }
-}
-
-/// 根据 [ZoOption] list 构造可滚动的选项列表
-class ZoOptionViewList extends StatefulWidget {
-  const ZoOptionViewList({
-    super.key,
-    required this.options,
-    this.option,
-    this.activeCheck,
-    this.loadingCheck,
-    this.highlightCheck,
-    this.toolbar,
-    this.maxHeight,
-    this.maxHeightFactor = ZoOptionViewList.defaultHeightFactor,
-    this.padding,
-    this.loading = false,
-    this.hasDecoration = true,
-    this.scrollController,
-    this.onTap,
-    this.onActiveChanged,
-    this.onFocusChanged,
-  });
-
-  static const defaultHeightFactor = 0.92;
-
-  /// 选项列表
-  final List<ZoOption> options;
-
-  /// 菜单对应的父选项, 只有子菜单会存在此项
-  final ZoOption? option;
-
-  /// 用于判断选项是否应显示 active 样式
-  final bool Function(ZoOption option)? activeCheck;
-
-  /// 用于判断选项是否应显示 loading 样式
-  final bool Function(ZoOption option)? loadingCheck;
-
-  /// 用于判断选项是否应显示 highlight 样式
-  final bool Function(ZoOption option)? highlightCheck;
-
-  /// 在顶部渲染工具栏
-  final Widget? toolbar;
-
-  /// 最大高度, 默认会根据视口尺寸和 [maxHeightFactor] 进行限制
-  final double? maxHeight;
-
-  /// 最大高度的比例, 设置 [maxHeight] 后此项无效
-  final double maxHeightFactor;
-
-  /// 内间距
-  final EdgeInsets? padding;
-
-  /// 是否处于加载状态
-  final bool loading;
-
-  /// 是否使用容器装饰
-  final bool hasDecoration;
-
-  /// 滚动控制器
-  final ScrollController? scrollController;
-
-  /// 选项被点击, 若返回一个 future, 可进入loading状态
-  final dynamic Function(ZoTriggerEvent event)? onTap;
-
-  /// 选项活动状态变更
-  /// - 鼠标: 表示位于组件上方
-  /// - 触摸设备: 按下触发, 松开或移动时关闭
-  final ZoTriggerListener<ZoTriggerToggleEvent>? onActiveChanged;
-
-  /// 焦点变更
-  final ZoTriggerListener<ZoTriggerToggleEvent>? onFocusChanged;
-
-  @override
-  State<ZoOptionViewList> createState() => _ZoOptionViewListState();
-}
-
-class _ZoOptionViewListState extends State<ZoOptionViewList> {
-  /// 选项总高度
-  double listHeight = 0;
-
-  /// 是否可滚动
-  bool scrollable = false;
-
-  /// 是否处于加载状态
-  bool loading = false;
-
-  @override
-  void initState() {
-    super.initState();
-  }
-
-  @override
-  void didUpdateWidget(covariant ZoOptionViewList oldWidget) {
-    super.didUpdateWidget(oldWidget);
-
-    if (oldWidget.options != widget.options ||
-        oldWidget.padding != widget.padding) {
-      updateScrollDatas();
-    }
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-
-    updateScrollDatas();
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
-  }
-
-  /// 对比当前选项尺寸和视口的尺寸, 根据结果更新可滚动状态和容器高度
-  void updateScrollDatas() {
-    final size = MediaQuery.sizeOf(context);
-
-    final maxHeight = widget.maxHeight ?? size.height * widget.maxHeightFactor;
-
-    var height = 0.0;
-
-    scrollable = false;
-
-    for (final option in widget.options) {
-      height += option.height;
-
-      if (height > maxHeight) {
-        scrollable = true;
-        break;
-      }
-    }
-
-    var paddingHeight = 0.0;
-
-    if (widget.padding != null) {
-      paddingHeight = widget.padding!.top + widget.padding!.bottom;
-    }
-
-    listHeight = height > 0 ? height + paddingHeight : 0;
-  }
-
-  Widget? itemBuilder(BuildContext context, int index) {
-    final opt = widget.options.elementAtOrNull(index);
-
-    if (opt == null) return null;
-
-    final isActive = widget.activeCheck?.call(opt) ?? false;
-    final isLoading = widget.loadingCheck?.call(opt) ?? false;
-    final isHighlight = widget.highlightCheck?.call(opt) ?? false;
-
-    return ZoOptionView(
-      key: ValueKey(opt.value),
-      onTap: widget.onTap,
-      onActiveChanged: widget.onActiveChanged,
-      onFocusChanged: widget.onFocusChanged,
-      option: opt,
-      active: isActive,
-      loading: isLoading,
-      highlight: isHighlight,
-    );
-  }
-
-  double? itemExtent(index, dimensions) {
-    final opt = widget.options.elementAtOrNull(index);
-    return opt?.height;
-  }
-
-  Widget buildMain(ZoStyle style, ZoLocalizationsDefault locale) {
-    if (loading || widget.loading) {
-      return const ZoProgress(
-        size: ZoSize.small,
-      );
-    }
-
-    if (widget.options.isEmpty) {
-      return ZoOptionView(
-        option: ZoOption(
-          title: Text(locale.noData, style: style.hintTextStyle),
-          value: "__EMPTY__",
-          interactive: false,
-        ),
-      );
-    }
-
-    return SizedBox(
-      height: listHeight,
-      child: ScrollConfiguration(
-        behavior: ScrollConfiguration.of(
-          context,
-        ).copyWith(scrollbars: false),
-        child: ListView.builder(
-          controller: widget.scrollController,
-          physics: scrollable ? null : const NeverScrollableScrollPhysics(),
-          itemCount: widget.options.length,
-          itemBuilder: itemBuilder,
-          itemExtentBuilder: itemExtent,
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final style = context.zoStyle;
-    final locale = context.zoLocale;
-
-    return Container(
-      padding: widget.padding ?? EdgeInsets.all(style.space2),
-      width: double.infinity,
-      decoration: !widget.hasDecoration
-          ? null
-          : BoxDecoration(
-              color: style.surfaceGrayColor,
-              borderRadius: BorderRadius.circular(style.borderRadius),
-              border: Border.all(color: style.outlineColor),
-              boxShadow: [style.overlayShadow],
-            ),
-      child: Column(
-        spacing: style.space1,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ?widget.toolbar,
-          buildMain(style, locale),
-        ],
-      ),
-    );
-  }
-}
-
-// # # # # # # # 选项控制器 # # # # # # #
-
-/// 根据选项预计算的辅助节点信息，包含所在层级、父级等
+/// 根据选项预计算的节点信息，包含所在层级、父级等
 class ZoOptionNode {
   ZoOptionNode({
     required this.value,
@@ -735,10 +353,10 @@ class ZoOptionNode {
     required this.path,
   });
 
-  /// 选项值
+  /// 值
   final Object value;
 
-  /// 当前选项
+  /// 对应的选项
   final ZoOption option;
 
   /// 父节点
@@ -750,10 +368,10 @@ class ZoOptionNode {
   /// 后一个节点
   ZoOptionNode? next;
 
-  /// 选项所在层级
+  /// 所在层级
   int level;
 
-  /// 选项在父级选项中的索引
+  /// 在父级中的索引
   int index;
 
   /// 用于访问该项的索引列表
@@ -778,13 +396,65 @@ class ZoOptionEachArgs {
   int index;
 }
 
+/// 选项筛选器
 typedef ZoOptionFilter = bool Function(ZoOptionNode node);
 
-/// 提供选中项管理、树形数据管理、高效的树节点查询、选项数据/展开管理等选项通用行为的处理
+/// 数据的变更操作
+abstract class ZoOptionMutationEvent {
+  const ZoOptionMutationEvent();
+}
+
+/// 新增数据操作
+class ZoOptionAddOperation extends ZoOptionMutationEvent {
+  const ZoOptionAddOperation({
+    required this.data,
+    this.toValue,
+    this.insertAfter = false,
+  });
+
+  /// 新增的数据
+  final List<ZoOption> data;
+
+  /// 插入到指定节点的位置，该节点后移
+  final Object? toValue;
+
+  /// 插入到 to 的下方
+  final bool insertAfter;
+}
+
+/// 移除数据操作
+class ZoOptionRemoveOperation extends ZoOptionMutationEvent {
+  const ZoOptionRemoveOperation({
+    required this.values,
+  });
+
+  /// 待移除数据
+  final List<Object> values;
+}
+
+/// 移动数据操作
+class ZoRowDataMoveOperation extends ZoOptionMutationEvent {
+  const ZoRowDataMoveOperation({
+    required this.values,
+    this.toValue,
+    this.insertAfter = false,
+  });
+
+  /// 待移动的数据
+  final List<Object> values;
+
+  /// 移动到指定节点的位置，该节点后移
+  final Object? toValue;
+
+  /// 移动到 to 的下方
+  final bool insertAfter;
+}
+
+/// 提选项数据管理、树形数据管理、高效的树节点查询、展开管理等通用行为
 ///
 /// 由于存在缓存信息，需要在必要时对它们进行更新，通常有三种情况：
-/// - [reload] 外部选项需要完全替换，此操作会清理所有缓存信息并重新计算
-/// - [refresh] 选项在内部被可控的更新，此操作会重新计算节点的关联关系、flatList 等
+/// - [reload] 外部数据需要完全替换，此操作会清理所有缓存信息并重新计算
+/// - [refresh] 数据在内部被可控的更新，比如通过内部api新增、删除、排序等，此操作会重新计算节点的关联关系、flatList 等
 /// - [refreshFilters] 展开状态/筛选条件变更
 ///
 /// 内部会自动在合适的时机调用对应的更新函数，除非需要自行扩展行为，否则大部分情况无需手动调用这些方法
@@ -831,15 +501,15 @@ class ZoOptionController {
     reload();
   }
 
-  /// 对于不需要管理 open 状态的选项，可以设置为 true 来强制将所有项视为开启
+  /// 对于不需要管理 open 状态的数据，可以设置为 true 来强制将所有项视为开启
   final bool ignoreOpenStatus;
 
   /// 当前是否由于选中项变更而正在执行 [refreshFilters], 该类型的变更计算只处理关联关系计算，
-  /// 选项的数量和结构没有变更，可以由此来辅助判断是否要跳过某些行为
+  /// 数据项的数量和结构没有变更，可以由此来辅助判断是否要跳过某些行为
   bool get selectChangedProcessing => _selectChangedProcessing;
   bool _selectChangedProcessing = false;
 
-  /// 用于过滤选项的文本, 设置后只显示包含该文本的选项
+  /// 用于过滤数据的文本, 设置后只显示包含该文本的数据
   ///
   /// 间接匹配：节点的父级、子级、自身任意一项匹配都会视为匹配
   String? get matchString => _matchString;
@@ -866,7 +536,7 @@ class ZoOptionController {
     refreshFilters();
   }
 
-  /// 用于过滤选项的正则, 设置后只显示匹配的选项
+  /// 用于过滤数据的正则, 设置后只显示匹配的数据
   ///
   /// 间接匹配：节点的父级、子级、自身任意一项匹配都会视为匹配
   RegExp? get matchRegexp => _matchRegexp;
@@ -877,12 +547,12 @@ class ZoOptionController {
     refreshFilters();
   }
 
-  /// 筛选阶段会对每个符合显示条件的选项调用，可以返回 false 将选项过滤掉,
+  /// 筛选阶段会对每个符合显示条件的数据调用，可以返回 false 将数据过滤掉,
   /// 可将该方法当做 [matchString] / [matchRegexp] 的扩展版本使用，提供更进一步的筛选能力
   ///
   /// 间接匹配：节点的父级、子级、自身任意一项匹配都会视为匹配
   ///
-  /// filter 以选项的实际顺序倒序调用
+  /// filter 以数据的实际顺序倒序调用
   ZoOptionFilter? get filter => _filter;
   ZoOptionFilter? _filter;
   set filter(ZoOptionFilter? filter) {
@@ -891,10 +561,10 @@ class ZoOptionController {
     refreshFilters();
   }
 
-  /// 内部通过 [refreshFilters] 对列表进行最终筛选时，会对满足显示条件的每个选项调用该方法，
-  /// 可以用来做一些外部的选项同步工作
+  /// 内部通过 [refreshFilters] 对列表进行最终筛选时，会对满足显示条件的每个数据调用该方法，
+  /// 可以用来做一些外部的数据同步工作
   ///
-  /// 提供此方法的目的是在一些需要遍历树的场景与控制器复用一次循环，避免在选项较多时性能浪费
+  /// 提供此方法的目的是在一些需要遍历树的场景与控制器复用一次循环，避免在数据较多时性能浪费
   ///
   /// each 的循环顺序为倒序
   ValueChanged<ZoOptionEachArgs>? each;
@@ -905,11 +575,11 @@ class ZoOptionController {
   /// 在 [each] 结束后调用
   VoidCallback? eachEnd;
 
-  /// 在存在筛选条件时，如果存在匹配项, 会在完成筛选后调用此方法进行通知，回调会传入所有严格匹配的选项，
+  /// 在存在筛选条件时，如果存在匹配项, 会在完成筛选后调用此方法进行通知，回调会传入所有严格匹配的数据，
   /// 用于上层组件处理展开、聚焦等交互优化
   ValueChanged<List<ZoOptionNode>>? onFilterComplete;
 
-  /// 未经处理的原始选项， 设置后会更新当前选项缓存
+  /// 未经处理的原始数据， 设置后会更新当前数据缓存
   List<ZoOption> get options => _options;
   List<ZoOption> _options;
   set options(List<ZoOption> value) {
@@ -926,11 +596,12 @@ class ZoOptionController {
   /// 异步数据加载状态变更时调用
   final asyncLoadTrigger = EventTrigger<ZoOptionLoadEvent>();
 
-  /// [options] 的副本， 它可能额外包含异步加载的数据，数据也可能是经过排序的
-  List<ZoOption> get processedOptions => _processedOptions;
-  List<ZoOption> _processedOptions = [];
+  /// [options] 的副本， 它可能额外包含异步加载的数据，数据也可能是经过排序的，
+  /// 异步加载数据、数据编译操作会直接更改此对象
+  List<ZoOption> get processedData => _processedData;
+  List<ZoOption> _processedData = [];
 
-  /// [_processedOptions] 的扁平列表
+  /// [_processedData] 的扁平列表
   List<ZoOption> get flatList => _flatList;
   List<ZoOption> _flatList = [];
 
@@ -953,17 +624,17 @@ class ZoOptionController {
   /// 可见性缓存
   final HashMap<Object, bool> _visibleCache = HashMap();
 
-  /// 异步加载的选项缓存, 以 value 为 key 进行存储
-  final HashMap<Object, List<ZoOption>> _asyncOptionCaches = HashMap();
+  /// 异步加载的数据缓存, 以 value 为 key 进行存储
+  final HashMap<Object, List<ZoOption>> _asyncRowCaches = HashMap();
 
-  /// 选项是否正在进行异步加载及对应的future
-  final HashMap<Object, Future> _asyncOptionTask = HashMap();
+  /// 数据是否正在进行异步加载及对应的future
+  final HashMap<Object, Future> _asyncRowTask = HashMap();
 
   /// [options] 变更时，用于重新计算所有缓存信息
   void reload() {
-    // 流程: 清理现有缓存、 clone 选项, 同时创建node，生成各 processedOptions / flatList
+    // 流程: 清理现有缓存、 clone 数据, 同时创建node，生成各 processedData / flatList
 
-    _processedOptions = [];
+    _processedData = [];
     _flatList = [];
     _nodes.clear();
 
@@ -974,7 +645,7 @@ class ZoOptionController {
       ZoOptionNode? parent,
       required List<int> path,
     }) {
-      final List<ZoOption> newList = parent != null ? [] : _processedOptions;
+      final List<ZoOption> newList = parent != null ? [] : _processedData;
 
       for (var i = 0; i < list.length; i++) {
         final opt = list[i];
@@ -999,19 +670,19 @@ class ZoOptionController {
 
         // 处理子项
         if (cloned.isBranch) {
-          // 附加异步选项
-          if (cloned.options == null) {
-            final cacheOptions = _asyncOptionCaches[cloned.value];
+          // 附加异步数据
+          if (cloned.children == null) {
+            final cacheRows = _asyncRowCaches[cloned.value];
 
-            if (cacheOptions != null) {
-              cloned.options = cacheOptions;
+            if (cacheRows != null) {
+              cloned.children = cacheRows;
             }
           }
 
           // 递归处理子项
-          if (cloned.options != null && cloned.options!.isNotEmpty) {
+          if (cloned.children != null && cloned.children!.isNotEmpty) {
             loop(
-              list: cloned.options!,
+              list: cloned.children!,
               parent: node,
               path: node.path,
             );
@@ -1020,7 +691,7 @@ class ZoOptionController {
       }
 
       if (parent != null) {
-        parent.option.options = newList;
+        parent.option.children = newList;
       }
     }
 
@@ -1033,7 +704,7 @@ class ZoOptionController {
     refreshFilters();
   }
 
-  /// [processedOptions] 变更时，用于重新计算必要信息，在新建选项、调整顺序等操作后调用
+  /// [processedData] 变更时，用于重新计算必要信息，在新建数据、调整顺序等操作后调用
   void refresh() {
     _flatList = [];
     _nodes.clear();
@@ -1067,9 +738,9 @@ class ZoOptionController {
         // 处理子项
         if (opt.isBranch) {
           // 递归处理子项
-          if (opt.options != null && opt.options!.isNotEmpty) {
+          if (opt.children != null && opt.children!.isNotEmpty) {
             loop(
-              list: opt.options!,
+              list: opt.children!,
               parent: node,
               path: node.path,
             );
@@ -1079,7 +750,7 @@ class ZoOptionController {
     }
 
     loop(
-      list: _processedOptions,
+      list: _processedData,
       parent: null,
       path: [],
     );
@@ -1091,7 +762,7 @@ class ZoOptionController {
   RegExp? _lastMatchRegexp;
   ZoOptionFilter? _lastFilter;
 
-  /// 重新根据 open 、match、filter 等过滤状态更新 [filteredFlatList]，应在相关选项变更后调用
+  /// 重新根据 open 、match、filter 等过滤状态更新 [filteredFlatList]，应在相关数据变更后调用
   void refreshFilters() {
     final List<ZoOption> filteredList = [];
 
@@ -1101,11 +772,11 @@ class ZoOptionController {
     _visibleCache.clear();
 
     // 记录包含匹配子项的节点
-    final HashMap<Object, bool> optionsHasMatchChild = HashMap();
+    final HashMap<Object, bool> rowsHasMatchChild = HashMap();
 
     eachStart?.call();
 
-    // 直接匹配的选项
+    // 直接匹配的数据
     final List<ZoOptionNode> exactMatchNode = [];
 
     final filterChanged =
@@ -1150,7 +821,7 @@ class ZoOptionController {
         }
 
         if (isMatch) {
-          optionsHasMatchChild[parent.value] = true;
+          rowsHasMatchChild[parent.value] = true;
         }
 
         if (isSelected) {
@@ -1160,7 +831,7 @@ class ZoOptionController {
         parent = parent.parent;
       }
 
-      final childHasMatch = optionsHasMatchChild[node.value] == true;
+      final childHasMatch = rowsHasMatchChild[node.value] == true;
 
       // 所有父级均展开，且父、子、自身任意一项匹配，则节点可见
       final isVisible =
@@ -1190,47 +861,49 @@ class ZoOptionController {
     eachEnd?.call();
   }
 
-  /// 加载指定选项的子级, 如果数据已加载过会直接跳过
-  Future loadOptions(Object value) async {
+  /// 加载指定数据的子级, 如果数据已加载过会直接跳过
+  Future loadChildren(Object value) async {
     final node = getNode(value);
 
     assert(node != null);
 
     if (node == null) return;
 
-    final task = _asyncOptionTask[node.value];
+    final task = _asyncRowTask[node.value];
 
     if (task != null) return task;
 
-    if (node.option.options != null && node.option.options!.isNotEmpty) return;
+    final row = node.option;
 
-    final loadOptions = node.option.loadOptions;
+    if (row.children != null && row.children!.isNotEmpty) return;
 
-    if (loadOptions == null) return;
+    final loader = row.loader;
+
+    if (loader == null) return;
 
     final completer = Completer();
 
-    _asyncOptionTask[node.option.value] = completer.future;
+    _asyncRowTask[row.value] = completer.future;
 
     asyncLoadTrigger.emit(
       ZoOptionLoadEvent(
-        option: node.option,
+        option: row,
         loading: true,
       ),
     );
 
     try {
-      final res = await loadOptions(node.option);
+      final res = await loader(row);
 
-      node.option.options = res;
+      row.children = res;
 
       refresh();
 
-      _asyncOptionTask.remove(node.option.value);
+      _asyncRowTask.remove(row.value);
 
       asyncLoadTrigger.emit(
         ZoOptionLoadEvent(
-          option: node.option,
+          option: row,
           options: res,
           loading: false,
         ),
@@ -1238,11 +911,11 @@ class ZoOptionController {
 
       completer.complete();
     } catch (e, stack) {
-      _asyncOptionTask.remove(node.option.value);
+      _asyncRowTask.remove(row.value);
 
       asyncLoadTrigger.emit(
         ZoOptionLoadEvent(
-          option: node.option,
+          option: row,
           error: e,
           loading: false,
         ),
@@ -1280,30 +953,30 @@ class ZoOptionController {
     return newCache;
   }
 
-  /// 检测选项是否匹配
+  /// 检测数据是否匹配
   bool isMatch(Object value) {
     return _matchStatus[value] ?? false;
   }
 
-  /// 选项是否包含被选中子项
+  /// 数据是否包含被选中子级
   bool hasSelectedChild(Object value) {
     return _branchesHasSelectedChild[value] ?? false;
   }
 
-  /// 选项是否可见, 即是否在 [filteredFlatList] 列表中
+  /// 数据是否可见, 即是否在 [filteredFlatList] 列表中
   ///
   /// 当 [ignoreOpenStatus] 设置为 true 是，由于 open 状态不影响可见性，可能会产生不符合直觉的返回，但这是正常的
   bool isVisible(Object value) {
     return _visibleCache[value] ?? false;
   }
 
-  /// 是否正在加载异步选项
-  bool isAsyncOptionLoading(Object value) {
-    final task = _asyncOptionTask[value];
+  /// 是否正在加载异步选项数据
+  bool isAsyncLoading(Object value) {
+    final task = _asyncRowTask[value];
     return task != null;
   }
 
-  /// 判断选项是否与 [matchString] / [matchRegexp] / [filter] 匹配
+  /// 判断数据是否与 [matchString] / [matchRegexp] / [filter] 匹配
   bool _isMatch(Object value) {
     final node = getNode(value);
 
@@ -1319,7 +992,7 @@ class ZoOptionController {
 
     final String? text = node!.option.getTitleText();
 
-    // 未获取到文本的选项一律视为不匹配
+    // 未获取到文本的数据一律视为不匹配
     if (text == null) return false;
 
     if (matchString != null) {
@@ -1341,15 +1014,15 @@ class ZoOptionController {
         openSelector.getSelected().isNotEmpty;
   }
 
-  /// 获取特定选项的子项，不传入 [value] 时返回根选项，[filtered] 可以控制是否使用过滤后的选项
-  List<ZoOption> getOptions({
+  /// 获取特定数据的子项，不传入 [value] 时返回根数据列表，[filtered] 可以控制是否使用过滤后的数据
+  List<ZoOption> getChildren({
     Object? value,
     bool filtered = true,
   }) {
     List<ZoOption> list;
 
     if (value == null) {
-      list = _processedOptions;
+      list = _processedData;
     } else {
       final node = getNode(value);
 
@@ -1359,11 +1032,11 @@ class ZoOptionController {
       for (var i = 0; i < node!.path.length; i++) {
         final curInd = node.path[i];
 
-        final curList = curOpt?.options ?? _processedOptions;
+        final curList = curOpt?.children ?? _processedData;
 
         curOpt = curList[curInd];
       }
-      list = curOpt!.options ?? [];
+      list = curOpt!.children ?? [];
     }
 
     if (filtered) {
@@ -1373,12 +1046,12 @@ class ZoOptionController {
     return list;
   }
 
-  /// 获取指定选项的节点信息，其中预缓存了一些树节点的有用信息
+  /// 获取指定数据的节点信息，其中预缓存了一些树节点的有用信息
   ZoOptionNode? getNode(Object value) {
     return _nodes[value];
   }
 
-  /// 获取前一个节点，[filter] 可过滤掉不满足条件的选项·
+  /// 获取前一个节点，[filter] 可过滤掉不满足条件的数据
   ZoOptionNode? getPrevNode(
     ZoOptionNode node, {
     bool Function(ZoOptionNode node)? filter,
@@ -1396,7 +1069,7 @@ class ZoOptionController {
     return curNode;
   }
 
-  /// 获取后一个节点，[filter] 可过滤掉不满足条件的选项·
+  /// 获取后一个节点，[filter] 可过滤掉不满足条件的数据
   ZoOptionNode? getNextNode(
     ZoOptionNode node, {
     bool Function(ZoOptionNode node)? filter,
@@ -1414,14 +1087,14 @@ class ZoOptionController {
     return curNode;
   }
 
-  /// 获取兄弟选项
+  /// 获取兄弟节点
   List<ZoOption> getSiblings(
     ZoOptionNode node, [
     bool includeInvisible = true,
   ]) {
     final list = node.level == 0
-        ? _processedOptions
-        : node.parent?.option.options ?? [];
+        ? _processedData
+        : node.parent?.option.children ?? [];
 
     if (includeInvisible) {
       return list;
@@ -1435,7 +1108,7 @@ class ZoOptionController {
   /// 销毁对象
   void dispose() {
     _options = [];
-    _processedOptions.clear();
+    _processedData.clear();
     _flatList.clear();
     _filteredFlatList.clear();
     _branchesHasSelectedChild.clear();
@@ -1443,81 +1116,10 @@ class ZoOptionController {
     _nodes.clear();
     _filterCache.clear();
     _visibleCache.clear();
-    _asyncOptionCaches.clear();
-    _asyncOptionTask.clear();
+    _asyncRowCaches.clear();
+    _asyncRowTask.clear();
 
     selector.dispose();
     openSelector.dispose();
   }
-}
-
-/// 表示选项变更操作中，选项的移动位置
-enum ZoOptionMutationReferenceType {
-  /// 在目标前面，这通常是默认行为
-  before,
-
-  /// 在目标后面
-  after,
-
-  /// 作为目标的子级，在目标子级为空时使用，不为空时应该使用相对节点
-  inside,
-}
-
-/// 描述选项的变更操作
-abstract class ZoOptionMutationAction {
-  const ZoOptionMutationAction();
-}
-
-/// 描述选项的变更操作，包含参照节点
-abstract class ZoOptionMutationReferenceAction extends ZoOptionMutationAction {
-  const ZoOptionMutationReferenceAction({
-    this.reference,
-    this.referenceType = ZoOptionMutationReferenceType.before,
-  });
-
-  /// 参照位置
-  final ZoOption? reference;
-
-  /// 参照类型
-  final ZoOptionMutationReferenceType referenceType;
-}
-
-/// 描述新增操作
-class ZoOptionAddAction extends ZoOptionMutationReferenceAction {
-  const ZoOptionAddAction({
-    required this.options,
-    super.reference,
-    super.referenceType,
-  });
-
-  /// 新增的选项
-  final List<ZoOption> options;
-
-  /// 是否是由于异步选项加载导致的新增
-}
-
-/// 描述移除操作
-class ZoOptionRemoveAction extends ZoOptionMutationAction {
-  const ZoOptionRemoveAction({
-    required this.values,
-  });
-
-  /// 移除的选项
-  final List<Object> values;
-}
-
-/// 描述移动操作
-class ZoOptionMoveAction extends ZoOptionMutationReferenceAction {
-  const ZoOptionMoveAction({
-    required this.values,
-    required super.reference,
-    super.referenceType,
-  });
-
-  /// 待移动的选项
-  final List<Object> values;
-
-  /// 参照位置
-  @override
-  ZoOption get reference => super.reference!;
 }

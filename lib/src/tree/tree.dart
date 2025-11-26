@@ -5,14 +5,15 @@ import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
 import "package:flutter/rendering.dart";
 import "package:flutter/services.dart";
+import "package:zo/src/trigger/listenable_notifier.dart";
 
 import "../../zo.dart";
 
 part "base.dart";
 part "view.dart";
-part "select.dart";
 part "shortcuts.dart";
 part "tree_actions.dart";
+part "drag_sort.dart";
 
 /// 树形组件
 ///
@@ -46,6 +47,7 @@ class ZoTree extends ZoCustomFormWidget<Iterable<Object>> {
     this.matchRegexp,
     this.filter,
     this.onOptionLoadError,
+    this.onOptionLoadChanged,
     this.onFilterComplete,
     this.activeColor,
     this.highlightColor,
@@ -58,6 +60,8 @@ class ZoTree extends ZoCustomFormWidget<Iterable<Object>> {
     this.pinedActiveBranch = true,
     this.pinedActiveBranchMaxLevel,
     this.sortable = false,
+    this.draggableDetector,
+    this.droppableDetector,
   });
 
   /// 树形选项列表
@@ -67,8 +71,11 @@ class ZoTree extends ZoCustomFormWidget<Iterable<Object>> {
   final List<ZoOption> options;
 
   /// TODO
-  /// 选项在组件内部发生了变更, 在回调内将其断言为各种子类后进行处理
-  final ValueChanged<ZoOptionMutationAction>? onOptionsMutation;
+  /// 选项在组件内部发生了变更, [ZoOptionMutationEvent] 包含 [ZoOptionAddOperation]、
+  /// [ZoOptionRemoveOperation]、[ZoRowDataMoveOperation] 三个子类，可在内部进行类型判断处理
+  ///
+  /// 注：异步选项加载成功后不会通过此方法通知，请通过 [onOptionLoadChanged] 接收事件
+  final ValueChanged<ZoOptionMutationEvent>? onOptionsMutation;
 
   /// 控制选择类型, 默认为单选
   final ZoSelectionType selectionType;
@@ -133,9 +140,12 @@ class ZoTree extends ZoCustomFormWidget<Iterable<Object>> {
   /// 间接匹配：节点的父级、子级、自身任意一项匹配都会视为匹配
   final ZoOptionFilter? filter;
 
-  /// 异步加载选项失败时触发
+  /// TODO: 废弃 异步加载选项失败时触发
   final void Function(Object error, [StackTrace? stackTrace])?
   onOptionLoadError;
+
+  /// 异步选项加载状态变更时触发，加载中 > 成功 | 失败
+  final void Function(ZoOptionLoadEvent event)? onOptionLoadChanged;
 
   /// 在存在筛选条件时，如果存在匹配项, 会在完成筛选后调用此方法进行通知，回调会传入所有严格匹配的选项
   final void Function(List<ZoOptionNode> matchList)? onFilterComplete;
@@ -173,6 +183,13 @@ class ZoTree extends ZoCustomFormWidget<Iterable<Object>> {
   /// 是否可拖动节点进行排序
   final bool sortable;
 
+  /// 在启用 [sortable] 后，额外用于检测选项是否可拖动, 默认所有节点均可拖动
+  final bool Function(ZoOptionNode node)? draggableDetector;
+
+  /// 在启用 [sortable] 后，额外用于检测选项是否可放置, 默认所有节点均可放置
+  final bool Function(ZoOptionNode node, ZoOptionNode? dragNode)?
+  droppableDetector;
+
   @override
   State<ZoTree> createState() => ZoTreeState();
 }
@@ -182,8 +199,8 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree>
         _TreeBaseMixin,
         _TreeActionsMixin,
         _TreeViewMixin,
-        _TreeSelectMixin,
-        _TreeShortcutsMixin {
+        _TreeShortcutsMixin,
+        _TreeDragSortMixin {
   @override
   @protected
   void initState() {

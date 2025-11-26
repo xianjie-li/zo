@@ -19,6 +19,7 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
   ZoStyle({
     required this.brightness,
     this.alpha = 160,
+    this.disableOpacity = 0.5,
     this.primaryColor = Colors.blue,
     this.secondaryColor = Colors.cyan,
     this.tertiaryColor = Colors.red,
@@ -189,10 +190,27 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
 
   ZoStyle? _reverseStyle;
 
+  /// 获取亮色主题
+  ZoStyle get lightStyle {
+    return isLight ? this : reverseStyle;
+  }
+
+  /// 获取暗色主题
+  ZoStyle get darkStyle {
+    return isDark ? this : reverseStyle;
+  }
+
+  bool get isLight => brightness == Brightness.light;
+
+  bool get isDark => brightness == Brightness.light;
+
   // # # # # # # # 颜色 # # # # # # #
 
   /// 通用透明度
   final int alpha;
+
+  /// 禁用状态的透明度
+  final double disableOpacity;
 
   /// 主色
   final Color primaryColor;
@@ -417,10 +435,11 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
   @override
   ZoStyle copyWith({
     Brightness? brightness,
+    int? alpha,
+    double? disableOpacity,
     Color? primaryColor,
     Color? secondaryColor,
     Color? tertiaryColor,
-    int? alpha,
     Color? barrierColor,
     Color? titleTextColor,
     Color? textColor,
@@ -476,6 +495,7 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
   }) {
     return ZoStyle(
       brightness: brightness ?? this.brightness,
+      disableOpacity: disableOpacity ?? this.disableOpacity,
       primaryColor: primaryColor ?? this.primaryColor,
       secondaryColor: secondaryColor ?? this.secondaryColor,
       tertiaryColor: tertiaryColor ?? this.tertiaryColor,
@@ -543,10 +563,11 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
     // 通常只有颜色类的需要添加线性插值, 其他内容在切换主题时是不需要动画的
     return ZoStyle(
       brightness: other.brightness,
+      alpha: other.alpha,
+      disableOpacity: other.disableOpacity,
       primaryColor: Color.lerp(primaryColor, other.primaryColor, t)!,
       secondaryColor: Color.lerp(secondaryColor, other.secondaryColor, t)!,
       tertiaryColor: Color.lerp(tertiaryColor, other.tertiaryColor, t)!,
-      alpha: other.alpha,
       barrierColor: Color.lerp(barrierColor, other.barrierColor, t),
       titleTextColor: Color.lerp(titleTextColor, other.titleTextColor, t),
       textColor: Color.lerp(textColor, other.textColor, t),

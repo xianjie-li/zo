@@ -35,7 +35,7 @@ class _MenusPageState extends State<MenusPage> {
       value: "value 5",
       title: Text("选项内容AAA"),
       leading: ZoOptionView.emptyLeading,
-      options: [
+      children: [
         ZoOption(
           value: "value51",
           title: Text("选项内容AAA"),
@@ -91,7 +91,7 @@ class _MenusPageState extends State<MenusPage> {
       title: Text("选项内容AAA"),
       leading: ZoOptionView.emptyLeading,
       optionsWidth: 160,
-      options: [
+      children: [
         ZoOption(
           value: "value51",
           title: Text("选项内容AAA"),
@@ -108,7 +108,7 @@ class _MenusPageState extends State<MenusPage> {
       value: "value 5d1",
       title: Text("选项内容AAA"),
       leading: ZoOptionView.emptyLeading,
-      options: [
+      children: [
         ZoOption(
           value: "value 5d1-1",
           title: Text("选项内容BBB1"),
@@ -118,18 +118,18 @@ class _MenusPageState extends State<MenusPage> {
           value: "value 5d1-2",
           title: Text("选项内容BBB2"),
           leading: Icon(Icons.copy),
-          options: [
+          children: [
             for (int i = 0; i < 30; i++)
               ZoOption(
                 value: "value 5d1-2-$i",
                 title: Text("选项内容BBB4-$i"),
                 leading: Icon(Icons.copy),
-                options: [
+                children: [
                   ZoOption(
                     value: "value 5d1-2-$i-1",
                     title: Text("选项内容AAA"),
                     leading: Icon(Icons.copy),
-                    loadOptions: loadOptions,
+                    loader: loadOptions,
                   ),
                   ZoOption(
                     value: "value 5d1-2-$i-2",
@@ -184,7 +184,7 @@ class _MenusPageState extends State<MenusPage> {
     ZoOption(
       value: "Option 2",
       title: Text("Option 2"),
-      options: [
+      children: [
         ZoOption(
           value: "Option 2-1",
           title: Text("Option 2-1"),
@@ -198,16 +198,16 @@ class _MenusPageState extends State<MenusPage> {
     ZoOption(
       value: "Option 3",
       title: Text("Option 3"),
-      options: [
+      children: [
         ZoOption(
           value: "Option 3-1",
           title: Text("Option 3-1"),
-          loadOptions: loadOptions,
+          loader: loadOptions,
         ),
         ZoOption(
           value: "Option 3-2",
           title: Text("Option 3-2"),
-          loadOptions: loadOptions,
+          loader: loadOptions,
         ),
       ],
     ),
@@ -309,7 +309,7 @@ class _MenusPageState extends State<MenusPage> {
                   ZoButton(
                     child: Text("当前选项"),
                     onTap: () {
-                      final val = menu4.controller.processedOptions;
+                      final val = menu4.controller.processedData;
                       print(val);
                     },
                   ),
@@ -327,7 +327,7 @@ class _MenusPageState extends State<MenusPage> {
                   ZoButton(
                     child: Text("当前选项5"),
                     onTap: () {
-                      final val = menu5.controller.processedOptions;
+                      final val = menu5.controller.processedData;
                       print(val);
                     },
                   ),

@@ -45,6 +45,12 @@ class _PlayPageState extends State<PlayPage> {
               spacing: 12,
               runSpacing: 12,
               children: [
+                ZoTrigger(
+                  onTap: (event) {},
+                  onContextAction: (event) {},
+                  onDrag: (event) {},
+                  child: Text("trigger"),
+                ),
                 ZoDND(
                   draggable: true,
                   feedback: Text("选项1"),

@@ -2,7 +2,7 @@ part of "tree.dart";
 
 /// widget 构造相关
 mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
-    implements _TreeBaseMixin, _TreeActionsMixin, _TreeSelectMixin {
+    implements _TreeBaseMixin, _TreeActionsMixin, _TreeDragSortMixin {
   /// 更新 _fixedHeight
   void _updateFixedHeight() {
     if (widget.maxHeight == null) {
@@ -64,11 +64,17 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
   }) {
     final value = node.content;
 
-    if (value == null) return const SizedBox.shrink();
+    if (value == null)
+      return const SizedBox.shrink(
+        key: ValueKey("empty"),
+      );
 
     final optNode = controller.getNode(value);
 
-    if (optNode == null) return const SizedBox.shrink();
+    if (optNode == null)
+      return const SizedBox.shrink(
+        key: ValueKey("empty"),
+      );
 
     final option = optNode.option;
 
@@ -90,43 +96,64 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
 
     final tEvent = ZoTreeEvent(node: optNode, instance: this as ZoTreeState);
 
-    return ZoOptionView(
+    final (leadNode, identWidth) = _buildLeadingNode(
+      optNode: optNode,
+      node: node,
+      isFixedBuilder: isFixedBuilder,
+      isBranch: isBranch,
+      isSelected: isSelected,
+      expandByRow: expandByRow,
+    );
+
+    // 左右间距、leading等节点之间的间距
+    final horizontalSpace = _style!.space1;
+
+    // 左侧预估总间距，用于修正 identWidth
+    final estimatedIdentSpacing = horizontalSpace;
+
+    Widget renderChild(ZoDNDBuildContext? dndContext) {
+      return ZoOptionView(
+        key: ValueKey(node.content),
+        option: option,
+        arrow: false,
+        active: isSelected,
+        padding: EdgeInsets.symmetric(
+          horizontal: horizontalSpace,
+          vertical: 0,
+        ),
+        horizontalSpacing: horizontalSpace,
+        activeColor: widget.activeColor,
+        highlightColor: widget.highlightColor,
+        loading: controller.isAsyncLoading(value),
+        onTap: (event) => _onOptionTap(event, expandByRow),
+        onContextAction: widget.onContextAction == null
+            ? null
+            : _onContextAction,
+        onFocusChanged: _onFocusChanged,
+        leading: Row(
+          spacing: horizontalSpace,
+          children: [
+            // 有子级并且未按行展开，渲染交互按钮
+            leadNode,
+            ?option.leading,
+            ?widget.leadingBuilder?.call(tEvent),
+          ],
+        ),
+        trailing: widget.trailingBuilder?.call(tEvent),
+      );
+    }
+
+    return _dndNodeBuilder(
+      builder: renderChild,
+      optNode: optNode,
       key: ValueKey(node.content),
-      option: optNode.option,
-      arrow: false,
-      active: isSelected,
-      padding: EdgeInsets.symmetric(
-        horizontal: _style!.space1,
-        vertical: 0,
-      ),
-      activeColor: widget.activeColor,
-      highlightColor: widget.highlightColor,
-      loading: controller.isAsyncOptionLoading(value),
-      onTap: (event) => _onOptionTap(event, expandByRow),
-      onContextAction: widget.onContextAction == null ? null : _onContextAction,
-      onFocusChanged: _onFocusChanged,
-      leading: Row(
-        spacing: 4,
-        children: [
-          // 有子级并且未按行展开，渲染交互按钮
-          _buildLeadingNode(
-            optNode: optNode,
-            node: node,
-            isFixedBuilder: isFixedBuilder,
-            isBranch: isBranch,
-            isSelected: isSelected,
-            expandByRow: expandByRow,
-          ),
-          ?option.leading,
-          ?widget.leadingBuilder?.call(tEvent),
-        ],
-      ),
-      trailing: widget.trailingBuilder?.call(tEvent),
+      isFixedBuilder: isFixedBuilder,
+      identWidth: -identWidth - estimatedIdentSpacing,
     );
   }
 
-  /// 构造选项的前置节点
-  Widget _buildLeadingNode({
+  /// 构造选项的前置节点, 同时会返回缩进展开节点总宽度
+  (Widget, double) _buildLeadingNode({
     required ZoOptionNode optNode,
     required TreeSliverNode<Object?> node,
     required bool isFixedBuilder,
@@ -135,6 +162,14 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
     required bool expandByRow,
   }) {
     final indentSpaceNumber = isBranch ? node.depth! : node.depth! + 1;
+
+    final oneWidth = widget.indentSize.width;
+
+    var identWidth = oneWidth * indentSpaceNumber;
+
+    if (isBranch) {
+      identWidth += oneWidth;
+    }
 
     final leadingNode = GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -145,7 +180,7 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
         children: [
           for (int i = 0; i < indentSpaceNumber; i++)
             SizedBox.square(
-              dimension: widget.indentSize.width,
+              dimension: oneWidth,
               key: ValueKey(i),
               child: _identDotBuilder(
                 index: i,
@@ -157,7 +192,7 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
             SizedBox(
               key: const ValueKey("__Expand"),
               height: widget.indentSize.height,
-              width: widget.indentSize.width,
+              width: oneWidth,
               child: AnimatedRotation(
                 turns: node.isExpanded ? 0.25 : 0.0,
                 duration: const Duration(milliseconds: 150),
@@ -177,13 +212,16 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
 
     // 有子级并且未按行展开，渲染交互按钮
     if (isBranch && !expandByRow) {
-      return ZoInteractiveBox(
-        plain: true,
-        child: leadingNode,
+      return (
+        ZoInteractiveBox(
+          plain: true,
+          child: leadingNode,
+        ),
+        identWidth,
       );
     }
 
-    return leadingNode;
+    return (leadingNode, identWidth);
   }
 
   double _treeRowExtentBuilder(
@@ -442,7 +480,6 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
       return;
     }
 
-    _useLightText =
-        widget.activeColor!.computeLuminance() < lightLuminanceValue;
+    _useLightText = useLighterText(widget.activeColor!);
   }
 }

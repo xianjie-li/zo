@@ -1,5 +1,3 @@
-import "dart:math";
-
 import "package:flutter/widgets.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:zo/src/option/option.dart";
@@ -35,7 +33,7 @@ void main() {
       ZoOption(
         value: "Option 2",
         title: const Text("Option 2"),
-        options: [
+        children: [
           ZoOption(
             value: "Option 2-1",
             title: const Text("Option 2-1"),
@@ -43,7 +41,7 @@ void main() {
           ZoOption(
             value: "Option 2-2",
             title: const Text("Option 2-2"),
-            options: [
+            children: [
               ZoOption(
                 value: "Option 2-2-1",
                 title: const Text("Option 2-2-1"),
@@ -59,7 +57,7 @@ void main() {
       ZoOption(
         value: "Option 3",
         title: const Text("Option 3"),
-        options: [
+        children: [
           ZoOption(
             value: "Option 3-1",
             title: const Text("Option 3-1"),
@@ -74,13 +72,13 @@ void main() {
 
     final c = ZoOptionController(options: options, ignoreOpenStatus: true);
 
-    expect(c.processedOptions.length, 3);
+    expect(c.processedData.length, 3);
     expect(c.flatList.length, 9);
     expect(c.filteredFlatList.length, 9);
 
     c.matchString = "Option 2-2-1";
 
-    expect(c.processedOptions.length, 3);
+    expect(c.processedData.length, 3);
     expect(c.flatList.length, 9);
     expect(c.filteredFlatList.length, 3);
     expect(
@@ -103,7 +101,7 @@ void main() {
     expect(c.hasSelectedChild("Option 2"), true);
     expect(c.hasSelectedChild("Option 1"), false);
 
-    expect(c.processedOptions.length, 3);
+    expect(c.processedData.length, 3);
     expect(c.flatList.length, 9);
     expect(c.filteredFlatList.length, 4);
     expect(
@@ -125,7 +123,7 @@ void main() {
       ],
     );
 
-    expect(c.getOptions().length, 1);
+    expect(c.getChildren().length, 1);
 
     expect(
       c.getNode("Option 2-2")!.path,
@@ -134,14 +132,14 @@ void main() {
 
     expect(
       c
-          .getOptions(
+          .getChildren(
             value: "Option 2-2",
           )
           .length,
       2,
     );
 
-    expect(c.getOptions(filtered: false).length, 3);
+    expect(c.getChildren(filtered: false).length, 3);
 
     final c2 = ZoOptionController(options: options);
 
@@ -165,16 +163,16 @@ void main() {
       ZoOption(
         value: "Option 3",
         title: const Text("Option 3"),
-        options: [
+        children: [
           ZoOption(
             value: "Option 3-1",
             title: const Text("Option 3-1"),
-            loadOptions: loadOptions,
+            loader: loadOptions,
           ),
           ZoOption(
             value: "Option 3-2",
             title: const Text("Option 3-2"),
-            loadOptions: loadOptions,
+            loader: loadOptions,
           ),
         ],
       ),
@@ -184,11 +182,11 @@ void main() {
 
     expect(c.flatList.length, 4);
 
-    await c.loadOptions("Option 3-1");
+    await c.loadChildren("Option 3-1");
 
     expect(c.flatList.length, 12);
 
-    final asyncOptions = c.getOptions(value: "Option 3-1");
+    final asyncOptions = c.getChildren(value: "Option 3-1");
 
     expect(asyncOptions.length, 8);
     expect(asyncOptions[0].value, "Option 3-1-0");
@@ -201,14 +199,14 @@ void main() {
         value: "Option 1",
         title: const Text("Option 1"),
       ),
-      ZoOption(value: "Option 3", title: const Text("Option 3"), options: []),
+      ZoOption(value: "Option 3", title: const Text("Option 3"), children: []),
     ];
 
     final c = ZoOptionController(options: options, ignoreOpenStatus: true);
 
     final node = c.getNode("Option 3")!;
 
-    node.option.options = [
+    node.option.children = [
       ZoOption(
         value: "Option 3-1",
         title: const Text("Option 3-1"),
@@ -221,10 +219,10 @@ void main() {
 
     c.refresh();
 
-    expect(c.processedOptions.length, 2);
+    expect(c.processedData.length, 2);
     expect(c.flatList.length, 4);
 
-    final opt = c.getOptions(value: "Option 3");
+    final opt = c.getChildren(value: "Option 3");
     expect(opt[0].value, "Option 3-1");
     expect(opt[1].value, "Option 3-2");
 
@@ -236,7 +234,7 @@ void main() {
       ZoOption(
         value: "Option x2",
         title: const Text("Option x3"),
-        options: [
+        children: [
           ZoOption(
             value: "Option x2-1",
             title: const Text("Option x2-1"),
@@ -253,16 +251,16 @@ void main() {
       ),
     ];
 
-    expect(c.processedOptions.length, 3);
+    expect(c.processedData.length, 3);
     expect(c.flatList.length, 5);
 
-    final opt2 = c.getOptions(value: "Option x2");
+    final opt2 = c.getChildren(value: "Option x2");
     expect(opt2[0].value, "Option x2-1");
     expect(opt2[1].value, "Option x2-2");
 
     c.matchString = "Option x2-1";
 
-    expect(c.processedOptions.length, 3);
+    expect(c.processedData.length, 3);
     expect(c.flatList.length, 5);
     expect(c.filteredFlatList.length, 2);
   });

@@ -2,7 +2,6 @@ import "dart:math" as math;
 
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
-import "package:zo/src/form/form_state.dart";
 import "package:zo/src/input/formatter.dart";
 import "package:zo/zo.dart";
 

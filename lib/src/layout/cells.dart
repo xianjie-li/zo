@@ -47,12 +47,12 @@ class ZoCells extends StatelessWidget {
     assert(width.isFinite, "ZoCells's width must be finite");
 
     // 将子项根据 span 分为不同的列
-    List<List<ZoCell>> rows = [[]];
+    final List<List<ZoCell>> rows = [[]];
 
     // 每一列的总 span
-    List<double> rowSpanCount = [];
+    final List<double> rowSpanCount = [];
 
-    List<Widget> arranged = [];
+    final List<Widget> arranged = [];
 
     // 当前行的span总数
     var spanCount = 0.0;
@@ -100,7 +100,7 @@ class ZoCells extends StatelessWidget {
         // 之前的实现是计算spacing占用行的总宽度, 然后平均扣减到每一个列上, 这样实现正常, 但是在不同行中,
         // 同样span的项宽度可能不一致, 对齐会比较怪异, 新的方式能保证不管多少 spacing, 同样 span 在不同
         // 行的占用一致, 缺点是span为1的项会被其他项更小, 因为其不占用任何gutter空间
-        var width = unitWidth * child.span + spacing * (child.span - 1);
+        final width = unitWidth * child.span + spacing * (child.span - 1);
 
         arranged.add(SizedBox(width: math.max(width, 0), child: child));
       }
@@ -138,6 +138,6 @@ class ZoCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return child ?? SizedBox.shrink();
+    return child ?? const SizedBox.shrink();
   }
 }

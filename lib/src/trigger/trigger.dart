@@ -362,6 +362,8 @@ class _ZoTriggerState extends State<ZoTrigger> {
       focusNode.dispose();
     }
 
+    clearPendingEvent();
+
     super.dispose();
   }
 
@@ -495,6 +497,7 @@ class _ZoTriggerState extends State<ZoTrigger> {
 
   void onSecondaryTapDown(TapDownDetails details) {
     tempDisableContextAction();
+
     if (widget.onContextAction != null) {
       final event = ZoTriggerEvent(
         type: ZoTriggerType.contextAction,
@@ -652,6 +655,8 @@ class _ZoTriggerState extends State<ZoTrigger> {
   }
 
   void onPanStart(DragStartDetails details) {
+    _cancelDragRunning = false;
+
     if (widget.onDrag == null || lastDragEvent != null) {
       return;
     }
@@ -677,7 +682,7 @@ class _ZoTriggerState extends State<ZoTrigger> {
   }
 
   void onPanEnd(DragEndDetails details) {
-    if (lastDragEvent == null) return;
+    if (lastDragEvent == null || _cancelDragRunning) return;
 
     setDragCursor(false);
 
@@ -703,6 +708,8 @@ class _ZoTriggerState extends State<ZoTrigger> {
   void onPanCancel() {
     if (lastDragEvent == null) return;
 
+    _cancelDragRunning = false;
+
     setDragCursor(false);
 
     final e = ZoTriggerDragEvent(
@@ -725,7 +732,7 @@ class _ZoTriggerState extends State<ZoTrigger> {
   }
 
   void onPanUpdate(DragUpdateDetails details) {
-    if (lastDragEvent == null) return;
+    if (lastDragEvent == null || _cancelDragRunning) return;
 
     final delta = clampAxis(details.delta);
 
@@ -745,6 +752,19 @@ class _ZoTriggerState extends State<ZoTrigger> {
 
     widget.onDrag?.call(e);
     e.dispatch(context);
+  }
+
+  bool _cancelDragRunning = false;
+
+  /// 取消正在进行的 drag 事件
+  void cancelDrag() {
+    if (_cancelDragRunning || lastDragEvent == null) return;
+
+    // 因为 cancelDrag 是在事件 handle 内部调用的，需要确保取消事件在其之后
+    // 在此期间阻止其他后续时间执行
+    _cancelDragRunning = true;
+
+    Timer.run(onPanCancel);
   }
 
   /// 短暂的禁用右键菜单, 如果已经处于禁用状态则什么都不会发生
@@ -828,11 +848,6 @@ class _ZoTriggerState extends State<ZoTrigger> {
     };
   }
 
-  /// 取消正在进行的 drag 事件
-  void cancelDrag() {
-    onPanCancel();
-  }
-
   /// 设置拖动光标
   void setDragCursor(bool dragging) {
     if (widget.onDrag != null && widget.changeCursor) {
@@ -902,6 +917,15 @@ class _ZoTriggerState extends State<ZoTrigger> {
       onPanCancel: enable && enableDrag ? onPanCancel : null,
       onPanUpdate: enable && enableDrag ? onPanUpdate : null,
       behavior: widget.behavior,
+      // onPan 会通过触控板的双指触发，这不符合预期，主动过滤掉，详情见:
+      // https://github.com/flutter/flutter/issues/107005
+      supportedDevices: const <PointerDeviceKind>{
+        PointerDeviceKind.mouse,
+        PointerDeviceKind.stylus,
+        PointerDeviceKind.touch,
+        PointerDeviceKind.unknown,
+        PointerDeviceKind.invertedStylus,
+      },
       child: child,
     );
 

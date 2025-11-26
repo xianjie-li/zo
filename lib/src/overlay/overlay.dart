@@ -102,7 +102,7 @@ class ZoOverlay {
 
   /// 禁用所有层的 tapAwayClosable, 在某些场景很有用, 比如当前层通过 onDismiss 弹出确认关闭的 Modal,
   /// 可以临时通过此项禁用范围外点击关闭来避免错误触发
-  bool disableAllTapAwayClosable = false;
+  bool _disableAllTapAwayClosable = false;
 
   /// 禁用所有层的 escapeClosable
   bool disableAllEscapeClosable = false;
@@ -246,13 +246,18 @@ class ZoOverlay {
     _clearEntryTimers(entry);
 
     void doDispose() {
+      if (entry._isDisposed) return;
+
       if (!overlays.contains(entry)) return;
 
       overlays.remove(entry);
 
       final rmEntry = _originalOverlays.remove(entry);
 
-      if (rmEntry != null) rmEntry.remove();
+      // 可能存在overlay还未挂载完成就消耗的情况？
+      if (rmEntry?.mounted == true) {
+        if (rmEntry != null) rmEntry.remove();
+      }
 
       _clearEntryTimers(entry);
       _syncOverlays();
@@ -350,6 +355,27 @@ class ZoOverlay {
     _forceDismiss = true;
     callback();
     _forceDismiss = false;
+  }
+
+  /// 禁用所有层的 tapAwayClosable, 在某些场景很有用, 比如当前层通过 onDismiss 弹出确认关闭的 Modal,
+  /// 可以临时通过此项禁用范围外点击关闭来避免错误触发，需要确保在完成操作后重新通过 [enableTapAwayClose] 启用
+  void disableTapAwayClose() {
+    _disableAllTapAwayClosable = true;
+  }
+
+  /// 恢复被 [disableTapAwayClose] 禁用的操作
+  void enableTapAwayClose() {
+    _disableAllTapAwayClosable = false;
+  }
+
+  /// 禁用所有层的 escapeClosable, 需要确保在完成操作后重新通过 [enableEscapeClose] 启用
+  void disableEscapeClose() {
+    disableAllEscapeClosable = true;
+  }
+
+  /// 恢复被 [disableEscapeClose] 禁用的操作
+  void enableEscapeClose() {
+    disableAllEscapeClosable = false;
   }
 
   /// 每个层 open 时调用
@@ -469,7 +495,7 @@ class ZoOverlay {
     }
 
     _originalOverlays[entry] = overlayEntry;
-    entry.overlay = this;
+    entry._overlay = this;
 
     return (entry: overlayEntry, isNew: true);
   }
@@ -716,7 +742,7 @@ class _ZoOverlayViewState extends State<ZoOverlayView> {
   void onTapOutside(PointerDownEvent event) {
     if (!entry.tapAwayClosable ||
         !overlay.isActive(entry) ||
-        overlay.disableAllTapAwayClosable) {
+        overlay._disableAllTapAwayClosable) {
       return;
     }
 
@@ -965,7 +991,7 @@ class _ZoOverlayViewState extends State<ZoOverlayView> {
   }
 
   void renderObjectRef(OverlayPositionedRenderObject? obj) {
-    entry.positionedRenderObject = obj;
+    entry._positionedRenderObject = obj;
   }
 
   void onMouseEnter(PointerEnterEvent event) {

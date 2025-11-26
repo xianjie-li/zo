@@ -82,7 +82,7 @@ class ZoMenuEntry extends ZoOverlayEntry {
   /// 在独立控制器管理选项，便于后续在同样需要树形结构的组件中复用逻辑
   late final ZoOptionController controller;
 
-  /// 选中项控制，选中项以扁平的列表方式维护，可以通过 [ZoOptionSelectedData] 和 [controller.flatList]
+  /// 选中项控制，选中项以扁平的列表方式维护，可以通过 [ZoOptionSelectedData] 和 [ZoOptionController.flatList]
   /// 获取包含树信息的选中项数据
   Selector<Object, ZoOption> get selector => controller.selector;
 
@@ -361,7 +361,7 @@ class ZoMenuEntry extends ZoOverlayEntry {
 
   /// 更新当前菜单, 并关闭所有子菜单
   void changedAndCloseDescendantMenus() {
-    _options = controller.getOptions(value: option?.value);
+    _options = controller.getChildren(value: option?.value);
     changed();
     closeDescendantMenus();
   }
@@ -383,7 +383,7 @@ class ZoMenuEntry extends ZoOverlayEntry {
   /// 初始化控制器
   void _initController(ZoOptionController controller) {
     this.controller = controller;
-    _options = controller.getOptions(value: option?.value);
+    _options = controller.getChildren(value: option?.value);
     _bindEvents();
   }
 
@@ -466,8 +466,8 @@ class ZoMenuEntry extends ZoOverlayEntry {
 
     if (_openOptions.isSelected(option.value)) return;
 
-    final hasChildren = option.options != null && option.options!.isNotEmpty;
-    final hasLoader = option.loadOptions != null;
+    final hasChildren = option.children != null && option.children!.isNotEmpty;
+    final hasLoader = option.loader != null;
 
     // 关闭所有子级菜单
     closeDescendantMenus();
@@ -636,11 +636,11 @@ class ZoMenuEntry extends ZoOverlayEntry {
     _child = child;
 
     // 获取异步选项
-    if ((option.options == null || option.options!.isEmpty) &&
-        option.loadOptions != null) {
+    if ((option.children == null || option.children!.isEmpty) &&
+        option.loader != null) {
       final curVal = option.value;
       _child!._localLoading = true;
-      controller.loadOptions(option.value).whenComplete(() {
+      controller.loadChildren(option.value).whenComplete(() {
         if (_child != null && curVal == _child!.option!.value) {
           _child!._localLoading = false;
           _child!.changedAndCloseDescendantMenus();

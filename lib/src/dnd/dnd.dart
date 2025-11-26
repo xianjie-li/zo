@@ -1,12 +1,3 @@
-/// 支持边缘放置的dnd实现，核心成员
-/// - [ZoDND] - 拖动与放置，会将位置、可见性、可拖放等信息通过 [_ZoDNDNode] 同步到 [_ZoDNDManager]
-/// - [_ZoDNDManager] - 核心逻辑实现区域，管理所有dnd节点
-/// - [ZoDNDPosition] - 控制或表示dnd不同位置的启用状态
-/// - [ZoDNDBuildContext] - dnd的自定义构造器参数，包含了当前拖动状态，用来根据状态构造不同的子级作为反馈
-/// - [ZoDNDEvent] - 核心事件
-/// - [ZoDNDEventNotification] - 通过树向上冒泡 [ZoDNDEvent]
-library;
-
 import "dart:async";
 import "dart:collection";
 
@@ -14,6 +5,7 @@ import "package:flutter/material.dart";
 import "package:flutter/rendering.dart";
 import "package:flutter/services.dart";
 import "package:visibility_detector/visibility_detector.dart";
+import "package:zo/src/utils/global_cursor.dart";
 import "package:zo/zo.dart";
 
 part "base.dart";
@@ -26,9 +18,9 @@ part "manager.dart";
 /// 自定义拖动位置：通过设置 [ZoDND.customHandler] 为 true 并在子级放置 [ZoDNDHandler] 组件自定义拖动位置。
 ///
 /// 放置反馈：
-/// - 通过 [ZoDND.builder] 根据状态渲染放置的位置反馈
-/// - 对于不同的放置方向，可通过 [ZoDND.directionIndicator] 显示反馈
-/// - [ZoDND.draggingOpacity] 可以控制在拖动时显示半透明禁用效果
+/// - 内置：可通过 [ZoDND.dropIndicator] 显示不同方向的可放置反馈，
+/// [ZoDND.disableOpacity] 可以控制被拖动时显示半透明禁用效果
+/// - 自定义：通过 [ZoDND.builder] 根据状态渲染拖动或可放置反馈反馈
 ///
 /// 拖动事件：每个 dnd 组件均支持 拖动和放置事件，也可以通过 [ZoDNDEventNotification] 和 [ZoDNDAcceptNotification]
 /// 在组件树上层统一接收事件通知
@@ -50,10 +42,10 @@ class ZoDND extends StatefulWidget {
     this.feedbackOpacity = 0.4,
     this.feedbackOffset,
     this.feedbackWrap,
-    this.directionIndicator = true,
-    this.directionIndicatorOffset,
-    this.draggingOpacity = 0.5,
-    this.cursor,
+    this.dropIndicator = true,
+    this.dropIndicatorPadding,
+    this.dropIndicatorRadius = 6,
+    this.disableOpacity,
     this.onDragStart,
     this.onDragMove,
     this.onDragEnd,
@@ -77,8 +69,8 @@ class ZoDND extends StatefulWidget {
   /// 是否可拖动
   final bool draggable;
 
-  /// 动态检测是否可拖动, 会传入当前节点，此项会覆盖 [draggable] 配置
-  final bool Function(ZoDND? currentDND)? draggableDetector;
+  /// 动态检测是否可拖动, 会传入当前组件，此项会覆盖 [draggable] 配置
+  final bool Function(ZoDND dnd)? draggableDetector;
 
   /// 可位置配置
   final ZoDNDPosition? droppablePosition;
@@ -103,17 +95,18 @@ class ZoDND extends StatefulWidget {
   /// 可能存在上下文状态丢失(比如主题、文本样式等)，可以通过此方法手动添加
   final WidgetChildBuilder? feedbackWrap;
 
-  /// 当一个节点被拖动到组件上方非 [ZoDNDPosition.center] 的位置时，显示位置标记
-  final bool directionIndicator;
+  /// 当一个节点被拖动到可放置组件上位置时，显示放置指示器
+  final bool dropIndicator;
 
-  /// 控制 [directionIndicator] 的显示偏移，正数时会原理组件，负数时会偏移到组件内部更远
-  final double? directionIndicatorOffset;
+  /// 在 [dropIndicator] 不同方向的填充距离，距离可以为负数，例如，在树节点拖动时可能想要根据缩进调整左间距;
+  /// 在列表项间存在间距时，需要调整上下间距来使两个项之间的指示器位置一直
+  final EdgeInsets? dropIndicatorPadding;
 
-  /// 拖动时为组件添加透明度
-  final double draggingOpacity;
+  /// 控制 [dropIndicator] 防止到中间时，矩形框的圆角
+  final double dropIndicatorRadius;
 
-  /// 鼠标在组件上方时显示的光标类型
-  final MouseCursor? cursor;
+  /// 节点不可用时添加的透明度，在拖动节点、不可放置节点添加
+  final double? disableOpacity;
 
   /// 任意节点开始拖动触发
   final void Function(ZoDNDEvent event)? onDragStart;
@@ -139,7 +132,7 @@ class _ZoDNDState extends State<ZoDND> {
   /// 标识 dnd 节点的唯一id
   final id = createTempId();
 
-  late _ZoDNDNode node;
+  late ZoDNDNode node;
 
   /// 根据参数获取可拖动状态
   bool getDraggable() {
@@ -155,7 +148,7 @@ class _ZoDNDState extends State<ZoDND> {
     if (widget.droppablePositionDetector != null) {
       return widget.droppablePositionDetector!(
         widget,
-        _ZoDNDManager.instance.dragNode?.dnd,
+        ZoDNDManager.instance.dragNode?.dnd,
       );
     }
 
@@ -166,18 +159,34 @@ class _ZoDNDState extends State<ZoDND> {
   void initState() {
     super.initState();
 
-    node = _ZoDNDNode(
+    node = ZoDNDNode(
       id: id,
       dnd: widget,
       draggable: getDraggable(),
       droppablePosition: getDroppablePosition(),
-      updateWidget: () {
-        setState(() {});
+      updateWidget: ([immediate = false]) {
+        if (!mounted) return;
+
+        if (immediate) {
+          setState(() {});
+        } else {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            setState(() {});
+          });
+        }
+      },
+      updateRect: ([immediate = false]) {
+        if (immediate) {
+          updateRect();
+        } else {
+          updateRectThrottler.run(updateRect);
+        }
       },
       getScrollParent: getScrollParent,
     );
 
-    _ZoDNDManager.instance.add(node);
+    ZoDNDManager.instance._add(node);
   }
 
   @override
@@ -186,7 +195,7 @@ class _ZoDNDState extends State<ZoDND> {
 
     node.dnd = widget;
     node.draggable = getDraggable();
-    node.droppablePosition = getDroppablePosition();
+    updateDroppablePosition();
   }
 
   @override
@@ -194,41 +203,63 @@ class _ZoDNDState extends State<ZoDND> {
     super.didChangeDependencies();
 
     node.viewId = View.of(context).viewId;
+    updateDroppablePosition();
   }
 
   @override
   void dispose() {
     super.dispose();
-    _ZoDNDManager.instance.remove(node.id);
     node.dispose();
+
     updateRectThrottler.cancel();
+    ZoDNDManager.instance._remove(node.id);
     visibilityInfo = null;
   }
 
   /// 最后一次上报的可见信息
   VisibilityInfo? visibilityInfo;
 
+  /// 限制 updateRect 触发频率
   Throttler updateRectThrottler = Throttler(delay: Durations.short1);
+
+  bool lastVisible = false;
 
   void onPaint(RenderBox box) {
     node.renderBox = box;
-
-    // 更新位置信息，理想状态下在 onVisibilityChanged 中更新是更合适的，
-    // 但实际场景中会存在快速滚动导致记录位置和最终上报位置不一致
-    updateRectThrottler.run(updateRect);
   }
 
   void onVisibilityChanged(VisibilityInfo visibilityInfo) {
     this.visibilityInfo = visibilityInfo;
 
-    updateRectThrottler.run(updateRect);
+    final isVisible = visibilityInfo.visibleFraction > 0;
+
+    // 由不可见转为可见时，更新组件
+    // 针对的场景：开始拖动时，如果组件在sliver的缓冲区，也就是挂载状态，此时开始拖动并自动滚动到该组件显示时，
+    // 组件因为还是使用的旧的build状态，UI会呈过时状态，需要在显示时手动更新一下组件
+    if (isVisible && !lastVisible) {
+      node.updateWidget();
+    }
+
+    lastVisible = isVisible;
   }
 
-  /// 根据 [visibilityInfo] 更新位置信息
+  /// 更新可放置位置
+  void updateDroppablePosition() {
+    node.droppablePosition = getDroppablePosition();
+  }
+
+  /// 根据当前状态更新位置信息
   void updateRect() {
     if (node.renderBox != null) {
-      node.rect =
-          node.renderBox!.localToGlobal(Offset.zero) & node.renderBox!.size;
+      if (node.renderBox!.attached) {
+        node.rect =
+            node.renderBox!.localToGlobal(Offset.zero) & node.renderBox!.size;
+      } else {
+        node.rect = null;
+        node.visibleRect = null;
+        node.renderBox = null;
+        return;
+      }
     }
 
     if (visibilityInfo == null) {
@@ -236,7 +267,7 @@ class _ZoDNDState extends State<ZoDND> {
       return;
     }
 
-    // TODO: 节点在滚动容器中部分可见，并且滚动出视口时，会存在尺寸为负数的情况，这里手动处理一下避免断言错误
+    // 节点在滚动容器中部分可见，并且滚动出视口时，会存在尺寸为负数的情况，这里手动处理一下避免断言错误
     final hasValidSize =
         visibilityInfo!.visibleBounds.height >= 0 &&
         visibilityInfo!.visibleBounds.width >= 0;
@@ -250,6 +281,7 @@ class _ZoDNDState extends State<ZoDND> {
 
     final visibleRect = visibilityInfo!.visibleBounds;
 
+    // 实际可见的rect
     final globalRect =
         node.renderBox!.localToGlobal(visibleRect.topLeft) & visibleRect.size;
 
@@ -272,13 +304,13 @@ class _ZoDNDState extends State<ZoDND> {
   }
 
   void onDrag(ZoTriggerDragEvent event) {
-    _ZoDNDManager.instance._dragHandle(id: id, event: event, context: context);
+    ZoDNDManager.instance._dragHandle(id: id, event: event, context: context);
   }
 
   Widget buildChild(BuildContext context) {
     if (widget.child != null) return widget.child!;
 
-    final manager = _ZoDNDManager.instance;
+    final manager = ZoDNDManager.instance;
     final dragDND = manager.dragNode?.dnd;
 
     final selfActive = manager.activeNode == node;
@@ -303,7 +335,6 @@ class _ZoDNDState extends State<ZoDND> {
     }
 
     return ZoTrigger(
-      defaultCursor: widget.cursor,
       enabled: node.draggable,
       onDrag: onDrag,
       child: buildChild(context),
@@ -312,13 +343,22 @@ class _ZoDNDState extends State<ZoDND> {
 
   @override
   Widget build(BuildContext context) {
+    updateDroppablePosition();
+
+    final dragNode = ZoDNDManager.instance.dragNode;
+
+    // 拖动中为拖动中和不可放置节点添加透明度
+    final showOpacity =
+        dragNode != null &&
+        (ZoDNDManager.instance.dragNode == node || !node.droppablePosition.any);
+
     return RenderTrigger(
       onPaintImmediately: onPaint,
       child: _DNDNodeProvider(
         node: node,
         child: Opacity(
-          opacity: _ZoDNDManager.instance.dragNode == node
-              ? widget.draggingOpacity
+          opacity: showOpacity
+              ? (widget.disableOpacity ?? context.zoStyle.disableOpacity)
               : 1,
           child: VisibilityDetector(
             key: Key(id),
@@ -342,9 +382,9 @@ class ZoDNDHandler extends StatelessWidget {
   final Widget child;
 
   void onDrag(ZoTriggerDragEvent event) {
-    final (_ZoDNDNode node, BuildContext context) = event.data;
+    final (ZoDNDNode node, BuildContext context) = event.data;
 
-    _ZoDNDManager.instance._dragHandle(
+    ZoDNDManager.instance._dragHandle(
       id: node.id,
       event: event,
       context: context,
@@ -359,11 +399,9 @@ class ZoDNDHandler extends StatelessWidget {
     if (nodeProvider == null) return child;
 
     final node = nodeProvider.node;
-    final dndWidget = nodeProvider.node.dnd;
 
     return ZoTrigger(
       data: (node, context),
-      defaultCursor: dndWidget.cursor,
       enabled: node.draggable,
       onDrag: onDrag,
       child: child,
@@ -379,7 +417,7 @@ class _DNDNodeProvider extends InheritedWidget {
     required super.child,
   });
 
-  final _ZoDNDNode node;
+  final ZoDNDNode node;
 
   static _DNDNodeProvider? maybeOf(BuildContext context) {
     final _DNDNodeProvider? result = context
@@ -399,7 +437,9 @@ class _DirectionIndicator extends StatelessWidget {
     super.key,
     required this.width,
     required this.height,
-    required this.isVertical,
+    required this.thickness,
+    required this.activePosition,
+    required this.indicatorRadius,
   });
 
   /// 控制线条宽度
@@ -408,47 +448,91 @@ class _DirectionIndicator extends StatelessWidget {
   /// 控制线条高度
   final double height;
 
-  /// 横向或纵向
-  final bool isVertical;
+  /// 指示线或边框厚度
+  final double thickness;
+
+  /// 当前活动方向
+  final ZoDNDPosition activePosition;
+
+  /// 放置到中间时，矩形框的圆角
+  final double indicatorRadius;
 
   static double circularSize = 8;
-
-  static double circularBorderWidth = 2;
 
   @override
   Widget build(BuildContext context) {
     final style = context.zoStyle;
 
-    final circularMainOffset = -(circularSize - circularBorderWidth);
+    final circularMainOffset = -(circularSize - thickness);
 
     final circularCrossOffset = circularMainOffset / 2;
+
+    final isVertical = activePosition.top || activePosition.bottom;
+
+    final isCenter = activePosition.center;
+
+    final contourColor = style.surfaceContainerColor;
+
+    // 为指示线添加轮廓，防止模板颜色与指示线一直时的低可见性
+    final contour = [
+      BoxShadow(
+        color: contourColor,
+        spreadRadius: 1,
+      ),
+    ];
+
+    final mainIndicator = isCenter
+        ? Container(
+            width: width,
+            height: height,
+            decoration: BoxDecoration(
+              border: Border.all(
+                color: style.primaryColor,
+                width: thickness,
+              ),
+              borderRadius: BorderRadius.circular(indicatorRadius),
+            ),
+            // 额外添加一层内边框作为轮廓线，防止指示器与目标背景颜色相同
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: contourColor,
+                ),
+                borderRadius: BorderRadius.circular(indicatorRadius),
+              ),
+            ),
+          )
+        : Container(
+            width: width,
+            height: height,
+            decoration: BoxDecoration(
+              color: style.primaryColor,
+              borderRadius: BorderRadius.circular(4),
+              boxShadow: contour,
+            ),
+          );
 
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        Container(
-          width: width,
-          height: height,
-          decoration: BoxDecoration(
-            color: style.primaryColor,
-            borderRadius: BorderRadius.circular(4),
-          ),
-        ),
-        Positioned(
-          left: isVertical ? circularMainOffset : circularCrossOffset,
-          top: isVertical ? circularCrossOffset : circularMainOffset,
-          width: circularSize,
-          height: circularSize,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: style.primaryColor,
-                width: circularBorderWidth,
+        mainIndicator,
+        if (!isCenter)
+          Positioned(
+            left: isVertical ? circularMainOffset : circularCrossOffset,
+            top: isVertical ? circularCrossOffset : circularMainOffset,
+            width: circularSize,
+            height: circularSize,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: style.primaryColor,
+                  width: thickness,
+                ),
+                boxShadow: contour,
               ),
             ),
           ),
-        ),
       ],
     );
   }

@@ -41,16 +41,16 @@ class _TreePageState extends State<TreePage> {
       value: "value 0",
       title: Text("Option 0"),
       optionsWidth: 160,
-      options: [
+      children: [
         ZoOption(
           value: "value0.1",
           title: Text("选项内容AAA"),
-          loadOptions: loadOptions,
+          loader: loadOptions,
         ),
         ZoOption(
           value: "value0.2",
           title: Text("选项内容AAA"),
-          loadOptions: loadOptions,
+          loader: loadOptions,
         ),
       ],
     ),
@@ -58,7 +58,7 @@ class _TreePageState extends State<TreePage> {
       value: "value 1",
       title: Text("Option 1"),
       optionsWidth: 160,
-      options: [
+      children: [
         ZoOption(
           value: "value1.1",
           title: Text("选项内容AAA"),
@@ -75,7 +75,7 @@ class _TreePageState extends State<TreePage> {
       value: "value 2",
       title: Text("Option 2"),
       optionsWidth: 160,
-      options: [
+      children: [
         ZoOption(
           value: "value2.1",
           title: Text("选项内容AAA"),
@@ -92,7 +92,7 @@ class _TreePageState extends State<TreePage> {
       value: "value 3",
       title: Text("Option 3"),
       optionsWidth: 160,
-      options: [
+      children: [
         ZoOption(
           value: "value3.1",
           title: Text("选项内容AAA"),
@@ -114,7 +114,7 @@ class _TreePageState extends State<TreePage> {
       value: "value 5",
       title: Text("Option 5"),
       optionsWidth: 160,
-      options: [
+      children: [
         ZoOption(
           value: "value51",
           title: Text("选项内容AAA"),
@@ -130,7 +130,7 @@ class _TreePageState extends State<TreePage> {
     ZoOption(
       value: "value 5d1",
       title: Text("Option 5d1"),
-      options: [
+      children: [
         ZoOption(
           value: "value 5d1-1",
           title: Text("选项内容BBB1"),
@@ -140,13 +140,13 @@ class _TreePageState extends State<TreePage> {
           value: "value 5d1-2",
           title: Text("选项内容BBB2"),
           leading: Icon(Icons.copy),
-          options: [
+          children: [
             for (int i = 0; i < 30; i++)
               ZoOption(
                 value: "value 5d1-2-$i",
                 title: Text("选项内容BBB4-$i"),
                 leading: Icon(Icons.copy),
-                options: [
+                children: [
                   ZoOption(
                     value: "value 5d1-2-$i-1",
                     title: Text("选项内容AAA"),
@@ -205,7 +205,7 @@ class _TreePageState extends State<TreePage> {
       value: "value 1",
       title: Text("Option 1"),
       optionsWidth: 160,
-      options: [
+      children: [
         ZoOption(
           value: "value1.1",
           title: Text("选项内容AAA"),
@@ -222,7 +222,7 @@ class _TreePageState extends State<TreePage> {
       value: "value 2",
       title: Text("Option 2"),
       optionsWidth: 160,
-      options: [
+      children: [
         ZoOption(
           value: "value2.1",
           title: Text("选项内容AAA"),
@@ -263,6 +263,7 @@ class _TreePageState extends State<TreePage> {
               ),
               child: ZoTree(
                 maxHeight: 400,
+                pinedActiveBranch: false,
                 key: treeKey,
                 options: options1,
                 matchString: filterString,
@@ -287,11 +288,22 @@ class _TreePageState extends State<TreePage> {
                 //     constraints: BoxConstraints(minHeight: 24),
                 //   );
                 // },
+                sortable: true,
                 onContextAction: (event, triggerEvent) {
                   print("event $event $triggerEvent");
                 },
                 trailingBuilder: (event) {
                   return TestCount();
+                },
+                draggableDetector: (node) {
+                  return node.value != "value 2";
+                },
+                droppableDetector: (node, dragNode) {
+                  if (dragNode?.value == "value 0" && node.value == "value 1") {
+                    return false;
+                  }
+
+                  return true;
                 },
                 // indentDots: false,
                 // enable: false,

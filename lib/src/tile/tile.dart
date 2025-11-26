@@ -284,7 +284,6 @@ class ZoTile extends StatelessWidget {
   /// 返回当前应显示的背景色
   Color? _getBgColor(ZoStyle zoStyle) {
     if (active) {
-      // return zoStyle.primaryColor.withAlpha(50);
       return activeColor ?? zoStyle.primaryColor;
     }
 
