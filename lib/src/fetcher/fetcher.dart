@@ -4,6 +4,7 @@ import "dart:collection";
 import "package:flutter/widgets.dart";
 import "package:zo/src/utils/app_state.dart";
 import "package:zo/src/utils/utils.dart";
+import "package:zo/zo.dart";
 
 /// 包含参数响应的异步future获取函数
 typedef FetcherFn<Data, Payload> = Future<Data> Function(Payload);

@@ -6,7 +6,7 @@ MouseCursor? _cursor;
 ZoOverlayEntry? _currentEntry;
 
 /// 全局更改光标的样式
-class GlobalCursor {
+class ZoGlobalCursor {
   /// 当前正在显示的光标
   static MouseCursor? get currentCursor => _cursor;
 

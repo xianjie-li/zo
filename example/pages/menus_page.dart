@@ -334,7 +334,7 @@ class _MenusPageState extends State<MenusPage> {
                   ZoButton(
                     child: Text("调试"),
                     onTap: () {
-                      final c = ZoOptionController(options: options5);
+                      final c = ZoOptionController(data: options5);
 
                       print(c.flatList);
                     },
@@ -351,7 +351,7 @@ class _MenusPageState extends State<MenusPage> {
                     child: ZoButton(
                       child: Text("Test"),
                       onTap: () {
-                        final c = ZoOptionController(options: options5);
+                        final c = ZoOptionController(data: options5);
 
                         print(c.flatList);
                       },

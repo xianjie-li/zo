@@ -70,7 +70,7 @@ void main() {
       ),
     ];
 
-    final c = ZoOptionController(options: options, ignoreOpenStatus: true);
+    final c = ZoOptionController(data: options, expandAll: true);
 
     expect(c.processedData.length, 3);
     expect(c.flatList.length, 9);
@@ -141,15 +141,15 @@ void main() {
 
     expect(c.getChildren(filtered: false).length, 3);
 
-    final c2 = ZoOptionController(options: options);
+    final c2 = ZoOptionController(data: options);
 
     expect(c2.filteredFlatList.length, 3);
 
-    c2.openSelector.select("Option 3");
+    c2.expander.select("Option 3");
 
     expect(c2.filteredFlatList.length, 5);
 
-    c2.openSelector.select("Option 2");
+    c2.expander.select("Option 2");
 
     expect(c2.filteredFlatList.length, 7);
   });
@@ -178,7 +178,7 @@ void main() {
       ),
     ];
 
-    final c = ZoOptionController(options: options, ignoreOpenStatus: true);
+    final c = ZoOptionController(data: options, expandAll: true);
 
     expect(c.flatList.length, 4);
 
@@ -202,11 +202,11 @@ void main() {
       ZoOption(value: "Option 3", title: const Text("Option 3"), children: []),
     ];
 
-    final c = ZoOptionController(options: options, ignoreOpenStatus: true);
+    final c = ZoOptionController(data: options, expandAll: true);
 
     final node = c.getNode("Option 3")!;
 
-    node.option.children = [
+    node.data.children = [
       ZoOption(
         value: "Option 3-1",
         title: const Text("Option 3-1"),
@@ -226,7 +226,7 @@ void main() {
     expect(opt[0].value, "Option 3-1");
     expect(opt[1].value, "Option 3-2");
 
-    c.options = [
+    c.data = [
       ZoOption(
         value: "Option x1",
         title: const Text("Option x1"),

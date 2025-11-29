@@ -5,7 +5,6 @@ import "package:flutter/material.dart";
 import "package:flutter/rendering.dart";
 import "package:flutter/services.dart";
 import "package:visibility_detector/visibility_detector.dart";
-import "package:zo/src/utils/global_cursor.dart";
 import "package:zo/zo.dart";
 
 part "base.dart";

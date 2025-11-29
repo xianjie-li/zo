@@ -14,13 +14,13 @@ import "package:flutter/widgets.dart";
 /// 用户可以通过 [getSelectionState] 来获取这些未列出的选项
 ///
 /// 为了让数据选项的获取方式对用户更可控，很多方法都提供了 allOptions 参数，
-/// 这避免 [Selector] 内部对选项信息的直接声明
-class Selector<Val, Opt> extends ChangeNotifier {
-  Selector({
+/// 这避免 [ZoSelector] 内部对选项信息的直接声明
+class ZoSelector<Val, Opt> extends ChangeNotifier {
+  ZoSelector({
     Iterable<Val>? selected,
     this.valueGetter,
     this.optionsGetter,
-  }) : _selected = selected?.toSet() ?? {};
+  }) : _selected = selected == null ? HashSet() : HashSet.from(selected);
 
   /// 控制如何从 [Opt] 中获取选中值, 如果选项本身就代表值则不需要设置
   Val Function(Opt)? valueGetter;
@@ -30,7 +30,9 @@ class Selector<Val, Opt> extends ChangeNotifier {
 
   /// 已选中选项
   /// 选中值不一定存在于选项列表中
-  final Set<Val> _selected;
+  ///
+  /// 为了最好的性能，使用 HashSet 而不是 Set，因为选中顺序在绝大多数场景都是无用的
+  final HashSet<Val> _selected;
 
   /// 获取指定选项对应的值
   Val getOptionValue(Opt opt) {
@@ -38,8 +40,8 @@ class Selector<Val, Opt> extends ChangeNotifier {
   }
 
   /// 将指定的选项转换为值
-  Set<Val> getOptionsValues(Iterable<Opt> options) {
-    return options.map(getOptionValue).toSet();
+  HashSet<Val> getOptionsValues(Iterable<Opt> options) {
+    return HashSet.from(options.map(getOptionValue));
   }
 
   /// 指定的值是否选中
@@ -91,7 +93,7 @@ class Selector<Val, Opt> extends ChangeNotifier {
   }
 
   /// 获取当前选中值
-  Set<Val> getSelected() {
+  HashSet<Val> getSelected() {
     return _selected;
   }
 
@@ -100,9 +102,9 @@ class Selector<Val, Opt> extends ChangeNotifier {
   SelectorState<Val, Opt> getSelectionState(Iterable<Opt>? allOptions) {
     final allOptions2 = _assertOptionsValid(allOptions);
 
-    final selected = <Val>{};
-    final selectedOptions = <Opt>{};
-    final unlistedSelected = <Val>{};
+    final selected = HashSet<Val>();
+    final selectedOptions = HashSet<Opt>();
+    final unlistedSelected = HashSet<Val>();
 
     final HashMap<Val, Opt> optionsMap = HashMap();
 
@@ -169,13 +171,13 @@ class Selector<Val, Opt> extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 取消选中所有值
-  void unselectAll() {
+  /// 取消选中所有值, 可以设置 [notify] 为 false 来取消通知，这在销毁等场景可能会游泳
+  void unselectAll([bool notify = true]) {
     if (_selected.isEmpty) return;
 
     _selected.clear();
 
-    notifyListeners();
+    if (notify) notifyListeners();
   }
 
   /// 反选指定值
@@ -230,11 +232,11 @@ class SelectorState<Val, Opt> {
   });
 
   /// 所有在选项清单中的值
-  final Set<Val> selected;
+  final HashSet<Val> selected;
 
   /// [selected] 对应的选项信息
-  final Set<Opt> selectedOptions;
+  final HashSet<Opt> selectedOptions;
 
   /// 未在选项清单的所有选中值
-  final Set<Val> unlistedSelected;
+  final HashSet<Val> unlistedSelected;
 }

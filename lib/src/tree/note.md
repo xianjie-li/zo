@@ -79,14 +79,16 @@ State/SelectState添加of
 - x 键盘交互
 - x 固定当前展开项
 - x 优化代码
-- onOptionsMutation
-  - move提醒：通过回调添加自定义移动提醒，如果未确认并触发了新的变更，中断操作，可配置行为：兄弟节点不提醒
-- 拖动排序
+- x mutation
+- move提醒：通过回调添加自定义移动提醒，如果未确认并触发了新的变更，中断操作，可配置行为：兄弟节点不提醒
+- x 拖动排序
+- 如果选中项被删除，拖动时应该将其排除
+- fixedOption的交互添加动画、子级为空时展开图标置灰
+- 触摸设备拖动: 是否需要更改trigger实现, 长按拖动
 - 尺寸定制：option.size改为非必传，字体缩小
 - 层级缩进线
 - 复盘代码，整理table实现中可能会复用的部分
-
-x 包括固定区域高度的第一个完整可见节点，如果它有父节点，全部放到顶部显示
+- x 包括固定区域高度的第一个完整可见节点，如果它有父节点，全部放到顶部显示
 - x 进行 _updateOptionOffsetCache 后更新固定项
 - x 点击和折叠时，跳转滚动位置到该选项, 点击选项不能进行折叠操作
 - x jump防折叠遮挡
@@ -95,12 +97,9 @@ x 包括固定区域高度的第一个完整可见节点，如果它有父节点
 
 ## Mutation
 
-把 ZoOption 更改为更通用的 ZoDataRow
-option 结构优化
-
 note:
-- 不需要回退操作，应交给上层实现，因为组件内的回退是不健壮的，应由外部通过 add / remove 操作使用成熟的方案如 ot, crdt 等生成回退
-- 移动、删除提醒
+- 不需要回退操作，应交给上层实现，因为组件内的回退是不健壮的，应由外部通过 add / remove 操作使用成熟的方案如  crdt 生成回退
+- 移动、删除提醒，在tree中实现
 - api添加到controller
 - 删除、移动时，需要将选项按顺序排序，若父级也被操作，只处理父级
 
@@ -123,27 +122,40 @@ note:
 移动时，如果包含不同层级的节点，全部对其到同一级
 toKey不能是被移动节点及其子级
 
-### syncOperations(actions)
-
-在其内部执行的变异操作不进行通知
-
 ### onMutation(operation)
 
-  x 拖动过程中的异常 updateWidget 触发
-  x 拖动过程中dnd和trigger被销毁
-  x 重写dnd机制
-  x 位置未实时更新
-  x 添加左缩进边距指示线 + 中间放置状态 + 不可放置状态
-  x 可拖动 + 可放置配置参数
-  x 自动不可放置配置，拖动中节点及其子级均不可放置，开始拖动时根据选中项存储一个map，判断放置节点所有父级，如果有被选中的就禁用放置
-  x 多选拖动时，子级状态更新不及时
-  x 多选拖动时，更新feedback
-  x esc 取消时，feedback会出现问题：dispose 重复调用时避免报错，直接忽略
-  x esc 取消拖动不应该影响下方事件
-  自动展开：不可放置节点不会展开
-  批量拖动: 推动节点已选中，且选中总数大于2，feedback变为具体数字，批量拖动可禁用
-  拖动统一触发一个方法
-  触摸设备拖动: 是否需要更改trigger实现
-  x drag太容易触发
-
+x 拖动过程中的异常 updateWidget 触发
+x 拖动过程中dnd和trigger被销毁
+x 重写dnd机制
+x 位置未实时更新
+x 添加左缩进边距指示线 + 中间放置状态 + 不可放置状态
+x 可拖动 + 可放置配置参数
+x 自动不可放置配置，拖动中节点及其子级均不可放置，开始拖动时根据选中项存储一个map，判断放置节点所有父级，如果有被选中的就禁用放置
+x 多选拖动时，子级状态更新不及时
+x 多选拖动时，更新feedback
+x esc 取消时，feedback会出现问题：dispose 重复调用时避免报错，直接忽略
+x esc 取消拖动不应该影响下方事件
+x 自动展开：不可放置节点不会展开
+x 批量拖动: 推动节点已选中，且选中总数大于2，feedback变为具体数字，批量拖动可禁用
+x 拖动统一触发一个方法
+x drag太容易触发
+x 移除 expandSet、isExpandAll、_treeSliverController、_treeNodes、_nodeCache、_childrenMap
+x _resetExpand 触发更新是否有影响？
+x _onExpandChanged 可能要延迟到下一帧执行
+x 展开图标颜色不正常
+x findChildIndexCallback 优化，需要一种机制来获取节点的index
+x 从下方开始拖动时异常关闭
+x selector 改为HashSet
+x 禁止插入已有节点
   
+x ZoMutator整理，优化文档
+x optionController能否抽离为通用类
+- x 解耦数据格式
+- x 优化实现
+- x api命名更规范
+- 简化 ZoMutator api ，以及在 Controller 中的使用 (add remove move)
+- 拆分 Controller 代码
+- 将 tree 中一些方法迁移到 controller
+- 添加reload、refresh等节点的完善hook，提供回调和抽象方法
+- x indexPath作为treeData成员
+- tree组件中可抽象到控制器的逻辑,比如展开、收起等

@@ -14,18 +14,14 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
 
     double contentHeight = widget.padding.top + widget.padding.bottom;
 
-    _eachSliverNodes((sliverNode, optionNode) {
+    for (final option in controller.filteredFlatList) {
       if (contentHeight > maxHeight) {
         // 计算大于最大高度的内容是多余的，主动阻止它
-        return true;
+        break;
       }
 
-      if (optionNode != null) {
-        contentHeight += optionNode.option.height;
-      }
-
-      return false;
-    });
+      contentHeight += option.height;
+    }
 
     final newFixedHeight = min(contentHeight, maxHeight);
 
@@ -40,8 +36,8 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
 
   /// 根据当前配置获取选项应该使用的文本和图标颜色
   Color _getActiveTextColor() {
-    final darkStyle = _style!.getSpecifiedTheme(Brightness.dark);
-    final lightStyle = _style!.getSpecifiedTheme(Brightness.light);
+    final darkStyle = _style!.darkStyle;
+    final lightStyle = _style!.lightStyle;
 
     // 传入 activeColors 时
     if (_useLightText != null) {
@@ -56,32 +52,32 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
   }
 
   /// 构造行节点
+  Widget _treeNodeBuilderWithIndex(BuildContext context, int index) {
+    final option = controller.filteredFlatList.elementAtOrNull(index);
+
+    if (option == null) {
+      return const SizedBox.shrink();
+    }
+
+    return _treeNodeBuilder(context, option);
+  }
+
+  /// 构造行节点
   Widget _treeNodeBuilder(
     BuildContext context,
-    TreeSliverNode<Object?> node,
-    AnimationStyle animationStyle, {
+    ZoOption option, {
     bool isFixedBuilder = false,
   }) {
-    final value = node.content;
-
-    if (value == null)
-      return const SizedBox.shrink(
-        key: ValueKey("empty"),
-      );
+    final value = option.value;
 
     final optNode = controller.getNode(value);
 
-    if (optNode == null)
-      return const SizedBox.shrink(
-        key: ValueKey("empty"),
-      );
-
-    final option = optNode.option;
+    if (optNode == null) return const SizedBox.shrink();
 
     // 是否分支节点
     final isBranch = option.isBranch;
 
-    bool expandByRow = widget.expandByTapRow != null
+    bool expandByRow = widget.expandByTapRow == null
         ? true
         : widget.expandByTapRow!(optNode);
 
@@ -98,7 +94,6 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
 
     final (leadNode, identWidth) = _buildLeadingNode(
       optNode: optNode,
-      node: node,
       isFixedBuilder: isFixedBuilder,
       isBranch: isBranch,
       isSelected: isSelected,
@@ -113,7 +108,7 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
 
     Widget renderChild(ZoDNDBuildContext? dndContext) {
       return ZoOptionView(
-        key: ValueKey(node.content),
+        key: ValueKey(value),
         option: option,
         arrow: false,
         active: isSelected,
@@ -146,7 +141,7 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
     return _dndNodeBuilder(
       builder: renderChild,
       optNode: optNode,
-      key: ValueKey(node.content),
+      key: ValueKey(value),
       isFixedBuilder: isFixedBuilder,
       identWidth: -identWidth - estimatedIdentSpacing,
     );
@@ -154,14 +149,13 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
 
   /// 构造选项的前置节点, 同时会返回缩进展开节点总宽度
   (Widget, double) _buildLeadingNode({
-    required ZoOptionNode optNode,
-    required TreeSliverNode<Object?> node,
+    required ZoTreeDataNode<ZoOption> optNode,
     required bool isFixedBuilder,
     required bool isBranch,
     required bool isSelected,
     required bool expandByRow,
   }) {
-    final indentSpaceNumber = isBranch ? node.depth! : node.depth! + 1;
+    final indentSpaceNumber = isBranch ? optNode.level : optNode.level + 1;
 
     final oneWidth = widget.indentSize.width;
 
@@ -194,7 +188,9 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
               height: widget.indentSize.height,
               width: oneWidth,
               child: AnimatedRotation(
-                turns: node.isExpanded ? 0.25 : 0.0,
+                turns: controller.expander.isSelected(optNode.value)
+                    ? 0.25
+                    : 0.0,
                 duration: const Duration(milliseconds: 150),
                 child: Icon(
                   widget.togglerIcon ?? Icons.arrow_right_rounded,
@@ -225,12 +221,12 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
   }
 
   double _treeRowExtentBuilder(
-    TreeSliverNode<Object?> node,
-    SliverLayoutDimensions dimensions,
+    int index,
+    SliverLayoutDimensions layoutDimensions,
   ) {
-    if (node.content == null) return 0;
-    final optNode = controller.getNode(node.content!)!;
-    return optNode.option.height;
+    final option = controller.filteredFlatList.elementAtOrNull(index);
+    if (option == null) return 0;
+    return option.height;
   }
 
   /// 渲染缩进 dot
@@ -253,7 +249,7 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
   }
 
   Widget? _emptyBuilder() {
-    if (_treeNodes.isNotEmpty) return null;
+    if (controller.filteredFlatList.isNotEmpty) return null;
 
     return widget.empty ??
         Center(
@@ -274,14 +270,11 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
 
     double offset = widget.padding.top;
 
-    _eachSliverNodes((sliverNode, optionNode) {
-      if (optionNode != null) {
-        _offsetCache[optionNode.value] = offset;
-        _offsetCacheValueList.add(optionNode.value);
-        offset += optionNode.option.height;
-      }
-      return false;
-    });
+    for (final option in controller.filteredFlatList) {
+      _offsetCache[option.value] = offset;
+      _offsetCacheValueList.add(option.value);
+      offset += option.height;
+    }
 
     if (!_isInit) {
       _updateFixedOptions();
@@ -312,7 +305,7 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
       // 展开的选项检测顶部可见性、未展开的检测底部可见性
       final optionOffset = isExpanded(optValue)
           ? _offsetCache[optValue]!
-          : _offsetCache[optValue]! + node.option.height;
+          : _offsetCache[optValue]! + node.data.height;
 
       final offset = scrollController.position.pixels + fixedHeight;
 
@@ -333,31 +326,23 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
 
   /// 根据 _fixedOptions 构造固定在顶部的选项
   Widget? _fixedOptionBuilder() {
-    if (_fixedOptions.isEmpty) return const SizedBox.shrink();
+    if (_fixedOptions.isEmpty || _dragging) return const SizedBox.shrink();
 
     final List<Widget> ls = [];
 
     for (var optionValue in _fixedOptions) {
       final node = controller.getNode(optionValue);
-      TreeSliverNode<Object?>? sliverNode;
-      try {
-        // 初始化阶段节点可能还未挂载到控制器，直接跳过即可
-        sliverNode = _treeSliverController.getNodeFor(optionValue);
-      } catch (e) {
-        continue;
-      }
 
-      if (node == null || sliverNode == null) continue;
+      if (node == null) continue;
 
       // 构造选项节点，组件目前固定无动画，如果后续要支持应该需要调整此处
       final fixedNode = ConstrainedBox(
         constraints: BoxConstraints(
-          maxHeight: node.option.height,
+          maxHeight: node.data.height,
         ),
         child: _treeNodeBuilder(
           context,
-          sliverNode,
-          AnimationStyle.noAnimation,
+          node.data,
           isFixedBuilder: true,
         ),
       );
@@ -417,7 +402,7 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
   }
 
   /// 选项前方展开按钮和缩进区域点击
-  void _onToggleButtonTap(ZoOptionNode node, bool isFixedBuilder) {
+  void _onToggleButtonTap(ZoTreeDataNode<ZoOption> node, bool isFixedBuilder) {
     // 顶部固定选项关闭处理，将滚动位置调整到选项当前位置
     if (isFixedBuilder) {
       collapse(node.value);
@@ -455,19 +440,7 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
     }
   }
 
-  void _onNodeToggle(TreeSliverNode<Object?> node) {
-    _fixedHeightUpdateDebouncer.run(() {
-      _updateFixedHeight();
-
-      // 展开操作触发情况： _onNodeToggle
-      // toggle: true
-      // collapseAll: false, 需要单独处理
-      // expandAll: true
-      _updateOptionOffsetCache();
-    });
-  }
-
-  ZoOptionNode _getNodeByEvent(ZoTriggerEvent event) {
+  ZoTreeDataNode<ZoOption> _getNodeByEvent(ZoTriggerEvent event) {
     final option = (event.data as ZoOptionEventData).option;
     final node = controller.getNode(option.value)!;
     return node;

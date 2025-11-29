@@ -94,7 +94,7 @@ mixin _TreeShortcutsMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
 
     // 首次全选操作：清空当前所有选中，然后选中当前层所有节点
     if (_allSelectActionCount == 1) {
-      final list = controller.getSiblings(focusNode!, false);
+      final list = controller.getSiblings(focusNode!, true);
       final values = list.map((o) => o.value);
 
       selector.setSelected(values);
@@ -116,7 +116,7 @@ mixin _TreeShortcutsMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
     }
 
     // 查找当前要处理的层对应的父节点
-    ZoOptionNode? lastMoveParent = focusNode;
+    ZoTreeDataNode<ZoOption>? lastMoveParent = focusNode;
 
     while (moveLevel > 0) {
       moveLevel--;
@@ -130,7 +130,7 @@ mixin _TreeShortcutsMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
       return KeyEventResult.handled;
     }
 
-    final list = controller.getSiblings(lastMoveParent, false);
+    final list = controller.getSiblings(lastMoveParent, true);
 
     final values = list.map((o) => o.value);
 
@@ -167,13 +167,13 @@ mixin _TreeShortcutsMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
 
     if (node == null) return KeyEventResult.ignored;
 
-    final isBranch = node.option.isBranch;
+    final isBranch = node.data.isBranch;
     final isExpand = isExpanded(node.value);
 
     if (!isBranch || isExpand) {
       final next = controller.getNextNode(
         node,
-        filter: (node) => !node.option.enabled,
+        filter: (node) => !node.data.enabled,
       );
 
       if (next != null) {
@@ -199,7 +199,7 @@ mixin _TreeShortcutsMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
     final prev = controller.getPrevNode(
       node,
       filter: (node) =>
-          !node.option.enabled ||
+          !node.data.enabled ||
           !controller.isVisible(node.value) ||
           !isExpandedAllParents(node.value),
     );
@@ -224,7 +224,7 @@ mixin _TreeShortcutsMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
     final next = controller.getNextNode(
       node,
       filter: (node) =>
-          !node.option.enabled ||
+          !node.data.enabled ||
           !controller.isVisible(node.value) ||
           !isExpandedAllParents(node.value),
     );

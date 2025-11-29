@@ -19,6 +19,7 @@ export "src/notice/notice.dart";
 export "src/option/option.dart";
 export "src/menus/menus.dart";
 export "src/select/select.dart";
+export "src/tree_data/tree_data.dart";
 export "src/tree/tree.dart";
 export "src/dnd/dnd.dart";
 export "src/form/form.dart";

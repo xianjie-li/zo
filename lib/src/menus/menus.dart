@@ -63,14 +63,14 @@ class ZoMenuEntry extends ZoOverlayEntry {
     // menu 自行处理esc关闭行为
     super.escapeClosable = false;
 
-    _openOptions = Selector();
+    _openOptions = ZoSelector();
 
     if (option == null) {
       _initController(
         ZoOptionController(
-          options: options,
-          // menu不需要特定于树形的open管理
-          ignoreOpenStatus: true,
+          data: options,
+          // menu 自行管理 open 状态
+          expandAll: true,
           selected: selected,
           matchRegexp: matchRegexp,
           matchString: matchString,
@@ -84,7 +84,7 @@ class ZoMenuEntry extends ZoOverlayEntry {
 
   /// 选中项控制，选中项以扁平的列表方式维护，可以通过 [ZoOptionSelectedData] 和 [ZoOptionController.flatList]
   /// 获取包含树信息的选中项数据
-  Selector<Object, ZoOption> get selector => controller.selector;
+  ZoSelector<Object, ZoOption> get selector => controller.selector;
 
   /// 包含选中项各种信息的对象，相比 [selector] 包含更树形结构的选中信息，如果选项是扁平的或无需树信息，
   /// 优先使用 [selector], 因为本属性会对整个树进行遍历
@@ -100,7 +100,7 @@ class ZoMenuEntry extends ZoOverlayEntry {
   List<ZoOption> _options = [];
   set options(List<ZoOption> value) {
     assert(option == null);
-    controller.options = value;
+    controller.data = value;
     changedAndCloseDescendantMenus();
   }
 
@@ -199,7 +199,7 @@ class ZoMenuEntry extends ZoOverlayEntry {
   /// 标记当前层级菜单所有开启子菜单的选项, 它在每个层级的菜单间独立
   ///
   /// 仅作为标记, 组件内部需要负责同步开启状态的菜单与此项一致
-  late final Selector<Object, ZoOption> _openOptions;
+  late final ZoSelector<Object, ZoOption> _openOptions;
 
   /// 菜单默认宽度
   static const defaultMenuWidth = 240.0;

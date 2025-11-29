@@ -542,7 +542,7 @@ class ZoDNDManager with _ZoDNDAutoScrollMixin {
     required ZoTriggerDragEvent event,
   }) {
     if (event.last) {
-      GlobalCursor.hide();
+      ZoGlobalCursor.hide();
       return;
     }
 
@@ -550,14 +550,14 @@ class ZoDNDManager with _ZoDNDAutoScrollMixin {
     final cantDrop = activeNode != null && !activeNode!.droppablePosition.any;
 
     if (cantDrop) {
-      if (GlobalCursor.currentCursor != SystemMouseCursors.forbidden) {
-        GlobalCursor.show(SystemMouseCursors.forbidden, true);
+      if (ZoGlobalCursor.currentCursor != SystemMouseCursors.forbidden) {
+        ZoGlobalCursor.show(SystemMouseCursors.forbidden, true);
       }
       return;
     }
 
-    if (GlobalCursor.currentCursor != MouseCursor.defer) {
-      GlobalCursor.show(MouseCursor.defer, true);
+    if (ZoGlobalCursor.currentCursor != MouseCursor.defer) {
+      ZoGlobalCursor.show(MouseCursor.defer, true);
     }
   }
 

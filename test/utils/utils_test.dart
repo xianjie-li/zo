@@ -1,4 +1,3 @@
-import "package:flutter/foundation.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:zo/zo.dart";
 
@@ -110,7 +109,7 @@ void main() {
   test("Selector", () {
     final options1 = [1, 2, 3];
 
-    final Selector<int, int> selector = Selector();
+    final ZoSelector<int, int> selector = ZoSelector();
 
     expect(selector.hasSelected(), false);
     expect(selector.isPartialSelected(options1), false);
@@ -166,5 +165,136 @@ void main() {
     selector.setSelected([1, 3]);
 
     expect(selector.getSelected(), {1, 3});
+  });
+
+  test("ZoMutator", () {
+    final list = [1, 2, 3, 4, 5, 6];
+
+    const addOperation = "add";
+
+    // 交互首尾元素
+    const moveOperation = "move";
+
+    const removeOperation = "remove";
+
+    var num = 7;
+
+    final List<List<ZoMutatorRecord<String>>> records = [];
+    final List<ZoMutatorSource> sources = [];
+
+    final mutator = ZoMutator<String>(
+      operationHandle: (operation, command) {
+        sources.add(command.source);
+
+        if (operation == addOperation) {
+          list.add(num);
+          num++;
+          return [removeOperation];
+        }
+
+        if (operation == removeOperation) {
+          list.removeLast();
+          num--;
+          return [addOperation];
+        }
+
+        if (operation == moveOperation) {
+          final last = list.removeLast();
+          list.add(list.removeAt(0));
+          list.insert(0, last);
+          return [moveOperation];
+        }
+
+        return null;
+      },
+      onMutation: (details) {
+        records.add(details.operation);
+      },
+    );
+
+    final details = mutator.mutation(
+      ZoMutatorCommand(
+        operation: [
+          addOperation,
+          moveOperation,
+        ],
+      ),
+    );
+
+    expect(list, [7, 2, 3, 4, 5, 6, 1]);
+
+    expect(details, isNotNull);
+    expect(details!.operation.length, 2);
+
+    final details2 = mutator.mutation(
+      ZoMutatorCommand(
+        operation: mutator.reverseOperations(details.operation),
+        source: ZoMutatorSource.history,
+      ),
+    );
+
+    expect(list, [1, 2, 3, 4, 5, 6]);
+
+    final details3 = mutator.mutation(
+      ZoMutatorCommand(
+        operation: mutator.reverseOperations(details2!.operation),
+        source: ZoMutatorSource.history,
+      ),
+    );
+
+    expect(list, [7, 2, 3, 4, 5, 6, 1]);
+
+    final future = mutator
+        .batchMutation(() async {
+          await Future.delayed(const Duration(seconds: 1), () {});
+          expect(sources, [
+            ZoMutatorSource.local,
+            ZoMutatorSource.local,
+            ZoMutatorSource.history,
+            ZoMutatorSource.history,
+            ZoMutatorSource.history,
+            ZoMutatorSource.history,
+          ]);
+        })
+        .whenComplete(() {
+          expect(sources, [
+            ZoMutatorSource.local,
+            ZoMutatorSource.local,
+            ZoMutatorSource.history,
+            ZoMutatorSource.history,
+            ZoMutatorSource.history,
+            ZoMutatorSource.history,
+            ZoMutatorSource.local,
+            ZoMutatorSource.local,
+            ZoMutatorSource.local,
+          ]);
+
+          expect(list, [9, 2, 3, 4, 5, 6, 1, 8, 7]);
+        });
+
+    mutator.mutation(
+      ZoMutatorCommand(
+        operation: [addOperation],
+      ),
+    );
+
+    mutator.mutation(
+      ZoMutatorCommand(
+        operation: [addOperation, moveOperation],
+      ),
+    );
+
+    expect(sources, [
+      ZoMutatorSource.local,
+      ZoMutatorSource.local,
+      ZoMutatorSource.history,
+      ZoMutatorSource.history,
+      ZoMutatorSource.history,
+      ZoMutatorSource.history,
+    ]);
+
+    expect(list, [7, 2, 3, 4, 5, 6, 1]);
+
+    return future;
   });
 }

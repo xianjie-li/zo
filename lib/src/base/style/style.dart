@@ -202,7 +202,7 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
 
   bool get isLight => brightness == Brightness.light;
 
-  bool get isDark => brightness == Brightness.light;
+  bool get isDark => brightness == Brightness.dark;
 
   // # # # # # # # 颜色 # # # # # # #
 
@@ -374,11 +374,6 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
   void connectReverse(ZoStyle reverseStyle) {
     reverseStyle._reverseStyle = this;
     _reverseStyle = reverseStyle;
-  }
-
-  /// 主动获取指定的明暗主题
-  ZoStyle getSpecifiedTheme(Brightness brightness) {
-    return this.brightness == brightness ? this : reverseStyle;
   }
 
   /// 根据当前配置获取 ThemeData, 若传入 theme, 会复制此 theme 后覆盖生成

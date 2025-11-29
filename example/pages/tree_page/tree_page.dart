@@ -3,9 +3,6 @@ import "dart:math";
 import "package:flutter/material.dart";
 import "package:zo/zo.dart";
 
-import "custom_tree.dart";
-import "simple_tree.dart";
-
 class TreePage extends StatefulWidget {
   const TreePage({super.key});
 
@@ -78,12 +75,12 @@ class _TreePageState extends State<TreePage> {
       children: [
         ZoOption(
           value: "value2.1",
-          title: Text("选项内容AAA"),
+          title: Text("选项内容AAA2-1"),
           leading: Icon(Icons.copy),
         ),
         ZoOption(
           value: "value2.2",
-          title: Text("选项内容AAA"),
+          title: Text("选项内容AAA2-2"),
           leading: Icon(Icons.copy),
         ),
       ],
@@ -95,12 +92,12 @@ class _TreePageState extends State<TreePage> {
       children: [
         ZoOption(
           value: "value3.1",
-          title: Text("选项内容AAA"),
+          title: Text("选项内容AAA3-1"),
           leading: Icon(Icons.copy),
         ),
         ZoOption(
           value: "value3.2",
-          title: Text("选项内容AAA"),
+          title: Text("选项内容AAA3-2"),
           leading: Icon(Icons.copy),
         ),
       ],
@@ -241,6 +238,40 @@ class _TreePageState extends State<TreePage> {
 
   String? filterString;
 
+  List<ZoMutatorRecord<ZoTreeDataOperation>> history = [];
+
+  int historyIndex = -1;
+
+  void prevHistory() {
+    if (historyIndex == -1) return;
+    final cur = history[historyIndex];
+    if (cur.$2 == null) return;
+
+    historyIndex--;
+    final mutator = treeKey.currentState!.controller.mutator;
+
+    mutator.mutation(
+      ZoMutatorCommand(operation: cur.$2!, source: ZoMutatorSource.history),
+    );
+
+    setState(() {});
+  }
+
+  void nextHistory() {
+    if (historyIndex == history.length - 1) return;
+
+    final cur = history[historyIndex + 1];
+
+    historyIndex++;
+    final mutator = treeKey.currentState!.controller.mutator;
+
+    mutator.mutation(
+      ZoMutatorCommand(operation: [cur.$1], source: ZoMutatorSource.history),
+    );
+
+    setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
     final style = context.zoStyle;
@@ -263,13 +294,25 @@ class _TreePageState extends State<TreePage> {
               ),
               child: ZoTree(
                 maxHeight: 400,
-                pinedActiveBranch: false,
+                pinedActiveBranch: true,
                 key: treeKey,
                 options: options1,
                 matchString: filterString,
                 value: const ["value 4"],
-                // expands: const ["value 1", "value 2"],
-                expandTopLevel: true,
+                expands: const ["value 1", "value 2"],
+                onMutation: (details) {
+                  print("mutation: ${details.source}");
+
+                  if (details.source == ZoMutatorSource.local) {
+                    setState(() {
+                      history = history.sublist(0, historyIndex + 1);
+
+                      history.addAll(details.operation);
+                      historyIndex = history.length - 1;
+                    });
+                  }
+                },
+                // expandTopLevel: true,
                 // expandAll: true,
                 expandByTapRow: (node) {
                   return node.value != "value 2";
@@ -380,31 +423,185 @@ class _TreePageState extends State<TreePage> {
                 },
               ),
             ),
-            Container(
-              // height: 500,
-              constraints: BoxConstraints(maxHeight: 500),
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: style.outlineColor,
-                ),
-              ),
-              child: Align(
-                alignment: AlignmentGeometry.topLeft,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.red),
-                  ),
-                  child: ZoTree(
-                    options: [],
-                    maxHeight: 100,
-                    // indentDots: false,
-                    // enable: false,
-                    // indentSize: Size(18, 18),
-                    // togglerIcon: Icons.arrow_right_alt_outlined,
-                  ),
-                ),
-              ),
+            Text("Index ${historyIndex}"),
+            ZoButton(
+              child: Text("prev"),
+              onTap: () {
+                prevHistory();
+              },
             ),
+            ZoButton(
+              child: Text("next"),
+              onTap: () {
+                nextHistory();
+              },
+            ),
+            ZoButton(
+              child: Text("add option to root"),
+              onTap: () {
+                final mutator = treeKey.currentState!.controller.mutator;
+
+                final id1 = Random().nextInt(5000000);
+                final id2 = Random().nextInt(5000000);
+
+                mutator.mutation(
+                  ZoMutatorCommand(
+                    operation: [
+                      ZoTreeDataAddOperation(
+                        data: [
+                          ZoOption(
+                            value: "value $id1",
+                            title: Text("选项内容-$id1"),
+                            leading: Icon(Icons.copy),
+                          ),
+                          ZoOption(
+                            value: "value $id2",
+                            title: Text("选项内容-$id2"),
+                            leading: Icon(Icons.copy),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+            ZoButton(
+              child: Text("add option Option 0"),
+              onTap: () {
+                final mutator = treeKey.currentState!.controller.mutator;
+
+                final id1 = Random().nextInt(5000000);
+                final id2 = Random().nextInt(5000000);
+
+                mutator.mutation(
+                  ZoMutatorCommand(
+                    operation: [
+                      ZoTreeDataAddOperation(
+                        data: [
+                          ZoOption(
+                            value: "value $id1",
+                            title: Text("选项内容-$id1"),
+                            leading: Icon(Icons.copy),
+                          ),
+                          ZoOption(
+                            value: "value $id2",
+                            title: Text("选项内容-$id2"),
+                            leading: Icon(Icons.copy),
+                          ),
+                        ],
+                        toValue: "value 0",
+                        position: ZoTreeDataRefPosition.inside,
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+            ZoButton(
+              child: Text("add option Option 0 before"),
+              onTap: () {
+                final mutator = treeKey.currentState!.controller.mutator;
+
+                final id1 = Random().nextInt(5000000);
+                final id2 = Random().nextInt(5000000);
+
+                mutator.mutation(
+                  ZoMutatorCommand(
+                    operation: [
+                      ZoTreeDataAddOperation(
+                        data: [
+                          ZoOption(
+                            value: "value $id1",
+                            title: Text("选项内容-$id1"),
+                            leading: Icon(Icons.copy),
+                          ),
+                          ZoOption(
+                            value: "value $id2",
+                            title: Text("选项内容-$id2"),
+                            leading: Icon(Icons.copy),
+                          ),
+                        ],
+                        toValue: "value 0",
+                        position: ZoTreeDataRefPosition.before,
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+            ZoButton(
+              child: Text("add option Option 0 after"),
+              onTap: () {
+                final mutator = treeKey.currentState!.controller.mutator;
+
+                final id1 = Random().nextInt(5000000);
+                final id2 = Random().nextInt(5000000);
+
+                mutator.mutation(
+                  ZoMutatorCommand(
+                    operation: [
+                      ZoTreeDataAddOperation(
+                        data: [
+                          ZoOption(
+                            value: "value $id1",
+                            title: Text("选项内容-$id1"),
+                            leading: Icon(Icons.copy),
+                          ),
+                          ZoOption(
+                            value: "value $id2",
+                            title: Text("选项内容-$id2"),
+                            leading: Icon(Icons.copy),
+                          ),
+                        ],
+                        toValue: "value 0",
+                        position: ZoTreeDataRefPosition.after,
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+            ZoButton(
+              child: Text("remove Option 1 children"),
+              onTap: () {
+                final mutator = treeKey.currentState!.controller.mutator;
+
+                mutator.mutation(
+                  ZoMutatorCommand(
+                    operation: [
+                      TreeDataRemoveOperation(values: ["value1.1", "value1.2"]),
+                    ],
+                  ),
+                );
+              },
+            ),
+            // Container(
+            //   // height: 500,
+            //   constraints: BoxConstraints(maxHeight: 500),
+            //   decoration: BoxDecoration(
+            //     border: Border.all(
+            //       color: style.outlineColor,
+            //     ),
+            //   ),
+            //   child: Align(
+            //     alignment: AlignmentGeometry.topLeft,
+            //     child: DecoratedBox(
+            //       decoration: BoxDecoration(
+            //         border: Border.all(color: Colors.red),
+            //       ),
+            //       child: ZoTree(
+            //         // options: [],
+            //         options: options2,
+            //         maxHeight: 200,
+            //         // indentDots: false,
+            //         // enable: false,
+            //         // indentSize: Size(18, 18),
+            //         // togglerIcon: Icons.arrow_right_alt_outlined,
+            //       ),
+            //     ),
+            //   ),
+            // ),
           ],
         ),
       ),

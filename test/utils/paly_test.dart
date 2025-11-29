@@ -1,6 +1,9 @@
 import "dart:async";
 
+import "package:collection/collection.dart";
 import "package:flutter_test/flutter_test.dart";
+import "package:zo/src/tree_data/tree_data.dart";
+import "package:zo/zo.dart";
 
 void main() {
   test("play1", () {
@@ -73,7 +76,31 @@ void main() {
   });
 
   test("play5", () {
-    final String str = "Abc";
-    expect(str.contains("Abc"), true);
+    final list = [1, 2, 3, 4, 5];
+    print(list.slice(0, 2));
+  });
+
+  test("play6", () {
+    final rawPaths = [
+      [0, 1, 0], // 子孙
+      [0, 2], // 独立
+      [0], // 祖先
+      [0, 1], // 中间层 (0 的子, 0,1,0 的父)
+      [0], // 重复
+      [1, 0], // 另一个分支
+    ];
+
+    final cleanPaths = ZoIndexPathHelper.removeOverlaps(rawPaths);
+    print(cleanPaths.map(ZoIndexPathHelper.stringify).toList());
+
+    // 测试数据
+    final paths = [
+      [0, 1],
+      [0, 3], // 与 [0, 1] 不连续
+      [0, 2], // 补上中间的 [0, 2]
+      [0, 5], // 再次断层
+      [1, 0],
+      [1, 1], // 与 [1, 0] 连续
+    ];
   });
 }

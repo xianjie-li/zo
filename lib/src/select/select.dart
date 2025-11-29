@@ -118,7 +118,7 @@ class ZoSelectState extends ZoCustomFormState<Iterable<Object>, ZoSelect> {
   late ZoMenuEntry menuEntry;
 
   /// 选中项控制
-  Selector<Object, ZoOption> get selector => menuEntry.selector;
+  ZoSelector<Object, ZoOption> get selector => menuEntry.selector;
 
   /// 选项控制器
   ZoOptionController get optionController => menuEntry.controller;
@@ -366,7 +366,7 @@ class ZoSelectState extends ZoCustomFormState<Iterable<Object>, ZoSelect> {
 
     for (final val in selected) {
       final node = menuEntry.controller.getNode(val);
-      list.add((val, node?.option));
+      list.add((val, node?.data));
       if (list.length >= length) break;
     }
 

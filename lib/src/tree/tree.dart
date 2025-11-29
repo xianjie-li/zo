@@ -5,7 +5,6 @@ import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
 import "package:flutter/rendering.dart";
 import "package:flutter/services.dart";
-import "package:zo/src/trigger/listenable_notifier.dart";
 
 import "../../zo.dart";
 
@@ -34,6 +33,7 @@ class ZoTree extends ZoCustomFormWidget<Iterable<Object>> {
     this.scrollController,
     this.onTap,
     this.onContextAction,
+    this.onMutation,
     this.expandByTapRow,
     this.padding = const EdgeInsets.all(8),
     this.maxHeight,
@@ -71,11 +71,11 @@ class ZoTree extends ZoCustomFormWidget<Iterable<Object>> {
   final List<ZoOption> options;
 
   /// TODO
-  /// 选项在组件内部发生了变更, [ZoOptionMutationEvent] 包含 [ZoOptionAddOperation]、
-  /// [ZoOptionRemoveOperation]、[ZoRowDataMoveOperation] 三个子类，可在内部进行类型判断处理
+  /// 选项在组件内部发生了变更, [ZoTreeDataOperation] 包含 [ZoTreeDataAddOperation]、
+  /// [TreeDataRemoveOperation]、[TreeDataMoveOperation] 三个子类，可在内部进行类型判断处理
   ///
   /// 注：异步选项加载成功后不会通过此方法通知，请通过 [onOptionLoadChanged] 接收事件
-  final ValueChanged<ZoOptionMutationEvent>? onOptionsMutation;
+  final ValueChanged<ZoTreeDataOperation>? onOptionsMutation;
 
   /// 控制选择类型, 默认为单选
   final ZoSelectionType selectionType;
@@ -96,8 +96,12 @@ class ZoTree extends ZoCustomFormWidget<Iterable<Object>> {
   final void Function(ZoTreeEvent event, ZoTriggerEvent triggerEvent)?
   onContextAction;
 
+  /// 发生变更操作时通过此方法进行通知
+  final void Function(ZoMutatorDetails<ZoTreeDataOperation> details)?
+  onMutation;
+
   /// 默认情况下，行会在点击后展开，通过此项返回 false, 使其只能通过点击展开图标等操作进行展开
-  final bool Function(ZoOptionNode node)? expandByTapRow;
+  final bool Function(ZoTreeDataNode node)? expandByTapRow;
 
   /// 间距
   final EdgeInsets padding;
@@ -138,17 +142,18 @@ class ZoTree extends ZoCustomFormWidget<Iterable<Object>> {
   /// 避免传入字面量，仅应在筛选条件变更时更新
   ///
   /// 间接匹配：节点的父级、子级、自身任意一项匹配都会视为匹配
-  final ZoOptionFilter? filter;
+  final ZoTreeDataFilter<ZoOption>? filter;
 
   /// TODO: 废弃 异步加载选项失败时触发
   final void Function(Object error, [StackTrace? stackTrace])?
   onOptionLoadError;
 
   /// 异步选项加载状态变更时触发，加载中 > 成功 | 失败
-  final void Function(ZoOptionLoadEvent event)? onOptionLoadChanged;
+  final void Function(ZoTreeDataLoadEvent<ZoOption> event)? onOptionLoadChanged;
 
   /// 在存在筛选条件时，如果存在匹配项, 会在完成筛选后调用此方法进行通知，回调会传入所有严格匹配的选项
-  final void Function(List<ZoOptionNode> matchList)? onFilterComplete;
+  final void Function(List<ZoTreeDataNode<ZoOption>> matchList)?
+  onFilterComplete;
 
   /// active 状态的背景色
   final Color? activeColor;
@@ -184,10 +189,13 @@ class ZoTree extends ZoCustomFormWidget<Iterable<Object>> {
   final bool sortable;
 
   /// 在启用 [sortable] 后，额外用于检测选项是否可拖动, 默认所有节点均可拖动
-  final bool Function(ZoOptionNode node)? draggableDetector;
+  final bool Function(ZoTreeDataNode<ZoOption> node)? draggableDetector;
 
   /// 在启用 [sortable] 后，额外用于检测选项是否可放置, 默认所有节点均可放置
-  final bool Function(ZoOptionNode node, ZoOptionNode? dragNode)?
+  final bool Function(
+    ZoTreeDataNode<ZoOption> node,
+    ZoTreeDataNode<ZoOption>? dragNode,
+  )?
   droppableDetector;
 
   @override
@@ -208,30 +216,29 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree>
 
     _isInit = true;
 
-    if (widget.expandAll) {
-      isExpandAll = true;
-    }
-
-    if (widget.expands.isNotEmpty) {
-      expandSet.addAll(widget.expands);
-    }
-
     _controller = ZoOptionController(
-      options: widget.options,
+      data: widget.options,
       selected: widget.value,
-      // TreeSliver 自带了隐藏控制，不需要open状态
-      ignoreOpenStatus: true,
+      expandAll: widget.expandAll,
       matchString: widget.matchString,
       matchRegexp: widget.matchRegexp,
       caseSensitive: widget.caseSensitive,
       filter: widget.filter,
-      each: _eachNode,
-      eachStart: _eachNodeStart,
-      eachEnd: _eachNodeEnd,
-      onFilterComplete: _onFilterComplete,
+      onUpdateStart: _onUpdateStart,
+      onUpdate: _onUpdateEach,
+      onUpdateEnd: _onUpdateEnd,
+      onFilterCompleted: _onFilterComplete,
+      onMutation: widget.onMutation,
     );
 
+    if (widget.expands.isNotEmpty) {
+      _controller.expander.setSelected(widget.expands);
+    } else if (_tempInitSelected.isNotEmpty) {
+      _controller.expander.setSelected(_tempInitSelected);
+    }
+
     selector.addListener(_onSelectChanged);
+    _controller.expander.addListener(_onExpandChanged);
     scrollController.addListener(_onScrollChanged);
 
     _calcUseLightText();
@@ -250,7 +257,7 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree>
 
     if (oldWidget.options != widget.options) {
       _resetExpand();
-      controller.options = widget.options;
+      controller.data = widget.options;
       _updateFixedHeight();
     }
 
@@ -278,6 +285,10 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree>
       _updateFixedHeight();
     }
 
+    if (widget.onMutation != controller.onMutation) {
+      controller.onMutation = widget.onMutation;
+    }
+
     if (oldWidget.maxHeight != widget.maxHeight) {
       _updateFixedHeight();
     }
@@ -302,9 +313,9 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree>
   dispose() {
     selector.removeListener(_onSelectChanged);
     scrollController.removeListener(_onScrollChanged);
+    _controller.expander.removeListener(_onExpandChanged);
     _controller.dispose();
     _style = null;
-    expandSet.clear();
     _fixedOptionsUpdateDebouncer.cancel();
     _innerScrollController.dispose();
     _focusNode.dispose();
@@ -325,57 +336,37 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree>
     });
   }
 
-  /// 循环选项时，同步到当前 [TreeSliverNode] 树
-  void _eachNode(ZoOptionEachArgs args) {
-    if (!_isInit && controller.selectChangedProcessing) return;
-
-    /// 将扁平倒序循环的树结构还原为 TreeSliverNode 树
-    final node = args.node;
-
-    bool isExpanded = false;
-
-    if (isExpandAll == true || expandSet.contains(node.value)) {
-      isExpanded = true;
-    }
-
-    /// 如果在初始化阶段并启用了展开顶层，将他们写入展开项并展开
-    if (!isExpanded && _isInit && widget.expandTopLevel && node.level == 0) {
-      isExpanded = true;
-      expandSet.add(node.value);
-    }
-
-    final treeNode = TreeSliverNode(
-      node.value,
-      children: _childrenMap[node.value],
-      expanded: isExpanded,
-    );
-
-    if (node.parent != null) {
-      _childrenMap[node.parent!.value] ??= [];
-      _childrenMap[node.parent!.value]!.insert(0, treeNode);
-    } else {
-      _treeNodes.insert(0, treeNode);
-    }
-
-    _nodeCache[node.value] = treeNode;
+  /// 展开项变更
+  void _onExpandChanged() {
+    _fixedHeightUpdateDebouncer.run(() {
+      _updateFixedHeight();
+      _updateOptionOffsetCache();
+    });
   }
 
-  void _eachNodeStart() {
-    if (!_isInit && controller.selectChangedProcessing) return;
-    _treeNodes = [];
+  void _onUpdateStart() {
+    if (_isInit) {
+      _tempInitSelected.clear();
+    }
   }
 
-  void _eachNodeEnd() {
-    if (!_isInit && controller.selectChangedProcessing) return;
+  void _onUpdateEach(ZoTreeDataEachArgs args) {
+    if (_isInit) {
+      if (widget.expandAll) {
+        _tempInitSelected.add(args.node.value);
+      } else if (widget.expandTopLevel && args.node.level == 0) {
+        _tempInitSelected.add(args.node.value);
+      }
+    }
+  }
 
-    _childrenMap.clear();
+  /// 每次列表变更时更新组件
+  void _onUpdateEnd() {
+    if (!_isInit && controller.isSelectChangedRefreshing) return;
 
     if (!_isInit) {
       _updateFixedHeight();
       _updateOptionOffsetCache();
-    }
-
-    if (!_isInit) {
       setState(() {});
     }
   }
@@ -399,7 +390,7 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree>
   }
 
   /// 筛选完成后，自动滚动到首选项
-  void _onFilterComplete(List<ZoOptionNode> matchList) {
+  void _onFilterComplete(List<ZoTreeDataNode<ZoOption>> matchList) {
     final first = matchList.first;
 
     WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
@@ -423,8 +414,12 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree>
 
     _activeTextColor = _getActiveTextColor();
 
+    // print("_activeTextColor: ${_activeTextColor}");
+
     return SizedBox(
-      height: _treeNodes.isEmpty ? widget.maxHeight : _fixedHeight,
+      height: controller.filteredFlatList.isEmpty
+          ? widget.maxHeight
+          : _fixedHeight,
       child: Stack(
         children: [
           NotificationListener<ZoTriggerFocusNodeChangedNotification>(
@@ -438,14 +433,18 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree>
                 slivers: <Widget>[
                   SliverPadding(
                     padding: widget.padding,
-                    sliver: TreeSliver<Object>(
-                      tree: _treeNodes,
-                      controller: _treeSliverController,
-                      treeNodeBuilder: _treeNodeBuilder,
-                      treeRowExtentBuilder: _treeRowExtentBuilder,
-                      toggleAnimationStyle: AnimationStyle.noAnimation,
-                      indentation: TreeSliverIndentationType.none,
-                      onNodeToggle: _onNodeToggle,
+                    sliver: SliverVariedExtentList.builder(
+                      itemBuilder: _treeNodeBuilderWithIndex,
+                      itemExtentBuilder: _treeRowExtentBuilder,
+                      itemCount: controller.filteredFlatList.length,
+                      findChildIndexCallback: (key) {
+                        if (key is ValueKey) {
+                          final index = controller.getFilteredIndex(key.value);
+                          return index;
+                        }
+
+                        return null;
+                      },
                     ),
                   ),
                 ],
@@ -486,7 +485,7 @@ class ZoTreeEvent {
     required this.node,
     required this.instance,
   });
-  ZoOptionNode node;
+  ZoTreeDataNode<ZoOption> node;
 
   ZoTreeState instance;
 }

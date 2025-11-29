@@ -7,7 +7,20 @@ mixin _TreeDragSortMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
   ListenableNotifier? _keepAliveNotifier;
 
   /// 存储所有本次参与拖动排序的节点
-  final HashMap<Object, ZoOptionNode> _draggingNodes = HashMap();
+  final HashMap<Object, ZoTreeDataNode<ZoOption>> _draggingNodes = HashMap();
+
+  /// 是否正在进行拖动处理
+  bool _dragging = false;
+
+  @override
+  @protected
+  void dispose() {
+    super.dispose();
+
+    if (_keepAliveNotifier != null) {
+      _keepAliveNotifier!.dispose();
+    }
+  }
 
   /// 构造反馈节点
   Widget _dndFeedbackBuilder(Widget? child) {
@@ -28,7 +41,7 @@ mixin _TreeDragSortMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
   /// 构造dnd节点
   Widget _dndNodeBuilder({
     required Widget Function(ZoDNDBuildContext? dndContext) builder,
-    required ZoOptionNode optNode,
+    required ZoTreeDataNode<ZoOption> optNode,
     required Key key,
     required bool isFixedBuilder,
     required double identWidth,
@@ -45,7 +58,7 @@ mixin _TreeDragSortMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
           droppablePositionDetector: _droppablePositionDetector,
           // 上下添加少量偏移，让指示线能刚好放置在选项中间，左侧添加缩进距离偏移
           dropIndicatorPadding: EdgeInsets.fromLTRB(identWidth, -1, 0, -1),
-          feedback: _dndFeedbackBuilder(optNode.option.title),
+          feedback: _dndFeedbackBuilder(optNode.data.title),
           onDragStart: (e) => _onDragStart(
             event: e,
             optNode: optNode,
@@ -61,6 +74,11 @@ mixin _TreeDragSortMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
             optNode: optNode,
             context: context,
           ),
+          onAccept: (e) => _onDragAccept(
+            event: e,
+            optNode: optNode,
+            context: context,
+          ),
           builder: (context, dndContext) {
             return builder(dndContext);
           },
@@ -69,19 +87,9 @@ mixin _TreeDragSortMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
     );
   }
 
-  @override
-  @protected
-  void dispose() {
-    super.dispose();
-
-    if (_keepAliveNotifier != null) {
-      _keepAliveNotifier!.dispose();
-    }
-  }
-
   /// 可拖动检测
   bool _draggableDetector(ZoDND dnd) {
-    final currentNode = dnd.data as ZoOptionNode;
+    final currentNode = dnd.data as ZoTreeDataNode<ZoOption>;
 
     if (widget.draggableDetector == null) {
       return true;
@@ -92,8 +100,8 @@ mixin _TreeDragSortMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
 
   /// 可放置检测
   ZoDNDPosition _droppablePositionDetector(ZoDND currentDND, ZoDND? dragDND) {
-    final currentNode = currentDND.data as ZoOptionNode;
-    final dragNode = dragDND?.data as ZoOptionNode?;
+    final currentNode = currentDND.data as ZoTreeDataNode<ZoOption>;
+    final dragNode = dragDND?.data as ZoTreeDataNode<ZoOption>?;
 
     // 禁止正在拖动的节点及其祖先被放置
     if (dragNode != null && _draggingNodes.isNotEmpty) {
@@ -138,7 +146,7 @@ mixin _TreeDragSortMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
   ///
   /// - 已选中数量小于等于1 / 拖动节点未被选中: 正常处理拖动节点
   /// - 否则同时拖动所有选中节点
-  void _updateDragSortOptions(ZoOptionNode dragNode) {
+  void _updateDragSortOptions(ZoTreeDataNode<ZoOption> dragNode) {
     _draggingNodes.clear();
 
     final selected = selector.getSelected();
@@ -163,19 +171,49 @@ mixin _TreeDragSortMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
   }
 
   /// 拖动结束时，触发move
-  void _triggerDragSort() {
-    // TODO: 触发move
-  }
+  void _triggerDragSort(ZoDNDDropEvent event) {
+    final List<Object> values = [];
+    final toNode = event.dropDND.data as ZoTreeDataNode<ZoOption>;
 
-  /// 是否正在进行拖动处理
-  bool _dragging = false;
+    final activePosition = event.activePosition;
+
+    for (final element in _draggingNodes.entries) {
+      values.add(element.value.value);
+    }
+
+    _draggingNodes.clear();
+
+    ZoTreeDataRefPosition? position;
+
+    if (activePosition.center) {
+      position = ZoTreeDataRefPosition.inside;
+    } else if (activePosition.top) {
+      position = ZoTreeDataRefPosition.before;
+    } else if (activePosition.bottom) {
+      position = ZoTreeDataRefPosition.after;
+    }
+
+    if (position == null) return;
+
+    controller.mutator.mutation(
+      ZoMutatorCommand(
+        operation: [
+          TreeDataMoveOperation(
+            values: values,
+            toValue: toNode.value,
+            position: position,
+          ),
+        ],
+      ),
+    );
+  }
 
   void _onDragStart({
     required ZoDNDEvent event,
-    required ZoOptionNode optNode,
+    required ZoTreeDataNode<ZoOption> optNode,
     required BuildContext context,
   }) {
-    final dragNode = event.dragDND.data as ZoOptionNode;
+    final dragNode = event.dragDND.data as ZoTreeDataNode<ZoOption>;
 
     // 拖动组件保活，防止销毁导致事件中断
     if (optNode.value == dragNode.value) {
@@ -195,17 +233,17 @@ mixin _TreeDragSortMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
       _updateDragSortOptions(dragNode);
     }
 
-    _dragging = true;
+    setState(() {
+      _dragging = true;
+    });
   }
 
   void _onDragEnd({
     required ZoDNDEvent event,
-    required ZoOptionNode optNode,
+    required ZoTreeDataNode<ZoOption> optNode,
     required BuildContext context,
   }) {
-    _dragging = false;
-
-    final dragNode = event.dragDND.data as ZoOptionNode;
+    final dragNode = event.dragDND.data as ZoTreeDataNode<ZoOption>;
 
     // 仅处理拖动节点的事件
     if (optNode.value == dragNode.value && _keepAliveNotifier != null) {
@@ -213,16 +251,27 @@ mixin _TreeDragSortMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
       _keepAliveNotifier!.dispose();
       _keepAliveNotifier = null;
     }
+
+    setState(() {
+      _dragging = false;
+    });
   }
 
   void _onDragExpand({
     required ZoDNDEvent event,
-    required ZoOptionNode optNode,
+    required ZoTreeDataNode<ZoOption> optNode,
     required BuildContext context,
   }) {
     if (!isExpanded(optNode.value)) {
-      print("open: ${event.activeDND}");
       expand(optNode.value);
     }
+  }
+
+  void _onDragAccept({
+    required ZoDNDEvent event,
+    required ZoTreeDataNode<ZoOption> optNode,
+    required BuildContext context,
+  }) {
+    _triggerDragSort(event as ZoDNDDropEvent);
   }
 }

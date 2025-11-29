@@ -7,24 +7,12 @@ mixin _TreeBaseMixin on ZoCustomFormState<Iterable<Object>, ZoTree> {
   late ZoOptionController _controller;
 
   /// 控制选中项
-  Selector<Object, ZoOption> get selector => controller.selector;
+  ZoSelector<Object, ZoOption> get selector => controller.selector;
 
   /// 滚动控制
   ScrollController get scrollController =>
       widget.scrollController ?? _innerScrollController;
   final ScrollController _innerScrollController = ScrollController();
-
-  /// 存储展开项, 防止重新生成 node 树时丢失状态, 为避免冗余的存储，单独提供了 [isExpandAll]
-  /// 来记录是否展开全部
-  ///
-  /// 截止开发时，TreeSliverController 的展开控制api在全部折叠时会出现报错，并且实现上与当前组件有一些不适配的地方，
-  /// 为了方便实现，展开状态由组件自身管理，并代理所有展开操作来实现同步
-  ///
-  /// [expandSet] 与内部的 TreeSliverNode 可能不是严格同步的
-  final HashSet<Object> expandSet = HashSet();
-
-  /// 表示是否已全部展开
-  bool? isExpandAll = false;
 
   /// 当前聚焦选项的值
   Object? currentFocusValue;
@@ -32,23 +20,14 @@ mixin _TreeBaseMixin on ZoCustomFormState<Iterable<Object>, ZoTree> {
   /// 最后一个通过非批量操作选中的节点的值
   Object? lastSelectedNodeValue;
 
-  /// treeSliver 树控制器
-  final TreeSliverController _treeSliverController = TreeSliverController();
-
-  /// 用于渲染的 TreeSliverNode，会保持与 [ZoTree.options] 同步
-  List<TreeSliverNode<Object>> _treeNodes = [];
-
-  /// 以value为key缓存已创建的树节点
-  final HashMap<Object, TreeSliverNode<Object>> _nodeCache = HashMap();
-
   /// 是否处于初始化阶段
   bool _isInit = false;
 
+  /// 初始化完成后，如果存在值，将其设置为选中项
+  final HashSet<Object> _tempInitSelected = HashSet();
+
   /// 控制组件容器的焦点
   final FocusNode _focusNode = FocusNode();
-
-  /// 在 eachNode 循环时临时存储子项列表列表
-  final HashMap<Object, List<TreeSliverNode<Object>>> _childrenMap = HashMap();
 
   /// 缓存 focusNode， 用于选项获得焦点
   final HashMap<Object, FocusNode?> _focusNodes = HashMap();
@@ -99,7 +78,7 @@ mixin _TreeBaseMixin on ZoCustomFormState<Iterable<Object>, ZoTree> {
 
     if (optionNode == null) return;
 
-    final option = optionNode.option;
+    final option = optionNode.data;
 
     // 非空时跳过
     if (option.children != null && option.children!.isNotEmpty) return;
@@ -133,54 +112,19 @@ mixin _TreeBaseMixin on ZoCustomFormState<Iterable<Object>, ZoTree> {
 
     double height = 0;
 
-    _eachSliverNodes((sliverNode, optionNode) {
-      if (sliverNode.content == value) {
-        return true;
+    for (final option in controller.filteredFlatList) {
+      if (option.value == value) {
+        break;
       }
 
-      if (optionNode != null) {
-        height += optionNode.option.height;
-      }
-
-      return false;
-    });
+      height += option.height;
+    }
 
     return height;
   }
 
-  /// 递归遍历当前可见的 sliver node 树，若返回true会中断后续的遍历
-  void _eachSliverNodes(
-    bool Function(TreeSliverNode<Object> sliverNode, ZoOptionNode? optionNode)
-    fn,
-  ) {
-    bool isBreak = false;
-
-    void loop(List<TreeSliverNode<Object>> list) {
-      for (var i = 0; i < list.length; i++) {
-        final cur = list[i];
-
-        if (isBreak) return;
-
-        final optNode = controller.getNode(cur.content);
-
-        final b = fn(cur, optNode);
-
-        if (b) {
-          isBreak = true;
-          return;
-        }
-
-        if (cur.isExpanded && cur.children.isNotEmpty) {
-          loop(cur.children);
-        }
-      }
-    }
-
-    loop(_treeNodes);
-  }
-
   /// 获取指定选项父级及其占用的顶部固定高度
-  ({List<Object> parents, double fixedHeight, ZoOptionNode? node})
+  ({List<Object> parents, double fixedHeight, ZoTreeDataNode<ZoOption>? node})
   _getOptionFixedOptions(
     Object optionValue,
   ) {
@@ -203,7 +147,7 @@ mixin _TreeBaseMixin on ZoCustomFormState<Iterable<Object>, ZoTree> {
       }
 
       parents.insert(0, parentNode.value);
-      fixedHeight += parentNode.option.height;
+      fixedHeight += parentNode.data.height;
 
       parentNode = parentNode.parent;
     }
