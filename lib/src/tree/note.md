@@ -150,12 +150,12 @@ x 禁止插入已有节点
   
 x ZoMutator整理，优化文档
 x optionController能否抽离为通用类
-- x 解耦数据格式
-- x 优化实现
-- x api命名更规范
-- 简化 ZoMutator api ，以及在 Controller 中的使用 (add remove move)
-- 拆分 Controller 代码
-- 将 tree 中一些方法迁移到 controller
-- 添加reload、refresh等节点的完善hook，提供回调和抽象方法
-- x indexPath作为treeData成员
-- tree组件中可抽象到控制器的逻辑,比如展开、收起等
+x 解耦数据格式
+x 优化实现
+x api命名更规范
+x 简化 ZoMutator api
+x 在 Controller 中添加简化的变更操作 (add remove move)
+x 拆分 Controller 代码
+x 添加reload、refresh等节点的完善hook，提供回调和抽象方法
+x indexPath作为treeData成员
+tree组件中可抽象到控制器的逻辑,比如展开、收起等

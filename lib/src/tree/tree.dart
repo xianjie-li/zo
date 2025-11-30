@@ -26,7 +26,6 @@ class ZoTree extends ZoCustomFormWidget<Iterable<Object>> {
     super.value = const [],
     super.onChanged,
     required this.options,
-    this.onOptionsMutation,
     this.selectionType = ZoSelectionType.multiple,
     this.branchSelectable = true,
     this.implicitMultipleSelection = true,
@@ -46,8 +45,7 @@ class ZoTree extends ZoCustomFormWidget<Iterable<Object>> {
     this.caseSensitive = false,
     this.matchRegexp,
     this.filter,
-    this.onOptionLoadError,
-    this.onOptionLoadChanged,
+    this.onLoadStatusChanged,
     this.onFilterComplete,
     this.activeColor,
     this.highlightColor,
@@ -69,13 +67,6 @@ class ZoTree extends ZoCustomFormWidget<Iterable<Object>> {
   /// 避免传入字面量：出于性能考虑，组件会在每次选项变更时做一些预处理，比如缓存树节点关系，
   /// 用于加速后续查询，传入字面量会导致每次build都进行预处理导致更低的性能
   final List<ZoOption> options;
-
-  /// TODO
-  /// 选项在组件内部发生了变更, [ZoTreeDataOperation] 包含 [ZoTreeDataAddOperation]、
-  /// [TreeDataRemoveOperation]、[TreeDataMoveOperation] 三个子类，可在内部进行类型判断处理
-  ///
-  /// 注：异步选项加载成功后不会通过此方法通知，请通过 [onOptionLoadChanged] 接收事件
-  final ValueChanged<ZoTreeDataOperation>? onOptionsMutation;
 
   /// 控制选择类型, 默认为单选
   final ZoSelectionType selectionType;
@@ -144,12 +135,8 @@ class ZoTree extends ZoCustomFormWidget<Iterable<Object>> {
   /// 间接匹配：节点的父级、子级、自身任意一项匹配都会视为匹配
   final ZoTreeDataFilter<ZoOption>? filter;
 
-  /// TODO: 废弃 异步加载选项失败时触发
-  final void Function(Object error, [StackTrace? stackTrace])?
-  onOptionLoadError;
-
-  /// 异步选项加载状态变更时触发，加载中 > 成功 | 失败
-  final void Function(ZoTreeDataLoadEvent<ZoOption> event)? onOptionLoadChanged;
+  /// 异步加载子选项数据时，每次加载状态变更时调用
+  final void Function(ZoTreeDataLoadEvent<ZoOption> event)? onLoadStatusChanged;
 
   /// 在存在筛选条件时，如果存在匹配项, 会在完成筛选后调用此方法进行通知，回调会传入所有严格匹配的选项
   final void Function(List<ZoTreeDataNode<ZoOption>> matchList)?
@@ -225,10 +212,11 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree>
       caseSensitive: widget.caseSensitive,
       filter: widget.filter,
       onUpdateStart: _onUpdateStart,
-      onUpdate: _onUpdateEach,
+      onUpdateEach: _onUpdateEach,
       onUpdateEnd: _onUpdateEnd,
       onFilterCompleted: _onFilterComplete,
       onMutation: widget.onMutation,
+      onLoadStatusChanged: widget.onLoadStatusChanged,
     );
 
     if (widget.expands.isNotEmpty) {
@@ -285,8 +273,12 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree>
       _updateFixedHeight();
     }
 
-    if (widget.onMutation != controller.onMutation) {
+    if (oldWidget.onMutation != widget.onMutation) {
       controller.onMutation = widget.onMutation;
+    }
+
+    if (oldWidget.onLoadStatusChanged != widget.onLoadStatusChanged) {
+      controller.onLoadStatusChanged = widget.onLoadStatusChanged;
     }
 
     if (oldWidget.maxHeight != widget.maxHeight) {

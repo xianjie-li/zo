@@ -245,44 +245,52 @@ class ZoOptionController extends ZoTreeDataController<ZoOption> {
     super.caseSensitive,
     super.matchRegexp,
     super.filter,
-    super.onUpdate,
+    super.onUpdateEach,
     super.onUpdateStart,
     super.onUpdateEnd,
     super.onFilterCompleted,
     super.onMutation,
+    super.onLoadStatusChanged,
   });
 
   @override
+  @protected
   ZoOption cloneData(ZoOption data) {
     return data.copyWith();
   }
 
   @override
+  @protected
   List<ZoOption>? getChildrenList(ZoOption data) {
     return data.children;
   }
 
   @override
+  @protected
   ZoTreeDataLoader<ZoOption>? getDataLoader(ZoOption data) {
     return data.loader;
   }
 
   @override
+  @protected
   String? getKeyword(ZoOption data) {
     return data.getTitleText();
   }
 
   @override
+  @protected
   Object getValue(ZoOption data) {
     return data.value;
   }
 
   @override
+  @protected
   bool isBranch(ZoOption data) {
     return data.isBranch;
   }
 
   @override
+  @protected
   void setChildrenList(ZoOption data, List<ZoOption>? children) {
     data.children = children;
   }

@@ -153,7 +153,9 @@ class ZoMutator<Operation> {
     return null;
   }
 
-  /// 将一组 [ZoMutatorRecord] 的反向操作倒序并平铺后返回
+  /// 将一组 [ZoMutatorRecord] 的反向操作倒序并平铺后返回，可以用这些操作来快速构造用于撤销的回退命令
+  ///
+  /// 只在简单场景使用，负责场景请实现更健壮的操作历史功能
   List<Operation> reverseOperations(List<ZoMutatorRecord<Operation>> records) {
     final List<Operation> list = [];
 

@@ -38,7 +38,7 @@ class ZoTreeDataNode<D> {
   ZoIndexPath path;
 }
 
-/// 在调用 [ZoTreeDataController.onUpdate] 等回调时传入参数
+/// 在调用 [ZoTreeDataController.onUpdateEach] 等回调时传入参数
 class ZoTreeDataEachArgs<D> {
   ZoTreeDataEachArgs({
     required this.data,
@@ -122,8 +122,8 @@ class ZoTreeDataAddOperation<D> extends ZoTreeDataOperation {
 }
 
 /// 移除数据操作
-class TreeDataRemoveOperation extends ZoTreeDataOperation {
-  const TreeDataRemoveOperation({
+class ZoTreeDataRemoveOperation extends ZoTreeDataOperation {
+  const ZoTreeDataRemoveOperation({
     required this.values,
   });
 
@@ -132,8 +132,8 @@ class TreeDataRemoveOperation extends ZoTreeDataOperation {
 }
 
 /// 移动数据操作
-class TreeDataMoveOperation extends ZoTreeDataOperation {
-  const TreeDataMoveOperation({
+class ZoTreeDataMoveOperation extends ZoTreeDataOperation {
+  const ZoTreeDataMoveOperation({
     required this.values,
     required this.toValue,
     this.position = ZoTreeDataRefPosition.before,

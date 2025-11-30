@@ -143,8 +143,8 @@ mixin _TreeShortcutsMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
   KeyEventResult _onShortcutsLeft() {
     if (currentFocusValue == null) return KeyEventResult.ignored;
 
-    if (isExpanded(currentFocusValue!)) {
-      collapse(currentFocusValue!);
+    if (controller.isExpanded(currentFocusValue!)) {
+      controller.collapse(currentFocusValue!);
       return KeyEventResult.handled;
     } else {
       final node = controller.getNode(currentFocusValue!);
@@ -168,7 +168,7 @@ mixin _TreeShortcutsMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
     if (node == null) return KeyEventResult.ignored;
 
     final isBranch = node.data.isBranch;
-    final isExpand = isExpanded(node.value);
+    final isExpand = controller.isExpanded(node.value);
 
     if (!isBranch || isExpand) {
       final next = controller.getNextNode(
@@ -180,7 +180,7 @@ mixin _TreeShortcutsMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
         jumpTo(next.value);
       }
     } else if (!isExpand) {
-      expand(node.value);
+      controller.expand(node.value);
       return KeyEventResult.handled;
     }
 
@@ -201,7 +201,7 @@ mixin _TreeShortcutsMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
       filter: (node) =>
           !node.data.enabled ||
           !controller.isVisible(node.value) ||
-          !isExpandedAllParents(node.value),
+          !controller.isExpandedAllParents(node.value),
     );
 
     if (prev == null) return KeyEventResult.ignored;
@@ -226,7 +226,7 @@ mixin _TreeShortcutsMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
       filter: (node) =>
           !node.data.enabled ||
           !controller.isVisible(node.value) ||
-          !isExpandedAllParents(node.value),
+          !controller.isExpandedAllParents(node.value),
     );
 
     if (next == null) return KeyEventResult.ignored;

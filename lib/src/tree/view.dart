@@ -303,7 +303,7 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
       if (node == null) continue;
 
       // 展开的选项检测顶部可见性、未展开的检测底部可见性
-      final optionOffset = isExpanded(optValue)
+      final optionOffset = controller.isExpanded(optValue)
           ? _offsetCache[optValue]!
           : _offsetCache[optValue]! + node.data.height;
 
@@ -395,7 +395,7 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
         ZoShortcutsHelper.isCommandPressed || ZoShortcutsHelper.isShiftPressed;
 
     if (expandByRow && !isModifierKeyPressed) {
-      toggle(node.value);
+      controller.toggle(node.value);
     }
 
     _selectHandle(node);
@@ -405,7 +405,7 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
   void _onToggleButtonTap(ZoTreeDataNode<ZoOption> node, bool isFixedBuilder) {
     // 顶部固定选项关闭处理，将滚动位置调整到选项当前位置
     if (isFixedBuilder) {
-      collapse(node.value);
+      controller.collapse(node.value);
 
       jumpTo(
         node.value,
@@ -417,7 +417,7 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
       return;
     }
 
-    toggle(node.value);
+    controller.toggle(node.value);
     focusOption(node.value);
   }
 

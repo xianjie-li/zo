@@ -96,8 +96,8 @@ mixin _TreeBaseMixin on ZoCustomFormState<Iterable<Object>, ZoTree> {
       setState(() {});
 
       await future;
-    } catch (e, stack) {
-      widget.onOptionLoadError?.call(e, stack);
+    } catch (e) {
+      // 忽略错误
     } finally {
       // 刷新组件以更新选项加载UI
       setState(() {});

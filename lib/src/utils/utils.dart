@@ -8,7 +8,6 @@ export "global_cursor.dart";
 export "mutator.dart";
 export "selector.dart";
 export "shortcuts.dart";
-export "tree_utils.dart";
 
 // const int maxIntValue = kIsWeb ? 9007199254740991 : 9223372036854775807;
 // const int minIntValue = kIsWeb ? -9007199254740991 : -9223372036854775808;

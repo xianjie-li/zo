@@ -6,6 +6,10 @@ import "package:zo/zo.dart";
 
 part "base.dart";
 part "index_path.dart";
+part "mutation.dart";
+part "node.dart";
+part "status.dart";
+part "expands.dart";
 
 /// 树形数据管理器，它在初始化节点缓存必要信息，用于后续进行高效的树节点查询，并提供了树数据处理和渲染的很多工具，
 /// 比如展开管理、选中管理、筛选、变更操作、异步加载、节点查询方法、用于渲染的平铺列表等
@@ -17,8 +21,9 @@ part "index_path.dart";
 ///
 /// 数据筛选：通过 [matchString]、[matchRegexp]、[filter] 之一来筛选要显示的数据
 ///
-/// 数据变更：内置了一个 [ZoMutator] 实例，你可以使用它来通过操作对数据进行增删、移动,
-/// 通过 [onMutation] 可以监听数据的所有变更操作
+/// 数据变更：内部通过 [ZoMutator] 管理变更，你可以使用它来通过操作对数据进行增删、移动,
+/// 通过 [onMutation] 可以监听数据的所有变更操作，[mutator] 获取实例，
+/// 控制器还提供了 [add]、 [remove]、 [move] 三个简化方法
 ///
 /// 分级更新：由于存在缓存数据，更新操作分为下面三个级别，以减少不必要的性能浪费
 /// - [reload] 数据源需要通过外部数据完全替换时使用，此操作会清理所有缓存信息并重载跟数据
@@ -26,7 +31,7 @@ part "index_path.dart";
 /// - [update] 重新根据展开、筛选状态更新要展示的列表，关联信息等
 ///
 /// 内部会自动在合适的时机调用对应的更新函数，除非需要自行扩展行为，否则大部分情况无需手动调用这些方法
-abstract class ZoTreeDataController<D extends Object> {
+abstract class ZoTreeDataController<D> {
   ZoTreeDataController({
     required List<D> data,
     Iterable<Object>? selected,
@@ -36,11 +41,12 @@ abstract class ZoTreeDataController<D extends Object> {
     bool caseSensitive = false,
     RegExp? matchRegexp,
     ZoTreeDataFilter<D>? filter,
-    this.onUpdate,
+    this.onUpdateEach,
     this.onUpdateStart,
     this.onUpdateEnd,
     this.onFilterCompleted,
     this.onMutation,
+    this.onLoadStatusChanged,
   }) : _matchRegexp = matchRegexp,
        _matchString = matchString,
        _caseSensitive = caseSensitive,
@@ -60,7 +66,7 @@ abstract class ZoTreeDataController<D extends Object> {
 
     mutator = ZoMutator<ZoTreeDataOperation>(
       operationHandle: _operationHandle,
-      onMutation: onMutation,
+      onMutation: _onMutation,
     );
 
     // 选中项更新时，更新筛选信息
@@ -148,9 +154,21 @@ abstract class ZoTreeDataController<D extends Object> {
     reload();
   }
 
-  /// 内部通过 [update] 对列表循环处理时，会在循环中对满足显示条件的每个数据调用该方法，
-  /// 可以用来做一些外部的数据同步工作，它已实际节点顺序的倒序循环
-  ValueChanged<ZoTreeDataEachArgs>? onUpdate;
+  /// [data] 的副本，可通过 [add]、[remove]、[move] 等方法进行变更
+  List<D> get processedData => _processedData;
+  List<D> _processedData = [];
+
+  /// [processedData] 的扁平列表，用于在某些组件中更容易的渲染
+  List<D> get flatList => _flatList;
+  List<D> _flatList = [];
+
+  /// 通过展开、筛选配置过滤后的 [flatList]，可用于最终渲染
+  List<D> get filteredFlatList => _filteredFlatList;
+  List<D> _filteredFlatList = [];
+
+  /// 内部通过 [update] 对数据循环处理时，会在循环中对满足显示条件的每个数据调用该方法，
+  /// 可以用来做一些外部的数据同步工作，它以实际节点顺序的倒序循环
+  ValueChanged<ZoTreeDataEachArgs>? onUpdateEach;
 
   /// 在 [update] 开始之前调用
   VoidCallback? onUpdateStart;
@@ -167,6 +185,9 @@ abstract class ZoTreeDataController<D extends Object> {
   /// 发生变更操作时通过此方法进行通知
   void Function(ZoMutatorDetails<ZoTreeDataOperation> details)? onMutation;
 
+  /// 异步加载子选项数据时，每次加载状态变更时调用
+  void Function(ZoTreeDataLoadEvent<D> event)? onLoadStatusChanged;
+
   /// 控制选中项
   late final ZoSelector<Object, D> selector;
 
@@ -175,21 +196,6 @@ abstract class ZoTreeDataController<D extends Object> {
 
   /// 数据突变器，管理数据源的变更和通知
   late final ZoMutator<ZoTreeDataOperation> mutator;
-
-  /// 异步加载子选项数据时，每次加载状态变更时调用
-  final asyncLoadTrigger = EventTrigger<ZoTreeDataLoadEvent>();
-
-  /// [data] 的副本，可通过 [mutator] 变更
-  List<D> get processedData => _processedData;
-  List<D> _processedData = [];
-
-  /// [processedData] 的扁平列表，用于在某些组件中更容易的渲染
-  List<D> get flatList => _flatList;
-  List<D> _flatList = [];
-
-  /// 通过展开、筛选配置过滤后的 [flatList]，可用于最终渲染
-  List<D> get filteredFlatList => _filteredFlatList;
-  List<D> _filteredFlatList = [];
 
   /// 包含被选中子项的分支节点
   final HashMap<Object, bool> _branchesHasSelectedChild = HashMap();
@@ -224,26 +230,37 @@ abstract class ZoTreeDataController<D extends Object> {
   /// 请通过 [getFilteredIndex] 使用，它会自动进行方向处理
   final HashMap<Object, int> _filteredReverseIndex = HashMap();
 
+  // # # # # # # # 数据 D 适配方法 # # # # # # #
+
   /// 获取传入数据的浅拷贝版本
+  @protected
   D cloneData(D data);
 
   /// 从数据中获取唯一的 value 值
+  @protected
   Object getValue(D data);
 
   /// 从数据中获取用于筛选的字符串
+  @protected
   String? getKeyword(D data);
 
   /// 获取指定数据的子数据
+  @protected
   List<D>? getChildrenList(D data);
 
   /// 设置数据的子数据
+  @protected
   void setChildrenList(D data, List<D>? children);
 
   /// 获取子数据加载器
+  @protected
   ZoTreeDataLoader<D>? getDataLoader(D data);
 
   /// 判断数据是不是分支节点
+  @protected
   bool isBranch(D data);
+
+  // # # # # # # # 更新方法 # # # # # # #
 
   /// 数据源需要通过外部数据完全替换时使用，此操作会清理所有缓存信息并重载跟数据
   void reload() {
@@ -289,6 +306,14 @@ abstract class ZoTreeDataController<D extends Object> {
         newList.add(cloned);
         _flatList.add(cloned);
         _nodes[value] = node;
+
+        reloadEach(
+          ZoTreeDataEachArgs<D>(
+            index: i,
+            data: cloned,
+            node: node,
+          ),
+        );
 
         // 处理子项
         if (isBranch(cloned)) {
@@ -366,6 +391,14 @@ abstract class ZoTreeDataController<D extends Object> {
         _flatList.add(curData);
         _nodes[value] = node;
 
+        refreshEach(
+          ZoTreeDataEachArgs<D>(
+            index: i,
+            data: curData,
+            node: node,
+          ),
+        );
+
         // 处理子项
         if (isBranch(curData)) {
           final children = getChildrenList(curData);
@@ -393,6 +426,8 @@ abstract class ZoTreeDataController<D extends Object> {
 
   /// 重新根据展开、筛选状态更新要展示的列表，关联信息等
   void update() {
+    onUpdateStart?.call();
+
     final List<D> filteredList = [];
 
     _branchesHasSelectedChild.clear();
@@ -406,8 +441,6 @@ abstract class ZoTreeDataController<D extends Object> {
 
     // 直接匹配的数据
     final List<ZoTreeDataNode<D>> exactMatchNode = [];
-
-    onUpdateStart?.call();
 
     final filterChanged =
         _lastMatchString != matchString ||
@@ -480,7 +513,7 @@ abstract class ZoTreeDataController<D extends Object> {
 
         cacheIndex++;
 
-        onUpdate?.call(
+        updateEach(
           ZoTreeDataEachArgs<D>(
             index: i,
             data: curData,
@@ -499,641 +532,26 @@ abstract class ZoTreeDataController<D extends Object> {
     onUpdateEnd?.call();
   }
 
-  /// 加载指定数据的子级, 如果数据已加载过会直接跳过
-  Future loadChildren(Object value) async {
-    final cache = _asyncRowCaches[value];
-
-    if (cache != null && cache.isNotEmpty) return;
-
-    final node = getNode(value);
-
-    assert(node != null);
-
-    if (node == null) return;
-
-    final task = _asyncRowTask[node.value];
-
-    if (task != null) return task;
-
-    final row = node.data;
-
-    final children = getChildrenList(row);
-
-    if (children != null && children.isNotEmpty) return;
-
-    final loader = getDataLoader(row);
-
-    if (loader == null) return;
-
-    final completer = Completer();
-
-    _asyncRowTask[value] = completer.future;
-
-    asyncLoadTrigger.emit(
-      ZoTreeDataLoadEvent<D>(
-        data: row,
-        loading: true,
-      ),
-    );
-
-    try {
-      final res = await loader(row);
-
-      if (res.isNotEmpty) {
-        mutator.mutation(
-          ZoMutatorCommand(
-            operation: [
-              ZoTreeDataAddOperation(
-                data: res,
-                toValue: value,
-                position: ZoTreeDataRefPosition.inside,
-              ),
-            ],
-            source: ZoMutatorSource.server,
-          ),
-        );
-
-        _asyncRowCaches[value] = res;
-      }
-
-      _asyncRowTask.remove(value);
-
-      asyncLoadTrigger.emit(
-        ZoTreeDataLoadEvent<D>(
-          data: row,
-          children: res,
-          loading: false,
-        ),
-      );
-
-      completer.complete();
-    } catch (e, stack) {
-      _asyncRowTask.remove(value);
-
-      asyncLoadTrigger.emit(
-        ZoTreeDataLoadEvent(
-          data: row,
-          error: e,
-          loading: false,
-        ),
-      );
-
-      completer.completeError(e, stack);
-    }
-
-    return completer.future;
-  }
-
-  /// 判断指定 node 的 filter 状态，会优先读取缓存
-  ({
-    bool isOpen,
-    bool isMatch,
-  })
-  getFilterStatus(
-    ZoTreeDataNode<D> node,
-  ) {
-    final cache = _filterCache[node.value];
-
-    if (cache != null) return cache;
-
-    final isOpen = expandAll ? true : expander.isSelected(node.value);
-
-    var isMatch = _matchStatus[node.value];
-
-    if (isMatch == null) {
-      isMatch = _isMatch(node.value);
-      _matchStatus[node.value] = isMatch;
-    }
-
-    final newCache = (isMatch: isMatch, isOpen: isOpen);
-
-    _filterCache[node.value] = newCache;
-
-    return newCache;
-  }
-
-  /// 检测数据是否匹配(满足各种filter条件)
-  bool isMatch(Object value) {
-    return _matchStatus[value] ?? false;
-  }
-
-  /// 判断数据是否与 [matchString] / [matchRegexp] / [filter] 匹配
-  bool _isMatch(Object value) {
-    final node = getNode(value);
-
-    assert(node != null);
-
-    if (filter != null) {
-      if (filter!(node!)) return true;
-    }
-
-    if (matchString == null && matchRegexp == null) {
-      return true;
-    }
-
-    final String? text = getKeyword(node!.data);
-
-    // 未获取到文本的数据一律视为不匹配
-    if (text == null) return false;
-
-    if (matchString != null) {
-      if (!caseSensitive && _matchStringLowercase != null) {
-        final lowerCaseText = text.toLowerCase();
-        return lowerCaseText.contains(_matchStringLowercase!);
-      } else {
-        return text.contains(matchString!);
-      }
-    } else {
-      return matchRegexp!.hasMatch(text);
-    }
-  }
-
-  /// 指定数据是否包含被选中子级
-  bool hasSelectedChild(Object value) {
-    return _branchesHasSelectedChild[value] ?? false;
-  }
-
-  /// 数据是否可见, 即是否在 [filteredFlatList] 列表中
-  bool isVisible(Object value) {
-    return _visibleCache[value] ?? false;
-  }
-
-  /// 是否正在加载异步选项数据
-  bool isAsyncLoading(Object value) {
-    final task = _asyncRowTask[value];
-    return task != null;
-  }
-
-  /// 当前是否包含有效的筛选条件（包含展开状态）
-  bool hasFilterCondition() {
-    return matchString != null ||
-        matchRegexp != null ||
-        expander.getSelected().isNotEmpty;
-  }
-
-  /// 获取特定数据的子项，不传入 [value] 时返回根数据列表，[filtered] 可以控制是否使用过滤后的数据
-  List<D> getChildren({
-    Object? value,
-    bool filtered = true,
-  }) {
-    List<D> list;
-
-    if (value == null) {
-      list = _processedData;
-    } else {
-      final node = getNode(value);
-
-      assert(node != null);
-
-      D? curData;
-
-      for (var i = 0; i < node!.path.length; i++) {
-        final curInd = node.path[i];
-
-        final children = curData == null ? null : getChildrenList(curData);
-
-        final curList = children ?? _processedData;
-
-        curData = curList[curInd];
-      }
-
-      list = getChildrenList(curData!) ?? [];
-    }
-
-    if (filtered) {
-      return list.where((i) => isVisible(getValue(i))).toList();
-    }
-
-    return list;
-  }
-
-  /// 获取指定数据的节点信息，其中预缓存了一些树节点的有用信息
-  ZoTreeDataNode<D>? getNode(Object value) {
-    return _nodes[value];
-  }
-
-  /// 根据路径索引获取节点信息
-  ZoTreeDataNode<D>? getNodeByIndexPath(ZoIndexPath path) {
-    final value = _indexNodes[ZoIndexPathHelper.stringify(path)];
-    if (value == null) return null;
-    return getNode(value);
-  }
-
-  /// 获取前一个节点，[filter] 可过滤掉不满足条件的数据
-  ZoTreeDataNode<D>? getPrevNode(
-    ZoTreeDataNode<D> node, {
-    bool Function(ZoTreeDataNode<D> node)? filter,
-  }) {
-    var curNode = node.prev;
-
-    while (curNode != null) {
-      if (filter != null && !filter(curNode)) {
-        break;
-      } else {
-        curNode = curNode.prev;
-      }
-    }
-
-    return curNode;
-  }
-
-  /// 获取后一个节点，[filter] 可过滤掉不满足条件的数据
-  ZoTreeDataNode<D>? getNextNode(
-    ZoTreeDataNode<D> node, {
-    bool Function(ZoTreeDataNode<D> node)? filter,
-  }) {
-    var curNode = node.next;
-
-    while (curNode != null) {
-      if (filter != null && !filter(curNode)) {
-        break;
-      } else {
-        curNode = curNode.next;
-      }
-    }
-
-    return curNode;
-  }
-
-  /// 获取前一个兄弟节点
-  ZoTreeDataNode<D>? getPrevSiblingNode(ZoTreeDataNode<D> node) {
-    final [...prev, index] = node.path;
-
-    final newPath = [...prev, index - 1];
-
-    return getNodeByIndexPath(newPath);
-  }
-
-  /// 获取后一个兄弟节点
-  ZoTreeDataNode<D>? getNextSiblingNode(ZoTreeDataNode<D> node) {
-    final [...prev, index] = node.path;
-
-    final newPath = [...prev, index + 1];
-
-    return getNodeByIndexPath(newPath);
-  }
-
-  /// 获取所有兄弟节点
-  List<D> getSiblings(
-    ZoTreeDataNode<D> node, [
-    bool filtered = false,
-  ]) {
-    List<D> list = [];
-
-    if (node.level == 0) {
-      list = _processedData;
-    } else if (node.parent != null) {
-      list = getChildrenList(node.parent!.data) ?? [];
-    }
-
-    if (!filtered) {
-      return list;
-    }
-
-    return list.where((o) {
-      return isVisible(getValue(o));
-    }).toList();
-  }
-
-  /// 获取选项在 [filteredFlatList] 中的索引, 选项不可见时返回 null
-  int? getFilteredIndex(Object value) {
-    final reverseIndex = _filteredReverseIndex[value];
-    if (reverseIndex == null) return null;
-    return _filteredFlatList.length - 1 - reverseIndex;
-  }
-
-  /// 实现 [ZoMutatorOperationHandle]
-  List<ZoTreeDataOperation>? _operationHandle(
-    ZoTreeDataOperation operation,
-    ZoMutatorCommand<ZoTreeDataOperation> command,
-  ) {
-    if (operation is ZoTreeDataAddOperation<D>) {
-      return _operationAddHandle(operation, command);
-    }
-
-    if (operation is TreeDataRemoveOperation) {
-      return _operationRemoveHandle(operation, command).reverseOperation;
-    }
-
-    if (operation is TreeDataMoveOperation) {
-      return _operationMoveHandle(operation, command);
-    }
-
-    throw ZoException("Unknown operation type ${operation.runtimeType}");
-  }
-
-  /// 实现 [ZoMutatorOperationHandle] 的新增操作
-  List<ZoTreeDataOperation>? _operationAddHandle(
-    ZoTreeDataAddOperation<D> operation,
-    ZoMutatorCommand<ZoTreeDataOperation> command,
-  ) {
-    // 过滤已存在的选项
-    final data = operation.data
-        .where((i) => getNode(getValue(i)) == null)
-        .toList();
-
-    if (data.isEmpty) return null;
-
-    // 首先获取到插入到的目标索引
-    ZoIndexPath? indexPath;
-
-    if (operation.toValue == null) {
-      if (operation.position == ZoTreeDataRefPosition.after) {
-        indexPath = [processedData.length - 1];
-      } else {
-        indexPath = [0];
-      }
-    } else {
-      indexPath = _getReferenceIndex(
-        getNode(operation.toValue!),
-        operation.position,
-      );
-    }
-
-    if (indexPath == null || indexPath.isEmpty) return null;
-
-    // 执行实际的插入过程
-    final inserted = _insertOptionsToIndexPath(data, indexPath);
-
-    if (inserted) {
-      refresh();
-    }
-
-    if (!inserted || command.source != ZoMutatorSource.local) return null;
-
-    // 返回回退操作
-    return [
-      TreeDataRemoveOperation(
-        values: data.map(getValue).toList(),
-      ),
-    ];
-  }
-
-  /// 实现 [ZoMutatorOperationHandle] 的移除操作
-  ({
-    List<ZoTreeDataOperation>? reverseOperation,
-    List<ZoTreeDataNode<D>> removedNodes,
-  })
-  _operationRemoveHandle(
-    TreeDataRemoveOperation operation,
-    ZoMutatorCommand<ZoTreeDataOperation> command,
-  ) {
-    final values = operation.values;
-
-    // 被删除的节点
-    final List<ZoTreeDataNode<D>> removedNodes = [];
-
-    if (values.isEmpty) {
-      return (reverseOperation: null, removedNodes: removedNodes);
-    }
-
-    // 取 values 对应的所有节点的索引路径
-    final List<ZoIndexPath> paths = [];
-
-    for (final value in values) {
-      final node = getNode(value);
-      if (node != null) {
-        paths.add(node.path);
-      }
-    }
-
-    if (paths.isEmpty) {
-      return (reverseOperation: null, removedNodes: removedNodes);
-    }
-
-    // 去掉重叠节点，因为如果选项的父级也被删除，则子项无需再处理
-    final noOverlapsList = ZoIndexPathHelper.removeOverlaps(paths);
-
-    final needReverse = command.source == ZoMutatorSource.local;
-
-    List<ZoTreeDataAddOperation<D>>? reverseOperation;
-
-    if (needReverse) {
-      // 按是否连续进行分组
-      final consecutiveGroups = ZoIndexPathHelper.groupByConsecutiveSibling(
-        noOverlapsList,
-      );
-
-      // 反向操作, 按整数逐个新增，并合并相邻兄弟节点为一组操作
-      // 在执行删除操作前进行，防止数据错乱
-      reverseOperation = _getAddOperationByRemoveGroups(
-        consecutiveGroups,
-      );
-    }
-
-    // 执行删除，反向删除防止影响后续操作
-    for (var i = noOverlapsList.length - 1; i >= 0; i--) {
-      final path = noOverlapsList[i];
-      final node = getNodeByIndexPath(path);
-
-      if (node == null) continue;
-
-      final removed = _removeOptionByIndexPath(path);
-
-      if (removed) {
-        removedNodes.insert(0, node);
-      }
-    }
-
-    refresh();
-
-    return (reverseOperation: reverseOperation, removedNodes: removedNodes);
-  }
-
-  /// 实现 [ZoMutatorOperationHandle] 的移动操作
-  List<ZoTreeDataOperation>? _operationMoveHandle(
-    TreeDataMoveOperation operation,
-    ZoMutatorCommand<ZoTreeDataOperation> command,
-  ) {
-    // 创建移除操作来进行移除
-    final removeResult = _operationRemoveHandle(
-      TreeDataRemoveOperation(
-        values: operation.values,
-      ),
-      command,
-    );
-
-    // 创建新增操作来将其添加到对应位置
-    final addReverse = _operationAddHandle(
-      ZoTreeDataAddOperation<D>(
-        data: removeResult.removedNodes.map((i) => i.data).toList(),
-        toValue: operation.toValue,
-        position: operation.position,
-      ),
-      command,
-    );
-
-    if (command.source != ZoMutatorSource.local) return null;
-
-    final List<ZoTreeDataOperation> reverseOperations = [
-      ...?addReverse,
-      ...?removeResult.reverseOperation,
-    ];
-
-    if (reverseOperations.isEmpty) return null;
-
-    return reverseOperations;
-  }
-
-  /// 获取传入节点指定方向的索引，若不存在有效路径索引，返回 null
-  ZoIndexPath? _getReferenceIndex(
-    ZoTreeDataNode<D>? node,
-    ZoTreeDataRefPosition position,
-  ) {
-    if (node == null) return null;
-
-    final path = node.path;
-
-    final [...prev, index] = path;
-
-    if (position == ZoTreeDataRefPosition.after) {
-      return [...prev, index + 1];
-    } else if (position == ZoTreeDataRefPosition.inside) {
-      final children = getChildrenList(node.data);
-
-      if (children == null || children.isEmpty) {
-        return [...path, 0];
-      } else {
-        return [...path, children.length];
-      }
-    } else {
-      return [...prev, index];
-    }
-  }
-
-  /// 将选项插入到 indexPath 指定的位置, 插入失败时会返回 false
-  bool _insertOptionsToIndexPath(List<D> datas, ZoIndexPath path) {
-    if (path.isEmpty) return false;
-
-    if (path.length == 1) {
-      _insertData(path.first, processedData, datas);
-      return true;
-    }
-
-    final [...prev, index] = path;
-
-    var list = processedData;
-
-    for (var i = 0; i < prev.length; i++) {
-      final p = prev[i];
-
-      final currentItem = list.elementAtOrNull(p);
-
-      if (currentItem == null) return false;
-
-      final children = getChildrenList(currentItem);
-
-      if (children == null) {
-        setChildrenList(currentItem, []);
-      }
-
-      list = getChildrenList(currentItem)!;
-    }
-
-    _insertData(index, list, datas);
-
-    return true;
-  }
-
-  /// 插入数据到一个数据列表，如果索引超出可用范围会改为插入到尾部
-  void _insertData(
-    int index,
-    List<D> list,
-    List<D> newData,
-  ) {
-    if (index > list.length) {
-      list.addAll(newData);
-    } else {
-      list.insertAll(index, newData);
-    }
-  }
-
-  /// 删除指定索引路径的节点, 删除失败时会返回 false
-  bool _removeOptionByIndexPath(ZoIndexPath path) {
-    if (path.isEmpty) return false;
-
-    if (path.length == 1) {
-      if (path.first < processedData.length) {
-        processedData.removeAt(path.first);
-        return true;
-      }
-      return false;
-    }
-
-    final [...prev, index] = path;
-
-    var list = processedData;
-
-    for (var i = 0; i < prev.length; i++) {
-      final p = prev[i];
-
-      final currentItem = list.elementAtOrNull(p);
-
-      if (currentItem == null || getChildrenList(currentItem) == null) {
-        return false;
-      }
-
-      list = getChildrenList(currentItem)!;
-    }
-
-    if (list.isEmpty || index >= list.length) return false;
-
-    list.removeAt(index);
-
-    return true;
-  }
-
-  /// 使用 [ZoIndexPathHelper.groupByConsecutiveSibling] 分组过的删除项列表创建 [ZoTreeDataAddOperation]
-  List<ZoTreeDataAddOperation<D>> _getAddOperationByRemoveGroups(
-    List<List<ZoIndexPath>> pathGroups,
-  ) {
-    final List<ZoTreeDataAddOperation<D>> list = [];
-
-    /// 如果有兄弟参照节点，toValue 取参照节点
-    /// 如果没有，取父级
-    /// 都没有，添加到根
-
-    for (final group in pathGroups) {
-      if (group.isEmpty) continue;
-
-      final nodes = group.map((i) => getNodeByIndexPath(i)!);
-
-      final first = nodes.first;
-      final last = nodes.last;
-
-      // 前方的有效参照兄弟节点
-      final prevRefNode = getPrevSiblingNode(first);
-
-      // 后方的有效参照兄弟节点
-      final nextRefNode = getNextSiblingNode(last);
-
-      final parentRefNode = first.parent;
-
-      // 参照节点
-      Object? toValue;
-      var position = ZoTreeDataRefPosition.before;
-
-      if (prevRefNode != null) {
-        toValue = prevRefNode.value;
-        position = ZoTreeDataRefPosition.after;
-      } else if (nextRefNode != null) {
-        toValue = nextRefNode.value;
-        position = ZoTreeDataRefPosition.before;
-      } else if (parentRefNode != null) {
-        toValue = parentRefNode.value;
-        position = ZoTreeDataRefPosition.inside;
-      }
-
-      list.add(
-        ZoTreeDataAddOperation(
-          data: nodes.map((i) => i.data).toList(),
-          toValue: toValue,
-          position: position,
-        ),
-      );
-    }
-
-    return list;
+  // # # # # # # # Hook # # # # # # #
+
+  /// 内部通过 [reload] 对数据循环处理时，会在每个 node 构造完成后调用
+  ///
+  /// 注意：由于遍历尚未完成，[ZoTreeDataNode.next] 等依赖后续节点或子级遍历结果的属性不可用
+  @protected
+  void reloadEach(ZoTreeDataEachArgs args) {}
+
+  /// 内部通过 [update] 对数据循环处理时，会在每个 node 构造完成后调用
+  ///
+  /// 注意：由于遍历尚未完成，[ZoTreeDataNode.next] 等依赖后续节点或子级遍历结果的属性不可用
+  @protected
+  void refreshEach(ZoTreeDataEachArgs args) {}
+
+  /// 内部通过 [update] 对数据循环处理时，会在循环中对满足显示条件的每个数据调用该方法，
+  /// 可以用来做一些外部的数据同步工作，它以实际节点顺序的倒序循环
+  @protected
+  @mustCallSuper
+  void updateEach(ZoTreeDataEachArgs args) {
+    onUpdateEach?.call(args);
   }
 
   /// 销毁对象

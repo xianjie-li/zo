@@ -195,16 +195,10 @@ mixin _TreeDragSortMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
 
     if (position == null) return;
 
-    controller.mutator.mutation(
-      ZoMutatorCommand(
-        operation: [
-          TreeDataMoveOperation(
-            values: values,
-            toValue: toNode.value,
-            position: position,
-          ),
-        ],
-      ),
+    controller.move(
+      values: values,
+      toValue: toNode.value,
+      position: position,
     );
   }
 
@@ -262,8 +256,8 @@ mixin _TreeDragSortMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
     required ZoTreeDataNode<ZoOption> optNode,
     required BuildContext context,
   }) {
-    if (!isExpanded(optNode.value)) {
-      expand(optNode.value);
+    if (!controller.isExpanded(optNode.value)) {
+      controller.expand(optNode.value);
     }
   }
 

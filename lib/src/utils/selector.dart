@@ -55,13 +55,13 @@ class ZoSelector<Val, Opt> extends ChangeNotifier {
   }
 
   /// 确保存在可用选项
-  Iterable<Opt> _assertOptionsValid(Iterable<Opt>? allOptions) {
+  Iterable<Opt> _assertOptionsValid([Iterable<Opt>? allOptions]) {
     assert(allOptions != null || optionsGetter != null);
     return allOptions ?? optionsGetter!();
   }
 
   /// 是否部分选中, 需要传入当前所有选项
-  bool isPartialSelected(Iterable<Opt>? allOptions) {
+  bool isPartialSelected([Iterable<Opt>? allOptions]) {
     final allOptions2 = _assertOptionsValid(allOptions);
 
     if (_selected.isEmpty || _selected.length == allOptions2.length) {
@@ -78,7 +78,7 @@ class ZoSelector<Val, Opt> extends ChangeNotifier {
   }
 
   /// 是否选中了所有值, 需要传入当前所有选项
-  bool isAllSelected(Iterable<Opt>? allOptions) {
+  bool isAllSelected([Iterable<Opt>? allOptions]) {
     final allOptions2 = _assertOptionsValid(allOptions);
 
     if (_selected.length < allOptions2.length) return false;
@@ -99,7 +99,7 @@ class ZoSelector<Val, Opt> extends ChangeNotifier {
 
   /// 获取当前选中值, 相比 [getSelected] 它包含更完整的信息, 比如不存在于列表中的选项,
   /// 选项值和选项列表等
-  SelectorState<Val, Opt> getSelectionState(Iterable<Opt>? allOptions) {
+  SelectorState<Val, Opt> getSelectionState([Iterable<Opt>? allOptions]) {
     final allOptions2 = _assertOptionsValid(allOptions);
 
     final selected = HashSet<Val>();
@@ -159,7 +159,7 @@ class ZoSelector<Val, Opt> extends ChangeNotifier {
   }
 
   /// 选中所有值, 需要传入当前所有选项
-  void selectAll(Iterable<Opt>? allOptions) {
+  void selectAll([Iterable<Opt>? allOptions]) {
     final allOptions2 = _assertOptionsValid(allOptions);
 
     if (valueGetter != null) {
@@ -192,7 +192,7 @@ class ZoSelector<Val, Opt> extends ChangeNotifier {
   }
 
   /// 反选所有值, 需要传入当前所有选项
-  void toggleAll(Iterable<Opt>? allOptions) {
+  void toggleAll([Iterable<Opt>? allOptions]) {
     final allOptions2 = _assertOptionsValid(allOptions);
 
     for (var opt in allOptions2) {

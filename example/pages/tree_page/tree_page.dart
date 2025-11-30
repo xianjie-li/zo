@@ -248,9 +248,9 @@ class _TreePageState extends State<TreePage> {
     if (cur.$2 == null) return;
 
     historyIndex--;
-    final mutator = treeKey.currentState!.controller.mutator;
+    final controller = treeKey.currentState!.controller;
 
-    mutator.mutation(
+    controller.mutator.mutation(
       ZoMutatorCommand(operation: cur.$2!, source: ZoMutatorSource.history),
     );
 
@@ -263,9 +263,9 @@ class _TreePageState extends State<TreePage> {
     final cur = history[historyIndex + 1];
 
     historyIndex++;
-    final mutator = treeKey.currentState!.controller.mutator;
+    final controller = treeKey.currentState!.controller;
 
-    mutator.mutation(
+    controller.mutator.mutation(
       ZoMutatorCommand(operation: [cur.$1], source: ZoMutatorSource.history),
     );
 
@@ -357,37 +357,37 @@ class _TreePageState extends State<TreePage> {
             ZoButton(
               child: Text("展开全部"),
               onTap: () {
-                treeKey.currentState!.expandAll();
+                treeKey.currentState!.controller.expandsAll();
               },
             ),
             ZoButton(
               child: Text("收起全部"),
               onTap: () {
-                treeKey.currentState!.collapseAll();
+                treeKey.currentState!.controller.collapseAll();
               },
             ),
             ZoButton(
               child: Text("value 2 是否展开"),
               onTap: () {
-                print(treeKey.currentState!.isExpanded("value 2"));
+                print(treeKey.currentState!.controller.isExpanded("value 2"));
               },
             ),
             ZoButton(
               child: Text("展开 value 5d1-2"),
               onTap: () {
-                treeKey.currentState!.expand("value 5d1-2");
+                treeKey.currentState!.controller.expand("value 5d1-2");
               },
             ),
             ZoButton(
               child: Text("是否全部展开"),
               onTap: () {
-                print(treeKey.currentState!.isAllExpanded());
+                print(treeKey.currentState!.controller.isAllExpanded());
               },
             ),
             ZoButton(
               child: Text("获取全部展开值"),
               onTap: () {
-                print(treeKey.currentState!.getExpands());
+                print(treeKey.currentState!.controller.getExpands());
               },
             ),
             ZoButton(
@@ -409,6 +409,12 @@ class _TreePageState extends State<TreePage> {
               child: Text("focus 5d1-2-6-1"),
               onTap: () {
                 treeKey.currentState!.focusOption("value 5d1-2-6-1");
+              },
+            ),
+            ZoButton(
+              child: Text("select all"),
+              onTap: () {
+                treeKey.currentState!.selector.selectAll(null);
               },
             ),
             SizedBox(
@@ -439,140 +445,112 @@ class _TreePageState extends State<TreePage> {
             ZoButton(
               child: Text("add option to root"),
               onTap: () {
-                final mutator = treeKey.currentState!.controller.mutator;
+                final controller = treeKey.currentState!.controller;
 
                 final id1 = Random().nextInt(5000000);
                 final id2 = Random().nextInt(5000000);
 
-                mutator.mutation(
-                  ZoMutatorCommand(
-                    operation: [
-                      ZoTreeDataAddOperation(
-                        data: [
-                          ZoOption(
-                            value: "value $id1",
-                            title: Text("选项内容-$id1"),
-                            leading: Icon(Icons.copy),
-                          ),
-                          ZoOption(
-                            value: "value $id2",
-                            title: Text("选项内容-$id2"),
-                            leading: Icon(Icons.copy),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                controller.add(
+                  data: [
+                    ZoOption(
+                      value: "value $id1",
+                      title: Text("选项内容-$id1"),
+                      leading: Icon(Icons.copy),
+                    ),
+                    ZoOption(
+                      value: "value $id2",
+                      title: Text("选项内容-$id2"),
+                      leading: Icon(Icons.copy),
+                    ),
+                  ],
                 );
               },
             ),
             ZoButton(
               child: Text("add option Option 0"),
               onTap: () {
-                final mutator = treeKey.currentState!.controller.mutator;
+                final controller = treeKey.currentState!.controller;
 
                 final id1 = Random().nextInt(5000000);
                 final id2 = Random().nextInt(5000000);
 
-                mutator.mutation(
-                  ZoMutatorCommand(
-                    operation: [
-                      ZoTreeDataAddOperation(
-                        data: [
-                          ZoOption(
-                            value: "value $id1",
-                            title: Text("选项内容-$id1"),
-                            leading: Icon(Icons.copy),
-                          ),
-                          ZoOption(
-                            value: "value $id2",
-                            title: Text("选项内容-$id2"),
-                            leading: Icon(Icons.copy),
-                          ),
-                        ],
-                        toValue: "value 0",
-                        position: ZoTreeDataRefPosition.inside,
-                      ),
-                    ],
-                  ),
+                controller.add(
+                  data: [
+                    ZoOption(
+                      value: "value $id1",
+                      title: Text("选项内容-$id1"),
+                      leading: Icon(Icons.copy),
+                    ),
+                    ZoOption(
+                      value: "value $id2",
+                      title: Text("选项内容-$id2"),
+                      leading: Icon(Icons.copy),
+                    ),
+                  ],
+                  toValue: "value 0",
+                  position: ZoTreeDataRefPosition.inside,
                 );
               },
             ),
             ZoButton(
               child: Text("add option Option 0 before"),
               onTap: () {
-                final mutator = treeKey.currentState!.controller.mutator;
+                final controller = treeKey.currentState!.controller;
 
                 final id1 = Random().nextInt(5000000);
                 final id2 = Random().nextInt(5000000);
 
-                mutator.mutation(
-                  ZoMutatorCommand(
-                    operation: [
-                      ZoTreeDataAddOperation(
-                        data: [
-                          ZoOption(
-                            value: "value $id1",
-                            title: Text("选项内容-$id1"),
-                            leading: Icon(Icons.copy),
-                          ),
-                          ZoOption(
-                            value: "value $id2",
-                            title: Text("选项内容-$id2"),
-                            leading: Icon(Icons.copy),
-                          ),
-                        ],
-                        toValue: "value 0",
-                        position: ZoTreeDataRefPosition.before,
-                      ),
-                    ],
-                  ),
+                controller.add(
+                  data: [
+                    ZoOption(
+                      value: "value $id1",
+                      title: Text("选项内容-$id1"),
+                      leading: Icon(Icons.copy),
+                    ),
+                    ZoOption(
+                      value: "value $id2",
+                      title: Text("选项内容-$id2"),
+                      leading: Icon(Icons.copy),
+                    ),
+                  ],
+                  toValue: "value 0",
+                  position: ZoTreeDataRefPosition.before,
                 );
               },
             ),
             ZoButton(
               child: Text("add option Option 0 after"),
               onTap: () {
-                final mutator = treeKey.currentState!.controller.mutator;
+                final controller = treeKey.currentState!.controller;
 
                 final id1 = Random().nextInt(5000000);
                 final id2 = Random().nextInt(5000000);
 
-                mutator.mutation(
-                  ZoMutatorCommand(
-                    operation: [
-                      ZoTreeDataAddOperation(
-                        data: [
-                          ZoOption(
-                            value: "value $id1",
-                            title: Text("选项内容-$id1"),
-                            leading: Icon(Icons.copy),
-                          ),
-                          ZoOption(
-                            value: "value $id2",
-                            title: Text("选项内容-$id2"),
-                            leading: Icon(Icons.copy),
-                          ),
-                        ],
-                        toValue: "value 0",
-                        position: ZoTreeDataRefPosition.after,
-                      ),
-                    ],
-                  ),
+                controller.add(
+                  data: [
+                    ZoOption(
+                      value: "value $id1",
+                      title: Text("选项内容-$id1"),
+                      leading: Icon(Icons.copy),
+                    ),
+                    ZoOption(
+                      value: "value $id2",
+                      title: Text("选项内容-$id2"),
+                      leading: Icon(Icons.copy),
+                    ),
+                  ],
+                  toValue: "value 0",
+                  position: ZoTreeDataRefPosition.after,
                 );
               },
             ),
             ZoButton(
               child: Text("remove Option 1 children"),
               onTap: () {
-                final mutator = treeKey.currentState!.controller.mutator;
+                final controller = treeKey.currentState!.controller;
 
-                mutator.mutation(
-                  ZoMutatorCommand(
-                    operation: [
-                      TreeDataRemoveOperation(values: ["value1.1", "value1.2"]),
-                    ],
-                  ),
+                controller.remove(
+                  values: ["value1.1", "value1.2"],
                 );
               },
             ),

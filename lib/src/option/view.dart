@@ -132,31 +132,33 @@ class ZoOptionView extends StatelessWidget {
 
     final ZoOptionEventData data = (option: option, context: context);
 
-    return ZoTile(
-      header: header,
-      leading: leadingNode,
-      trailing: trailingNode,
-      enabled: enabled && option.enabled,
-      arrow: arrow && hasChild,
-      active: active,
-      loading: loading,
-      highlight: highlight,
-
-      interactive: interactive && option.interactive,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      disabledColor: Colors.transparent,
-      activeColor: activeColor,
-      highlightColor: highlightColor,
-      padding: padding,
-      verticalSpacing: verticalSpacing,
-      horizontalSpacing: horizontalSpacing ?? style.space1,
-      decorationPadding: const EdgeInsets.symmetric(vertical: 1),
-      iconTheme: const IconThemeData(size: ZoOptionView.iconSize),
-      onTap: onTap,
-      onContextAction: onContextAction,
-      onActiveChanged: onActiveChanged,
-      onFocusChanged: onFocusChanged,
-      data: data,
+    return SizedBox(
+      height: option.height,
+      child: ZoTile(
+        header: header,
+        leading: leadingNode,
+        trailing: trailingNode,
+        enabled: enabled && option.enabled,
+        arrow: arrow && hasChild,
+        active: active,
+        loading: loading,
+        highlight: highlight,
+        interactive: interactive && option.interactive,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        disabledColor: Colors.transparent,
+        activeColor: activeColor,
+        highlightColor: highlightColor,
+        padding: padding,
+        verticalSpacing: verticalSpacing,
+        horizontalSpacing: horizontalSpacing ?? style.space1,
+        decorationPadding: const EdgeInsets.symmetric(vertical: 1),
+        iconTheme: const IconThemeData(size: ZoOptionView.iconSize),
+        onTap: onTap,
+        onContextAction: onContextAction,
+        onActiveChanged: onActiveChanged,
+        onFocusChanged: onFocusChanged,
+        data: data,
+      ),
     );
   }
 }
@@ -336,6 +338,7 @@ class _ZoOptionViewListState extends State<ZoOptionViewList> {
     if (widget.options.isEmpty) {
       return ZoOptionView(
         option: ZoOption(
+          height: 28,
           title: Text(locale.noData, style: style.hintTextStyle),
           value: "__EMPTY__",
           interactive: false,
