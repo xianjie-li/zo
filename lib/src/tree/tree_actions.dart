@@ -132,6 +132,8 @@ mixin _TreeActionsMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
   void _multipleSelectHandle(ZoTreeDataNode<ZoOption> node) {
     final isSelected = selector.isSelected(node.value);
 
+    print("isSelected: ${isSelected} ${ZoShortcutsHelper.isSingleKeyPressed}");
+
     if (ZoShortcutsHelper.isSingleKeyPressed &&
         ZoShortcutsHelper.isCommandPressed) {
       selector.toggle(node.value);

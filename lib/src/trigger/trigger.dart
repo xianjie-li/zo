@@ -200,6 +200,7 @@ class ZoTrigger extends StatefulWidget {
     this.focusOnTap = true,
     this.defaultCursor,
     this.changeCursor = false,
+    this.longPressDragOnTouch = true,
     this.behavior,
   });
 
@@ -267,6 +268,9 @@ class ZoTrigger extends StatefulWidget {
 
   /// 是否显示适合当前事件的光标类型
   final bool changeCursor;
+
+  /// 在触控类操作中使用 longPress 触发拖动事件, 防止干扰后方的滚动组件
+  final bool longPressDragOnTouch;
 
   /// 命中测试行为
   final HitTestBehavior? behavior;
@@ -391,6 +395,8 @@ class _ZoTriggerState extends State<ZoTrigger> {
 
     tapPending = false;
 
+    clearTouchContextMenuTimer();
+
     // 在外部事件触发之前获取焦点，避免在外部handle中需要控制焦点时发生冲突
     if (widget.canRequestFocus && widget.focusOnTap) {
       focusNode.requestFocus();
@@ -414,6 +420,8 @@ class _ZoTriggerState extends State<ZoTrigger> {
     lastTapDownDetails = details;
 
     tapPending = true;
+
+    startTouchContextMenuTimer(details);
 
     final downEvent = getTapEvent(details, kind: details.kind);
     widget.onTapDown?.call(downEvent);
@@ -445,6 +453,8 @@ class _ZoTriggerState extends State<ZoTrigger> {
   void onTapCancel() {
     tapPending = false;
 
+    clearTouchContextMenuTimer();
+
     final downEvent = ZoTriggerEvent(
       type: ZoTriggerType.tap,
       time: DateTime.now(),
@@ -464,33 +474,6 @@ class _ZoTriggerState extends State<ZoTrigger> {
     if (lastActiveEvent != null && isTapActive) {
       final event = getInactiveEvent();
       widget.onActiveChanged!(event);
-      event.dispatch(context);
-    }
-  }
-
-  LongPressDownDetails? lastLongPressDownDetails;
-
-  void onLongPressDown(LongPressDownDetails details) {
-    lastLongPressDownDetails = details;
-
-    tempDisableContextAction();
-  }
-
-  void onLongPressStart(LongPressStartDetails details) {
-    final kind = lastLongPressDownDetails?.kind;
-    lastLongPressDownDetails = null;
-
-    if (widget.onContextAction != null) {
-      final event = ZoTriggerEvent(
-        type: ZoTriggerType.contextAction,
-        time: DateTime.now(),
-        trigger: widget,
-        position: details.globalPosition,
-        offset: details.localPosition,
-        data: widget.data,
-        deviceKind: kind,
-      );
-      widget.onContextAction!(event);
       event.dispatch(context);
     }
   }
@@ -654,7 +637,17 @@ class _ZoTriggerState extends State<ZoTrigger> {
     }
   }
 
-  void onPanStart(DragStartDetails details) {
+  LongPressDownDetails? lastLongPressDownDetails;
+
+  Offset? lastLongPressOffset;
+
+  bool _cancelDragRunning = false;
+
+  void dragStart({
+    required Offset globalPosition,
+    required Offset localPosition,
+    PointerDeviceKind? kind,
+  }) {
     _cancelDragRunning = false;
 
     if (widget.onDrag == null || lastDragEvent != null) {
@@ -667,12 +660,12 @@ class _ZoTriggerState extends State<ZoTrigger> {
       type: ZoTriggerType.drag,
       time: DateTime.now(),
       trigger: widget,
-      position: clampAxis(details.globalPosition),
-      offset: details.localPosition,
+      position: clampAxis(globalPosition),
+      offset: localPosition,
       first: true,
       cancel: cancelDrag,
       data: widget.data,
-      deviceKind: details.kind,
+      deviceKind: kind,
     );
 
     lastDragEvent = e;
@@ -681,7 +674,11 @@ class _ZoTriggerState extends State<ZoTrigger> {
     e.dispatch(context);
   }
 
-  void onPanEnd(DragEndDetails details) {
+  void dragEnd({
+    required Offset globalPosition,
+    required Offset localPosition,
+    required Velocity velocity,
+  }) {
     if (lastDragEvent == null || _cancelDragRunning) return;
 
     setDragCursor(false);
@@ -690,11 +687,11 @@ class _ZoTriggerState extends State<ZoTrigger> {
       type: ZoTriggerType.drag,
       time: DateTime.now(),
       trigger: widget,
-      position: clampAxis(details.globalPosition),
-      offset: details.localPosition,
+      position: clampAxis(globalPosition),
+      offset: localPosition,
       last: true,
       cancel: cancelDrag,
-      velocity: details.velocity,
+      velocity: velocity,
       data: widget.data,
       deviceKind: lastDragEvent?.deviceKind,
     );
@@ -705,7 +702,34 @@ class _ZoTriggerState extends State<ZoTrigger> {
     e.dispatch(context);
   }
 
-  void onPanCancel() {
+  void dragMove({
+    required Offset delta,
+    required Offset globalPosition,
+    required Offset localPosition,
+  }) {
+    if (lastDragEvent == null || _cancelDragRunning) return;
+
+    final clampDelta = clampAxis(delta);
+
+    final e = ZoTriggerDragEvent(
+      type: ZoTriggerType.drag,
+      time: DateTime.now(),
+      trigger: widget,
+      position: clampAxis(globalPosition),
+      offset: clampAxis(localPosition),
+      delta: clampDelta,
+      cancel: cancelDrag,
+      data: widget.data,
+      deviceKind: lastDragEvent?.deviceKind,
+    );
+
+    lastDragEvent = e;
+
+    widget.onDrag?.call(e);
+    e.dispatch(context);
+  }
+
+  void dragCancel() {
     if (lastDragEvent == null) return;
 
     _cancelDragRunning = false;
@@ -731,30 +755,99 @@ class _ZoTriggerState extends State<ZoTrigger> {
     e.dispatch(context);
   }
 
-  void onPanUpdate(DragUpdateDetails details) {
-    if (lastDragEvent == null || _cancelDragRunning) return;
-
-    final delta = clampAxis(details.delta);
-
-    final e = ZoTriggerDragEvent(
-      type: ZoTriggerType.drag,
-      time: DateTime.now(),
-      trigger: widget,
-      position: clampAxis(details.globalPosition),
-      offset: details.localPosition,
-      delta: delta,
-      cancel: cancelDrag,
-      data: widget.data,
-      deviceKind: lastDragEvent?.deviceKind,
+  void onPanStart(DragStartDetails details) {
+    dragStart(
+      globalPosition: details.globalPosition,
+      localPosition: details.localPosition,
+      kind: details.kind,
     );
-
-    lastDragEvent = e;
-
-    widget.onDrag?.call(e);
-    e.dispatch(context);
   }
 
-  bool _cancelDragRunning = false;
+  void onPanEnd(DragEndDetails details) {
+    dragEnd(
+      globalPosition: details.globalPosition,
+      localPosition: details.localPosition,
+      velocity: details.velocity,
+    );
+  }
+
+  void onPanUpdate(DragUpdateDetails details) {
+    dragMove(
+      delta: details.delta,
+      globalPosition: details.globalPosition,
+      localPosition: details.localPosition,
+    );
+  }
+
+  void onPanCancel() {
+    dragCancel();
+  }
+
+  void onLongPressDown(LongPressDownDetails details) {
+    lastLongPressDownDetails = details;
+
+    tempDisableContextAction();
+  }
+
+  void onLongPressStart(LongPressStartDetails details) {
+    final kind = lastLongPressDownDetails?.kind;
+
+    if (widget.onDrag != null) {
+      lastLongPressOffset = details.globalPosition;
+
+      dragStart(
+        globalPosition: details.globalPosition,
+        localPosition: details.localPosition,
+        kind: kind,
+      );
+    }
+
+    if (widget.onContextAction != null) {
+      final event = ZoTriggerEvent(
+        type: ZoTriggerType.contextAction,
+        time: DateTime.now(),
+        trigger: widget,
+        position: details.globalPosition,
+        offset: details.localPosition,
+        data: widget.data,
+        deviceKind: kind,
+      );
+      widget.onContextAction!(event);
+      event.dispatch(context);
+    }
+  }
+
+  void onLongPressEnd(LongPressEndDetails details) {
+    lastLongPressDownDetails = null;
+    lastLongPressOffset = null;
+
+    dragEnd(
+      globalPosition: details.globalPosition,
+      localPosition: details.localPosition,
+      velocity: details.velocity,
+    );
+  }
+
+  void onLongPressCancel() {
+    lastLongPressDownDetails = null;
+    lastLongPressOffset = null;
+
+    dragCancel();
+  }
+
+  void onLongPressMoveUpdate(LongPressMoveUpdateDetails details) {
+    final delta = lastLongPressOffset == null
+        ? Offset.zero
+        : details.globalPosition - lastLongPressOffset!;
+
+    lastLongPressOffset = details.globalPosition;
+
+    dragMove(
+      delta: delta,
+      globalPosition: details.globalPosition,
+      localPosition: details.localPosition,
+    );
+  }
 
   /// 取消正在进行的 drag 事件
   void cancelDrag() {
@@ -764,7 +857,47 @@ class _ZoTriggerState extends State<ZoTrigger> {
     // 在此期间阻止其他后续时间执行
     _cancelDragRunning = true;
 
-    Timer.run(onPanCancel);
+    Timer.run(dragCancel);
+  }
+
+  /// 触发移动端长按上下文菜单的timer
+  Timer? touchContextMenuTimer;
+
+  /// 开始触控触发的上下文菜单长按计时
+  void startTouchContextMenuTimer(TapDownDetails details) {
+    clearTouchContextMenuTimer();
+
+    // 仅启用且触控方式触发时使用
+    if (widget.onContextAction == null ||
+        !ZoTrigger.isTouchLike(details.kind)) {
+      return;
+    }
+
+    touchContextMenuTimer = Timer(Durations.medium2, () {
+      tempDisableContextAction();
+
+      if (widget.onContextAction != null) {
+        final event = ZoTriggerEvent(
+          type: ZoTriggerType.contextAction,
+          time: DateTime.now(),
+          trigger: widget,
+          position: details.globalPosition,
+          offset: details.localPosition,
+          data: widget.data,
+          deviceKind: details.kind,
+        );
+        widget.onContextAction!(event);
+        event.dispatch(context);
+      }
+    });
+  }
+
+  /// 结束触控触发的上下文菜单长按计时
+  void clearTouchContextMenuTimer() {
+    if (touchContextMenuTimer != null) {
+      touchContextMenuTimer!.cancel();
+      touchContextMenuTimer = null;
+    }
   }
 
   /// 短暂的禁用右键菜单, 如果已经处于禁用状态则什么都不会发生
@@ -879,11 +1012,8 @@ class _ZoTriggerState extends State<ZoTrigger> {
 
     final enableTap = widget.onTap != null || widget.onTapDown != null;
 
-    final enableActive = widget.onActiveChanged != null;
-
-    /// 是否需要强制绑定 tap 事件, drag 等事件会受 tap 的绑定状态影响, 它还会会影响父级的 tab 命中,
-    /// 所以在必要时才绑定, 比如在包含 tab 事件时, drag 会延迟到第一次拖动才触发 start, 而不是在按下时
-    final needForceBindTap = enableTap || enableActive;
+    /// 触控类操作需要使用tap来模拟active
+    final enableTouchLikeTap = enableTap || widget.onActiveChanged != null;
 
     final enableDrag = widget.onDrag != null;
 
@@ -901,9 +1031,26 @@ class _ZoTriggerState extends State<ZoTrigger> {
     /// tapDown: tapDown + onKeyEvent
     /// active: 鼠标: onEnter + onExit  触控: onTapDown + onTapUp + onTapCancel
     /// focus: Focus
-    /// contextAction: 鼠标: onSecondaryTapDown 触控: onLongPressStart + onLongPressDown (按需绑定, 否则会影响 tap 事件)
-    /// drag: onPan 系列事件, 在绑定了 tap 时, 会改为在 tap 中改变光标
+    /// contextAction: 鼠标: onSecondaryTapDown 触控: tap + timer
+    /// drag: onPan 系列事件, 在绑定了 tap 时, 会改为在 tap 中改变光标, 移动端使用 longPress 实现，防止干扰滚动操作
     /// move: onEnter + onExit + onHover
+
+    /// 根据 longPressDragOnTouch 调整触发事件类型，未启用时使用单个 GestureDetector 处理所有事件
+    ///
+    /// 这里额外排除了 trackpad 事件，因为它会导致 pan 等事件通过双指也能触发，这不符合预期，需要主动过滤掉，详情见:
+    /// https://github.com/flutter/flutter/issues/107005
+    final supportedDevices = widget.longPressDragOnTouch
+        ? const <PointerDeviceKind>{
+            PointerDeviceKind.mouse,
+            PointerDeviceKind.unknown,
+          }
+        : const <PointerDeviceKind>{
+            PointerDeviceKind.mouse,
+            PointerDeviceKind.unknown,
+            PointerDeviceKind.touch,
+            PointerDeviceKind.stylus,
+            PointerDeviceKind.invertedStylus,
+          };
 
     child = GestureDetector(
       onTapUp: enable && enableTap ? onTapUp : null,
@@ -914,30 +1061,26 @@ class _ZoTriggerState extends State<ZoTrigger> {
           : null,
       onPanStart: enable && enableDrag ? onPanStart : null,
       onPanEnd: enable && enableDrag ? onPanEnd : null,
-      onPanCancel: enable && enableDrag ? onPanCancel : null,
       onPanUpdate: enable && enableDrag ? onPanUpdate : null,
+      onPanCancel: enable && enableDrag ? onPanCancel : null,
+      supportedDevices: supportedDevices,
       behavior: widget.behavior,
-      // onPan 会通过触控板的双指触发，这不符合预期，主动过滤掉，详情见:
-      // https://github.com/flutter/flutter/issues/107005
-      supportedDevices: const <PointerDeviceKind>{
-        PointerDeviceKind.mouse,
-        PointerDeviceKind.stylus,
-        PointerDeviceKind.touch,
-        PointerDeviceKind.unknown,
-        PointerDeviceKind.invertedStylus,
-      },
       child: child,
     );
 
-    // 部分仅在 touch 设备处理的事件, 单独使用一个 GestureDetector, 否则会导致 tap 触发存在一定延迟
-    if (contextActionEnable || needForceBindTap) {
+    /// 为触摸类事件使用单独的 GestureDetector，
+    if (widget.longPressDragOnTouch) {
       child = GestureDetector(
-        onLongPressStart: enable && contextActionEnable
-            ? onLongPressStart
+        onTapUp: enable && enableTouchLikeTap ? onTapUp : null,
+        onTapDown: enable && enableTouchLikeTap ? onTapDown : null,
+        onTapCancel: enable && enableTouchLikeTap ? onTapCancel : null,
+        onLongPressDown: enable && enableDrag ? onLongPressDown : null,
+        onLongPressStart: enable && enableDrag ? onLongPressStart : null,
+        onLongPressEnd: enable && enableDrag ? onLongPressEnd : null,
+        onLongPressMoveUpdate: enable && enableDrag
+            ? onLongPressMoveUpdate
             : null,
-        onLongPressDown: enable && contextActionEnable ? onLongPressDown : null,
-        onTapUp: enable && needForceBindTap ? onTapUp : null,
-        onTapDown: enable && needForceBindTap ? onTapDown : null,
+        onLongPressCancel: enable && enableDrag ? onLongPressCancel : null,
         supportedDevices: ZoTrigger.touchLike,
         behavior: widget.behavior,
         child: child,

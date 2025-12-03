@@ -138,7 +138,7 @@ class ZoOverlay {
   /// 一个开关状态, 可控制 dispose 是否忽略关闭动画延迟立即完成
   bool _disposeImmediately = false;
 
-  /// 强制 _mayDismissCheck 返回 true
+  /// 强制 _mayDismissCheck 返回 true, 并且不再触发 onDismiss 等通知
   bool _forceDismiss = false;
 
   /// 检测指定 entry 是否有正在进行的延迟销毁操作
@@ -244,6 +244,8 @@ class ZoOverlay {
 
     // 移除 closeTimers
     _clearEntryTimers(entry);
+
+    if (entry._isDisposed) return;
 
     void doDispose() {
       if (entry._isDisposed) return;
@@ -352,9 +354,18 @@ class ZoOverlay {
 
   /// 临时跳过 mayDismiss 检测
   void skipDismissCheck(VoidCallback callback) {
-    _forceDismiss = true;
+    bool changeByThis = false;
+
+    if (!_forceDismiss) {
+      _forceDismiss = true;
+      changeByThis = true;
+    }
+
     callback();
-    _forceDismiss = false;
+
+    if (changeByThis) {
+      _forceDismiss = false;
+    }
   }
 
   /// 禁用所有层的 tapAwayClosable, 在某些场景很有用, 比如当前层通过 onDismiss 弹出确认关闭的 Modal,
@@ -405,14 +416,15 @@ class ZoOverlay {
   void _routeOpen(ZoOverlayEntry entry) {
     if (!entry.route) return;
 
+    /// 为route层实际挂载一个空的路由组件，并监听事件来处理层状态
+    /// 需要区分由路由组件和api触发的 onPop / mayPop， 避免重复触发
+    ///
+    /// 路由层 dismissCheck 处理细节：
+    /// - 通过api关闭时，在api层处理 dismissCheck 和触发 onDismiss 通知，关闭后路由会异步调用 ZoOverlayRoute.onDispose, 此时层已经被关闭过，关闭操作会被自动忽略
+    /// - 通过 ZoOverlayRoute 关闭时，直接触发api层的关闭来发起通知, 由于路由已经不是 active 状态，api 不会导致路由的 onDispose 等方法再次出发
+
     final route = ZoOverlayRoute(
-      onDispose: () {
-        skipDismissCheck(() {
-          if (!entry.currentOpen) return;
-          entry.dismiss();
-        });
-      },
-      onPop: entry._onDismiss,
+      onDispose: entry.dismiss,
       mayPop: entry._mayDismiss,
     );
 
@@ -460,7 +472,7 @@ class ZoOverlay {
   ///
   /// notify 设置为 false 时, 不会触发 entry 的 onDismiss, 仅进行检测
   bool _mayDismissCheck(ZoOverlayEntry entry, [bool notify = true]) {
-    final didDismiss = _forceDismiss ? _forceDismiss : entry._mayDismiss();
+    final didDismiss = entry._mayDismiss();
 
     if (notify) entry._onDismiss(didDismiss, null);
 
@@ -473,7 +485,6 @@ class ZoOverlay {
     if (overlays.contains(entry)) {
       return (entry: _originalOverlays[entry]!, isNew: false);
     }
-    // _navigatorOverlay.context
 
     assert(
       entry.overlay == null || entry.overlay == this,

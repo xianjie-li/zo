@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:math";
 
 import "package:flutter/material.dart";
@@ -348,11 +349,44 @@ class _TreePageState extends State<TreePage> {
 
                   return true;
                 },
+                onSortConfirm: (args) {
+                  final completer = Completer<bool>();
+
+                  bool isConfirm = false;
+
+                  zoOverlay.open(
+                    ZoDialog(
+                      title: Text("提示"),
+                      barrier: false,
+                      tapAwayClosable: false,
+                      content: Text(
+                        "确认要将 ${args.from.map((i) => i.data.getTitleText())} 移动至 ${args.to.data.getTitleText()} 吗？",
+                      ),
+                      onConfirm: () {
+                        print("confirm: true");
+                        isConfirm = true;
+                      },
+                      onDismiss: (didDismiss, result) {
+                        print("confirm: false");
+
+                        completer.complete(isConfirm);
+                      },
+                    ),
+                  );
+
+                  return completer.future;
+                },
                 // indentDots: false,
                 // enable: false,
                 // indentSize: Size(18, 18),
                 // togglerIcon: Icons.arrow_right_alt_outlined,
               ),
+            ),
+            ZoButton(
+              child: Text("pop"),
+              onTap: () {
+                Navigator.maybePop(context);
+              },
             ),
             ZoButton(
               child: Text("展开全部"),

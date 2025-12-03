@@ -161,8 +161,11 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
 
     var identWidth = oneWidth * indentSpaceNumber;
 
+    var hasChildren = false;
+
     if (isBranch) {
       identWidth += oneWidth;
+      hasChildren = optNode.data.children?.isNotEmpty ?? false;
     }
 
     final leadingNode = GestureDetector(
@@ -187,18 +190,21 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
               key: const ValueKey("__Expand"),
               height: widget.indentSize.height,
               width: oneWidth,
-              child: AnimatedRotation(
-                turns: controller.expander.isSelected(optNode.value)
-                    ? 0.25
-                    : 0.0,
-                duration: const Duration(milliseconds: 150),
-                child: Icon(
-                  widget.togglerIcon ?? Icons.arrow_right_rounded,
-                  size: widget.indentSize.height,
-                  color: isSelected
-                      // 因为嵌入到了 ZoInteractiveBox 中，需要确保颜色与选项文本一致
-                      ? _activeTextColor
-                      : _style!.textColor,
+              child: Opacity(
+                opacity: hasChildren ? 1 : _style!.disableOpacity,
+                child: AnimatedRotation(
+                  turns: controller.expander.isSelected(optNode.value)
+                      ? 0.25
+                      : 0.0,
+                  duration: const Duration(milliseconds: 150),
+                  child: Icon(
+                    widget.togglerIcon ?? Icons.arrow_right_rounded,
+                    size: widget.indentSize.height,
+                    color: isSelected
+                        // 因为嵌入到了 ZoInteractiveBox 中，需要确保颜色与选项文本一致
+                        ? _activeTextColor
+                        : _style!.textColor,
+                  ),
                 ),
               ),
             ),
@@ -326,7 +332,7 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
 
   /// 根据 _fixedOptions 构造固定在顶部的选项
   Widget? _fixedOptionBuilder() {
-    if (_fixedOptions.isEmpty || _dragging) return const SizedBox.shrink();
+    if (_fixedOptions.isEmpty) return const SizedBox.shrink();
 
     final List<Widget> ls = [];
 
@@ -352,36 +358,41 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
 
     if (ls.isEmpty) return const SizedBox.shrink();
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          decoration: BoxDecoration(
-            color: _style?.surfaceColor,
-          ),
-          padding: EdgeInsets.fromLTRB(
-            widget.padding.left,
-            _fixedOptionsPadding,
-            widget.padding.right,
-            _fixedOptionsPadding,
-          ),
-          height: _fixedOptionsHeight,
-          child: Column(
-            children: ls,
-          ),
-        ),
-        // 在底部绘制阴影
-        Container(
-          height: 8,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: _style!.shadowGradientColors,
+    return ZoTransition(
+      open: !_dragging,
+      appear: false,
+      unmountOnExit: false,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: _style?.surfaceColor,
+            ),
+            padding: EdgeInsets.fromLTRB(
+              widget.padding.left,
+              _fixedOptionsPadding,
+              widget.padding.right,
+              _fixedOptionsPadding,
+            ),
+            height: _fixedOptionsHeight,
+            child: Column(
+              children: ls,
             ),
           ),
-        ),
-      ],
+          // 在底部绘制阴影
+          Container(
+            height: 8,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: _style!.shadowGradientColors,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -431,10 +442,10 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
   }
 
   void _onFocusChanged(ZoTriggerToggleEvent event) {
-    final node = _getNodeByEvent(event);
+    final option = _getOptionByEvent(event);
 
     if (event.toggle) {
-      currentFocusValue = node.value;
+      currentFocusValue = option.value;
     } else {
       currentFocusValue = null;
     }
@@ -444,6 +455,10 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
     final option = (event.data as ZoOptionEventData).option;
     final node = controller.getNode(option.value)!;
     return node;
+  }
+
+  ZoOption _getOptionByEvent(ZoTriggerEvent event) {
+    return (event.data as ZoOptionEventData).option;
   }
 
   /// 更新 _useLightText 的值

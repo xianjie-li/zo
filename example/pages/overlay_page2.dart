@@ -243,7 +243,7 @@ class _OverlayPage2State extends State<OverlayPage2> {
     print("didDismiss $didDismiss result $result");
 
     if (didDismiss) {
-      return null;
+      return;
     }
 
     final future = Completer();

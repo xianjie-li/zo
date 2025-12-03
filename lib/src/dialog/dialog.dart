@@ -285,9 +285,7 @@ class ZoDialog extends ZoOverlayEntry {
     if (res is Future) {
       _localLoading = true;
       res.whenComplete(() {
-        overlay!.skipDismissCheck(() {
-          dismiss();
-        });
+        overlay!.skipDismissCheck(dismiss);
         // 延迟一点关闭 loading 状态, 防止和关闭动画同时进行造成闪烁
         delayCloseLoadingTimer = Timer(duration, () {
           if (!_localLoading) return;
@@ -295,9 +293,7 @@ class ZoDialog extends ZoOverlayEntry {
         });
       });
     } else {
-      overlay!.skipDismissCheck(() {
-        dismiss();
-      });
+      overlay!.skipDismissCheck(dismiss);
     }
   }
 

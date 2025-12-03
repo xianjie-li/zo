@@ -58,6 +58,8 @@ class ZoTree extends ZoCustomFormWidget<Iterable<Object>> {
     this.pinedActiveBranch = true,
     this.pinedActiveBranchMaxLevel,
     this.sortable = false,
+    this.onSortConfirm,
+    this.smartSortConfirm = true,
     this.draggableDetector,
     this.droppableDetector,
   });
@@ -174,6 +176,19 @@ class ZoTree extends ZoCustomFormWidget<Iterable<Object>> {
 
   /// 是否可拖动节点进行排序
   final bool sortable;
+
+  /// 拖拽排序触发前调用，用于向用户发起询问操作，以确认是否需要进行实际的拖放操作
+  ///
+  /// 为了防止确认期间其他变更导致移动数据失效(比如删除了移动节点), 确认期间所有变更会被缓冲，
+  /// 并在确认操作完成后才执行，因此必须确保确认操作不会被挂起，否则将导致后续所有操作被拦截
+  ///
+  ///
+  final Future<bool> Function(ZoTreeMoveConfirmArgs args)? onSortConfirm;
+
+  /// 智能判断是否需要使用 onSortConfirm 提示，开启后，以下情况不再触发确认：
+  /// - 移动到同父级节点下
+  /// - 移动节点总数只有一个（含子级）
+  final bool smartSortConfirm;
 
   /// 在启用 [sortable] 后，额外用于检测选项是否可拖动, 默认所有节点均可拖动
   final bool Function(ZoTreeDataNode<ZoOption> node)? draggableDetector;
@@ -406,8 +421,6 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree>
 
     _activeTextColor = _getActiveTextColor();
 
-    // print("_activeTextColor: ${_activeTextColor}");
-
     return SizedBox(
       height: controller.filteredFlatList.isEmpty
           ? widget.maxHeight
@@ -473,11 +486,29 @@ class _ZoTreeIndentIndicator extends StatelessWidget {
 
 /// 用于树组件部分回调的参数，提供了一些有用的上下文信息
 class ZoTreeEvent {
-  ZoTreeEvent({
+  const ZoTreeEvent({
     required this.node,
     required this.instance,
   });
-  ZoTreeDataNode<ZoOption> node;
+  final ZoTreeDataNode<ZoOption> node;
 
-  ZoTreeState instance;
+  final ZoTreeState instance;
+}
+
+/// 移动确认时提供的参数
+class ZoTreeMoveConfirmArgs {
+  const ZoTreeMoveConfirmArgs({
+    required this.from,
+    required this.to,
+    required this.position,
+  });
+
+  /// 移动的节点
+  final List<ZoTreeDataNode<ZoOption>> from;
+
+  /// 移动到的节点
+  final ZoTreeDataNode<ZoOption> to;
+
+  /// 移动到的位置
+  final ZoTreeDataRefPosition position;
 }

@@ -67,43 +67,6 @@ mixin _TreeBaseMixin on ZoCustomFormState<Iterable<Object>, ZoTree> {
     delay: const Duration(milliseconds: 150),
   );
 
-  /// 执行异步加载操作
-  ///
-  /// - 展开时，如果有异步选项并且没有已加载数据对其进行加载，展开所有时不触发
-  /// - 如果已经在加载过程中则跳过
-  /// - 对选项显示加载标识，并在加载完成后自动展开
-  /// - 异步加载的数据触发变异事件时，需要携带特殊标记
-  void _asyncLoadHandler(Object value) async {
-    final optionNode = controller.getNode(value);
-
-    if (optionNode == null) return;
-
-    final option = optionNode.data;
-
-    // 非空时跳过
-    if (option.children != null && option.children!.isNotEmpty) return;
-
-    // 不存在异步加载器时跳过
-    if (option.loader == null) return;
-
-    // 已经在进行异步加载
-    if (controller.isAsyncLoading(value)) return;
-
-    try {
-      final future = controller.loadChildren(value);
-
-      // 更新组件以更新选项加载UI
-      setState(() {});
-
-      await future;
-    } catch (e) {
-      // 忽略错误
-    } finally {
-      // 刷新组件以更新选项加载UI
-      setState(() {});
-    }
-  }
-
   /// 获取指定选项的滚动偏移，需要确保选项父级全部展开后调用
   double _getOptionOffset(Object value) {
     final node = controller.getNode(value);

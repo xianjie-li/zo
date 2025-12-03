@@ -19,7 +19,7 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
   ZoStyle({
     required this.brightness,
     this.alpha = 160,
-    this.disableOpacity = 0.5,
+    this.disableOpacity = 0.4,
     this.primaryColor = Colors.blue,
     this.secondaryColor = Colors.cyan,
     this.tertiaryColor = Colors.red,

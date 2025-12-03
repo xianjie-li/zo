@@ -195,11 +195,76 @@ mixin _TreeDragSortMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
 
     if (position == null) return;
 
-    controller.move(
+    final operation = ZoTreeDataMoveOperation(
       values: values,
       toValue: toNode.value,
       position: position,
     );
+
+    /// 是否是同一父级下移动
+    bool sameParent = true;
+
+    /// 移动节点数量是否小于2
+    bool isSingleMove = values.length < 2;
+
+    bool shouldConfirm = false;
+
+    final List<ZoTreeDataNode<ZoOption>> from = [];
+    final to = controller.getNode(toNode.value)!;
+
+    /// 移动后的父节点value
+    final newParentValue = position == ZoTreeDataRefPosition.inside
+        ? to.value
+        : to.parent?.value;
+
+    for (final value in values) {
+      final node = controller.getNode(value)!;
+      from.add(node);
+
+      if (node.parent?.value != newParentValue) {
+        sameParent = false;
+      }
+
+      if (isSingleMove) {
+        final children = node.data.children;
+
+        if (children != null && children.isNotEmpty) {
+          isSingleMove = false;
+        }
+      }
+    }
+
+    if (widget.onSortConfirm != null) {
+      if (widget.smartSortConfirm) {
+        shouldConfirm = !sameParent && !isSingleMove;
+      } else {
+        shouldConfirm = true;
+      }
+    }
+
+    if (shouldConfirm) {
+      controller.mutator.batchMutation(() async {
+        final pass = await widget.onSortConfirm!(
+          ZoTreeMoveConfirmArgs(from: from, to: to, position: position!),
+        );
+
+        if (pass) {
+          controller.mutator.mutation(
+            ZoMutatorCommand(
+              operation: [operation],
+              // 确保操作在被缓冲操作前执行
+              force: true,
+            ),
+          );
+        }
+      });
+    } else {
+      controller.mutator.mutation(
+        ZoMutatorCommand(
+          operation: [operation],
+        ),
+      );
+    }
   }
 
   void _onDragStart({

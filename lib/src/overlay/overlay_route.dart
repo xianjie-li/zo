@@ -10,7 +10,7 @@ class ZoOverlayRoute extends OverlayRoute {
   /// 路由是否可安全弹出, 返回 false 可阻止弹出
   bool Function()? mayPop;
 
-  /// 路由弹出时调用, 无论它是否弹层成功, 可在此处添加拦截询问等操作
+  /// 路由弹出时调用, 无论它是否弹出成功, 可在此处添加拦截询问等操作
   void Function(bool didPop, dynamic result)? onPop;
 
   @override

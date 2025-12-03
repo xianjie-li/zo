@@ -18,7 +18,7 @@ part "manager.dart";
 ///
 /// 放置反馈：
 /// - 内置：可通过 [ZoDND.dropIndicator] 显示不同方向的可放置反馈，
-/// [ZoDND.disableOpacity] 可以控制被拖动时显示半透明禁用效果
+/// [ZoDND.disabledOpacity] 可以控制被拖动时显示半透明禁用效果
 /// - 自定义：通过 [ZoDND.builder] 根据状态渲染拖动或可放置反馈反馈
 ///
 /// 拖动事件：每个 dnd 组件均支持 拖动和放置事件，也可以通过 [ZoDNDEventNotification] 和 [ZoDNDAcceptNotification]
@@ -44,7 +44,8 @@ class ZoDND extends StatefulWidget {
     this.dropIndicator = true,
     this.dropIndicatorPadding,
     this.dropIndicatorRadius = 6,
-    this.disableOpacity,
+    this.disabledOpacity,
+    this.longPressDragOnTouch = true,
     this.onDragStart,
     this.onDragMove,
     this.onDragEnd,
@@ -105,7 +106,10 @@ class ZoDND extends StatefulWidget {
   final double dropIndicatorRadius;
 
   /// 节点不可用时添加的透明度，在拖动节点、不可放置节点添加
-  final double? disableOpacity;
+  final double? disabledOpacity;
+
+  /// 在触控类操作中使用 longPress 触发拖动事件, 防止干扰后方的滚动组件
+  final bool longPressDragOnTouch;
 
   /// 任意节点开始拖动触发
   final void Function(ZoDNDEvent event)? onDragStart;
@@ -336,6 +340,7 @@ class _ZoDNDState extends State<ZoDND> {
     return ZoTrigger(
       enabled: node.draggable,
       onDrag: onDrag,
+      longPressDragOnTouch: widget.longPressDragOnTouch,
       child: buildChild(context),
     );
   }
@@ -357,7 +362,7 @@ class _ZoDNDState extends State<ZoDND> {
         node: node,
         child: Opacity(
           opacity: showOpacity
-              ? (widget.disableOpacity ?? context.zoStyle.disableOpacity)
+              ? (widget.disabledOpacity ?? context.zoStyle.disableOpacity)
               : 1,
           child: VisibilityDetector(
             key: Key(id),

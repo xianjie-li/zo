@@ -177,7 +177,7 @@ class ZoMutator<Operation> {
   /// 注意：
   /// - [batchMutation] 不支持嵌套使用，会导致操作被彻底琐死
   /// - 如果一个操作可能永远挂起，最好实现某种机制来让它做出超时等行为，避免影响后续操作
-  Future<T> batchMutation<T>(
+  Future<T?> batchMutation<T>(
     Future<T> Function() action, [
     bool ignoreError = true,
   ]) async {
@@ -200,10 +200,10 @@ class ZoMutator<Operation> {
     } catch (e) {
       if (ignoreError) {
         _flushBatch(batchCompleter.future);
+      } else {
+        // 将 action 错误重新抛给用户
+        rethrow;
       }
-
-      // action 错误需要重新抛给用户
-      rethrow;
     } finally {
       // 完成通知时，将其清理
       final index = _mutationFutures.indexOf(batchCompleter.future);
@@ -214,6 +214,8 @@ class ZoMutator<Operation> {
 
       batchCompleter.complete();
     }
+
+    return null;
   }
 
   /// 销毁并清理数据

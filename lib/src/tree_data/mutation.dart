@@ -107,6 +107,8 @@ extension TreeDataMutationExtension<D> on ZoTreeDataController<D> {
     try {
       final res = await loader(row);
 
+      _asyncRowTask.remove(value);
+
       if (res.isNotEmpty) {
         mutator.mutation(
           ZoMutatorCommand(
@@ -122,9 +124,10 @@ extension TreeDataMutationExtension<D> on ZoTreeDataController<D> {
         );
 
         _asyncRowCaches[value] = res;
+      } else {
+        // 由于没有触发 mutation，需要主动通知更新
+        update();
       }
-
-      _asyncRowTask.remove(value);
 
       onLoadStatusChanged?.call(
         ZoTreeDataLoadEvent<D>(
@@ -154,6 +157,19 @@ extension TreeDataMutationExtension<D> on ZoTreeDataController<D> {
 
   /// 变更通知
   void _onMutation(ZoMutatorDetails<ZoTreeDataOperation> details) {
+    /// 取最后进行的移动操作，并设置被移动的节点为选中状态
+    ZoTreeDataMoveOperation? lastMoveOperation;
+
+    for (final (operation, _) in details.operation.reversed) {
+      if (operation is ZoTreeDataMoveOperation) {
+        lastMoveOperation = operation;
+      }
+    }
+
+    if (lastMoveOperation != null && lastMoveOperation.values.isNotEmpty) {
+      selector.setSelected(lastMoveOperation.values);
+    }
+
     onMutation?.call(details);
   }
 

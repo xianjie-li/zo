@@ -376,7 +376,9 @@ class _ZoInteractiveBoxState extends State<ZoInteractiveBox> {
         canRequestFocus: widget.interactive && widget.canRequestFocus,
         onActiveChanged: onActiveChanged,
         onFocusChanged: onFocusChanged,
-        onContextAction: onContextAction,
+        onContextAction: widget.onActiveChanged == null
+            ? null
+            : onContextAction,
         onTap: onTap,
         onTapDown: onTapDown,
         onTapCancel: onTapCancel,

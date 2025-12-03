@@ -146,6 +146,7 @@ class ZoOverlayEntry extends ChangeNotifier {
 
   /// 执行 mayDismiss 检测, 在库内部使用
   bool _mayDismiss() {
+    if (overlay?._forceDismiss == true) return true;
     if (mayDismiss != null) return mayDismiss!();
     return true;
   }
@@ -299,6 +300,8 @@ class ZoOverlayEntry extends ChangeNotifier {
     // 随后在 dispose 钩子中又再次关闭，故将这种多次销毁的行为设置为允许的
     if (_isDisposed) return;
 
+    _isDisposed = true;
+
     onDispose?.call();
     disposeEvent.emit();
 
@@ -311,8 +314,6 @@ class ZoOverlayEntry extends ChangeNotifier {
     hoverEvent.clear();
 
     focusScopeNode.dispose();
-
-    _isDisposed = true;
 
     super.dispose();
   }
@@ -520,11 +521,14 @@ class ZoOverlayEntry extends ChangeNotifier {
     changed();
   }
 
-  /// 是否可安全关闭或销毁, 返回 false 可阻止, 随后, 可以在 onDismiss 中监听被拦截的操作,
+  /// 是否可安全关闭或销毁, 返回 false 可阻止关闭, 随后, 可以在 onDismiss 中监听被拦截的操作,
   /// 用户可以在 onDismiss 询问是否需要关闭, 然后通过 [ZoOverlay.skipDismissCheck] 来强制关闭层
   bool Function()? mayDismiss;
 
-  /// 关闭或销毁时调用, 无论它是否成功, 可在此处添加拦截询问等操作
+  /// 关闭或销毁时调用，如果 didDismiss 为 false，表示关闭操作已被 [mayDismiss] 阻止，
+  /// 可以在方法内添加询问操作，并在用户确认时使用 [ZoOverlay.skipDismissCheck] 执行强制关闭
+  ///
+  /// 如果层是一个路由层，可能会通过 result 传入返回时的参数
   void Function(bool didDismiss, dynamic result)? onDismiss;
 
   /// 层是否处于光标悬停状态
