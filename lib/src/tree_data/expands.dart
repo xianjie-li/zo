@@ -84,7 +84,8 @@ extension TreeDataExpandsExtension<D> on ZoTreeDataController<D> {
 
   /// 收起全部
   void collapseAll() {
-    _resetExpand();
+    expandAll = false;
+    expander.batch(expander.unselectAll, false);
     update();
   }
 
@@ -101,10 +102,5 @@ extension TreeDataExpandsExtension<D> on ZoTreeDataController<D> {
   /// 可能需要单独记录该状态
   HashSet<Object> getExpands() {
     return expander.getSelected();
-  }
-
-  void _resetExpand() {
-    expandAll = false;
-    expander.unselectAll(false);
   }
 }

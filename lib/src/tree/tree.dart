@@ -14,12 +14,16 @@ part "shortcuts.dart";
 part "tree_actions.dart";
 part "drag_sort.dart";
 
-/// 树形组件
+/// 树形组件，它渲染一组 [ZoOption], 并提供了树控件的几乎所有常用功能，例如缩进展示、展开/折叠、选择、拖拽排序、数据变更、筛选等，
+/// 也提供了丰富的自定义渲染接口
 ///
 /// 表单控件支持：支持 [ZoTree.value] / [ZoTree.onChanged] 进行选项控制，可以方便的集成为表单控件
 ///
-/// 异步选项：只在通过 [ZoTreeState.toggle] / [ZoTreeState.expand] 展开时才会触发异步选项获取，
-/// 全部展开等操作不会触发，这是为了避免存在大量异步加载选项时瞬间触发过多的加载请求
+/// 操作实例：在一些高级场景中，比如要主动跳转到某个选项、手动控制选中、展开等，
+/// 可以获取 [ZoTreeState] 实例并使用其提供的 api 进行操作，以下是一个可能的使用场景：
+/// - [ZoTreeState.controller] 选项控制器，提供了对数据进行增删改查的丰富接口、筛选、展开控制等
+/// - [ZoTreeState.selector] 手动控制选中项，作为表单控件时通常会通过 [ZoTree.value] / [ZoTree.onChanged] 控制
+/// - [ZoTreeState.jumpTo] 和 [ZoTreeState.focusOption] 跳转到指定选项
 class ZoTree extends ZoCustomFormWidget<Iterable<Object>> {
   const ZoTree({
     super.key,
@@ -34,12 +38,14 @@ class ZoTree extends ZoCustomFormWidget<Iterable<Object>> {
     this.onContextAction,
     this.onMutation,
     this.expandByTapRow,
-    this.padding = const EdgeInsets.all(8),
+    this.padding,
+    this.size,
     this.maxHeight,
-    this.indentSize = const Size(24, 24),
+    this.indentSize,
     this.togglerIcon,
     this.leadingBuilder,
     this.trailingBuilder,
+    this.headerBuilder,
     this.empty,
     this.matchString,
     this.caseSensitive = false,
@@ -49,12 +55,14 @@ class ZoTree extends ZoCustomFormWidget<Iterable<Object>> {
     this.onFilterComplete,
     this.activeColor,
     this.highlightColor,
+    this.iconTheme,
+    this.textStyle,
     this.expandAll = false,
     this.expandTopLevel = false,
     this.expands = const [],
     this.enable = true,
-    this.indentDots = true,
-    this.onlyLeafIndentDot = true,
+    this.leafDot = true,
+    this.indentLine = true,
     this.pinedActiveBranch = true,
     this.pinedActiveBranchMaxLevel,
     this.sortable = false,
@@ -82,7 +90,7 @@ class ZoTree extends ZoCustomFormWidget<Iterable<Object>> {
   /// 滚动控制
   final ScrollController? scrollController;
 
-  /// 点击行
+  /// 点击行触发
   final void Function(ZoTreeEvent event)? onTap;
 
   /// 行上下文事件
@@ -97,13 +105,16 @@ class ZoTree extends ZoCustomFormWidget<Iterable<Object>> {
   final bool Function(ZoTreeDataNode node)? expandByTapRow;
 
   /// 间距
-  final EdgeInsets padding;
+  final EdgeInsets? padding;
+
+  /// 组件整体尺寸
+  final ZoSize? size;
 
   /// 默认情况下组件使用可用的最大高度作为尺寸，在一些场景下，会需要根据内容决定尺寸，此时可通过设置最大高度来实现
   final double? maxHeight;
 
   /// 宽度控制每一级缩进的尺寸，高度控制展开按钮的尺寸
-  final Size indentSize;
+  final Size? indentSize;
 
   /// 展开图标，需要传入一个指向右侧的标记图标，内部会在展开后指定应用旋转
   final IconData? togglerIcon;
@@ -113,6 +124,9 @@ class ZoTree extends ZoCustomFormWidget<Iterable<Object>> {
 
   /// 自定义行结尾节点
   final Widget Function(ZoTreeEvent event)? trailingBuilder;
+
+  /// 自定义主文本区域内容结尾节点，优先级低于 [ZoOption.builder]
+  final Widget Function(ZoTreeEvent event)? headerBuilder;
 
   /// 自定义空反馈节点
   final Widget? empty;
@@ -150,6 +164,12 @@ class ZoTree extends ZoCustomFormWidget<Iterable<Object>> {
   /// highlight 状态的背景色
   final Color? highlightColor;
 
+  /// 调整图标样式
+  final IconThemeData? iconTheme;
+
+  /// 文本样式
+  final TextStyle? textStyle;
+
   /// 初始化时展开所有行
   final bool expandAll;
 
@@ -162,11 +182,11 @@ class ZoTree extends ZoCustomFormWidget<Iterable<Object>> {
   /// 设置为 false 可禁止选中、排序等操作
   final bool enable;
 
-  /// 渲染缩进标记 dot
-  final bool indentDots;
+  /// 在叶子节点左侧显示标记点
+  final bool leafDot;
 
-  /// 只为叶子节点渲染缩进标记 dot
-  final bool onlyLeafIndentDot;
+  /// 显示缩进参考线
+  final bool indentLine;
 
   /// 将当前活动分支选项固定在顶部
   final bool pinedActiveBranch;
@@ -246,11 +266,48 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree>
 
     _calcUseLightText();
 
-    _updateFixedHeight();
-
-    _updateOptionOffsetCache();
-
     _isInit = false;
+  }
+
+  bool _isFirstChangeDependencies = true;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    final isFirst = _isFirstChangeDependencies;
+    _isFirstChangeDependencies = false;
+
+    _style = context.zoStyle;
+
+    _itemIconTheme = IconThemeData(
+      size: _style!.getSizedIconSize(widget.size),
+    ).merge(widget.iconTheme);
+    _itemTextStyle = TextStyle(
+      fontSize: _style!.getSizedFontSize(widget.size),
+    ).merge(widget.textStyle);
+
+    _padding =
+        widget.padding ??
+        EdgeInsets.all(
+          _style!.getSizedSpace(widget.size),
+        );
+
+    _indentSize =
+        widget.indentSize ??
+        switch (widget.size ?? _style!.widgetSize) {
+          ZoSize.small => const Size.square(20),
+          ZoSize.medium => const Size.square(22),
+          ZoSize.large => const Size.square(28),
+        };
+
+    // 这些方法依赖 inherited widget, 需要延迟到这里初始化
+    if (isFirst) {
+      _isInit = true;
+      _updateOptionOffsetCache();
+      _updateFixedHeight();
+      _isInit = false;
+    }
   }
 
   @override
@@ -261,31 +318,31 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree>
     if (oldWidget.options != widget.options) {
       _resetExpand();
       controller.data = widget.options;
-      _updateFixedHeight();
+      _updateFixedHeight(true);
     }
 
     if (oldWidget.matchString != widget.matchString) {
       _resetExpand();
       controller.matchString = widget.matchString;
-      _updateFixedHeight();
+      _updateFixedHeight(true);
     }
 
     if (oldWidget.matchRegexp != widget.matchRegexp) {
       _resetExpand();
       controller.matchRegexp = widget.matchRegexp;
-      _updateFixedHeight();
+      _updateFixedHeight(true);
     }
 
     if (oldWidget.filter != widget.filter) {
       _resetExpand();
       controller.filter = widget.filter;
-      _updateFixedHeight();
+      _updateFixedHeight(true);
     }
 
     if (oldWidget.caseSensitive != widget.caseSensitive) {
       _resetExpand();
       controller.caseSensitive = widget.caseSensitive;
-      _updateFixedHeight();
+      _updateFixedHeight(true);
     }
 
     if (oldWidget.onMutation != widget.onMutation) {
@@ -297,7 +354,7 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree>
     }
 
     if (oldWidget.maxHeight != widget.maxHeight) {
-      _updateFixedHeight();
+      _updateFixedHeight(true);
     }
 
     if (oldWidget.activeColor != widget.activeColor) {
@@ -417,8 +474,6 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree>
   @override
   @protected
   Widget build(BuildContext context) {
-    _style = context.zoStyle;
-
     _activeTextColor = _getActiveTextColor();
 
     return SizedBox(
@@ -437,19 +492,12 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree>
                 controller: scrollController,
                 slivers: <Widget>[
                   SliverPadding(
-                    padding: widget.padding,
+                    padding: _padding,
                     sliver: SliverVariedExtentList.builder(
                       itemBuilder: _treeNodeBuilderWithIndex,
                       itemExtentBuilder: _treeRowExtentBuilder,
                       itemCount: controller.filteredFlatList.length,
-                      findChildIndexCallback: (key) {
-                        if (key is ValueKey) {
-                          final index = controller.getFilteredIndex(key.value);
-                          return index;
-                        }
-
-                        return null;
-                      },
+                      findChildIndexCallback: _findChildIndexCallback,
                     ),
                   ),
                 ],
@@ -461,24 +509,6 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree>
           // 顶部固定选项
           ?_fixedOptionBuilder(),
         ],
-      ),
-    );
-  }
-}
-
-/// 渲染树节点前方的缩进指示点
-class _ZoTreeIndentIndicator extends StatelessWidget {
-  const _ZoTreeIndentIndicator({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox.square(
-      dimension: 2.4,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: Colors.grey[400],
-          borderRadius: BorderRadius.circular(10),
-        ),
       ),
     );
   }

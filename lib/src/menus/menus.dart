@@ -17,6 +17,7 @@ class ZoMenuEntry extends ZoOverlayEntry {
     this.selectionType = ZoSelectionType.none,
     this.branchSelectable = false,
     this.dismissOnSelect = true,
+    ZoSize? size,
     Widget? toolbar,
     double? maxHeight,
     double maxHeightFactor = ZoOptionViewList.defaultHeightFactor,
@@ -59,6 +60,7 @@ class ZoMenuEntry extends ZoOverlayEntry {
        _width = width,
        _maxHeightFactor = maxHeightFactor,
        _maxHeight = maxHeight,
+       _size = size,
        _toolbar = toolbar {
     // menu 自行处理esc关闭行为
     super.escapeClosable = false;
@@ -141,6 +143,14 @@ class ZoMenuEntry extends ZoOverlayEntry {
 
   /// 单选或未启用选中时, 点击项后是否自动关闭层
   bool dismissOnSelect;
+
+  /// 选项尺寸
+  ZoSize? get size => _size;
+  ZoSize? _size;
+  set size(ZoSize? value) {
+    _size = value;
+    changed();
+  }
 
   /// 在顶部渲染工具栏
   Widget? get toolbar => _toolbar;
@@ -597,6 +607,7 @@ class ZoMenuEntry extends ZoOverlayEntry {
         dismissOnSelect: dismissOnSelect,
         // maxHeight: maxHeight,
         // maxHeightFactor: maxHeightFactor,
+        size: size,
         width: width,
         inheritWidth: inheritWidth,
         onTap: onTap,
@@ -670,6 +681,7 @@ class ZoMenuEntry extends ZoOverlayEntry {
         option: option,
         activeCheck: _isActive,
         highlightCheck: _isHighlight,
+        size: size,
         toolbar: toolbar,
         maxHeight: maxHeight,
         maxHeightFactor: maxHeightFactor,

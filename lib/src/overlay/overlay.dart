@@ -814,6 +814,9 @@ class _ZoOverlayViewState extends State<ZoOverlayView> {
 
   /// 拖动实现
   bool onDrag(ZoTriggerDragEvent event) {
+    // 只接收由层发起的事件
+    if (event.data! is ZoOverlayEntry) return false;
+
     final obj = entry.positionedRenderObject;
 
     /// 正在执行还原操作时, 防止拖动
@@ -1073,7 +1076,7 @@ class _ZoOverlayViewState extends State<ZoOverlayView> {
       child: child,
     );
 
-    // 监听自己派发的拖动事件, 实现拖动行为
+    // 监听子级派发的拖动事件, 实现拖动行为
     child = NotificationListener<ZoTriggerDragEvent>(
       onNotification: onDrag,
       child: child,

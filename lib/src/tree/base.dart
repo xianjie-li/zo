@@ -9,6 +9,12 @@ mixin _TreeBaseMixin on ZoCustomFormState<Iterable<Object>, ZoTree> {
   /// 控制选中项
   ZoSelector<Object, ZoOption> get selector => controller.selector;
 
+  /// 控制展开项，使用 [controller] 提供的api会更方便
+  ZoSelector<Object, ZoOption> get expander => controller.expander;
+
+  /// 变更数据
+  ZoMutator<ZoTreeDataOperation> get mutator => controller.mutator;
+
   /// 滚动控制
   ScrollController get scrollController =>
       widget.scrollController ?? _innerScrollController;
@@ -67,6 +73,18 @@ mixin _TreeBaseMixin on ZoCustomFormState<Iterable<Object>, ZoTree> {
     delay: const Duration(milliseconds: 150),
   );
 
+  /// 预构建的图标样式，在列表项中使用，目的是减少构造次数
+  IconThemeData? _itemIconTheme;
+
+  /// 预构建的文本样式，在列表项中使用，目的是减少构造次数
+  TextStyle? _itemTextStyle;
+
+  /// 容器内边距, 根据参数和主题等动态计算得到
+  late EdgeInsets _padding;
+
+  /// 缩进尺寸，根据参数和主题等动态计算得到
+  late Size _indentSize;
+
   /// 获取指定选项的滚动偏移，需要确保选项父级全部展开后调用
   double _getOptionOffset(Object value) {
     final node = controller.getNode(value);
@@ -75,12 +93,14 @@ mixin _TreeBaseMixin on ZoCustomFormState<Iterable<Object>, ZoTree> {
 
     double height = 0;
 
+    final defaultHeight = _style!.getSizedExtent(widget.size);
+
     for (final option in controller.filteredFlatList) {
       if (option.value == value) {
         break;
       }
 
-      height += option.height;
+      height += option.height ?? defaultHeight;
     }
 
     return height;
@@ -100,6 +120,7 @@ mixin _TreeBaseMixin on ZoCustomFormState<Iterable<Object>, ZoTree> {
     }
 
     var parentNode = node.parent;
+    final defaultHeight = _style!.getSizedExtent(widget.size);
 
     while (parentNode != null) {
       if (widget.pinedActiveBranchMaxLevel != null) {
@@ -110,7 +131,7 @@ mixin _TreeBaseMixin on ZoCustomFormState<Iterable<Object>, ZoTree> {
       }
 
       parents.insert(0, parentNode.value);
-      fixedHeight += parentNode.data.height;
+      fixedHeight += parentNode.data.height ?? defaultHeight;
 
       parentNode = parentNode.parent;
     }

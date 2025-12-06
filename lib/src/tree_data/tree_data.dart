@@ -17,7 +17,8 @@ part "expands.dart";
 /// [ZoTreeDataController] 被设计为数据类型不可知的，需要通过继承该类并通过泛型 [D] 指定数据的类型，
 /// 然后实现 [cloneData]、 [getValue]、[getChildrenList] 等方法来适配具体的类型
 ///
-/// 选中和展开管理：传入 selected、expands 控制初始的选中、展开项，通过 [selector] 和 [expander] 管理选中和展开项
+/// 选中和展开管理：传入 selected、expands 控制初始的选中、展开项，通过 [selector] 和 [expander] 管理选中和展开项，
+/// 类本身还提供了 [isExpanded] 、[expand] 等便捷api进行展开控制
 ///
 /// 数据筛选：通过 [matchString]、[matchRegexp]、[filter] 之一来筛选要显示的数据
 ///
@@ -44,6 +45,12 @@ abstract class ZoTreeDataController<D> {
     this.onUpdateEach,
     this.onUpdateStart,
     this.onUpdateEnd,
+    this.onReloadEach,
+    this.onReloadStart,
+    this.onReloadEnd,
+    this.onRefreshEach,
+    this.onRefreshStart,
+    this.onRefreshEnd,
     this.onFilterCompleted,
     this.onMutation,
     this.onLoadStatusChanged,
@@ -176,6 +183,26 @@ abstract class ZoTreeDataController<D> {
   /// 在 [update] 结束后调用
   VoidCallback? onUpdateEnd;
 
+  /// 内部通过 [reload] 对数据循环处理时，会在循环中的每个数据调用该方法，
+  /// 可以用来做一些外部的数据同步工作
+  ValueChanged<ZoTreeDataEachArgs>? onReloadEach;
+
+  /// 在 [reload] 开始之前调用
+  VoidCallback? onReloadStart;
+
+  /// 在 [reload] 结束后调用
+  VoidCallback? onReloadEnd;
+
+  /// 内部通过 [refresh] 对数据循环处理时，会在循环中的每个数据调用该方法，
+  /// 可以用来做一些外部的数据同步工作
+  ValueChanged<ZoTreeDataEachArgs>? onRefreshEach;
+
+  /// 在 [refresh] 开始之前调用
+  VoidCallback? onRefreshStart;
+
+  /// 在 [refresh] 结束后调用
+  VoidCallback? onRefreshEnd;
+
   /// 在存在筛选条件时，如果存在匹配项, 会在完成筛选后调用此方法进行通知，回调会传入所有严格匹配的数据，
   /// 可以在用来在筛选完成后添加高亮首选项等优化
   ///
@@ -265,6 +292,7 @@ abstract class ZoTreeDataController<D> {
   /// 数据源需要通过外部数据完全替换时使用，此操作会清理所有缓存信息并重载跟数据
   void reload() {
     // 清理现有缓存、clone 数据, 同时创建node，生成各 processedData / flatList
+    onReloadStart?.call();
 
     _processedData = [];
     _flatList = [];
@@ -351,10 +379,14 @@ abstract class ZoTreeDataController<D> {
     );
 
     update();
+
+    onReloadEnd?.call();
   }
 
   /// 数据在内部被可控的更新，比如通过内部 api 新增、删除、排序等，此操作会重新计算节点的关联关系、flatList 等
   void refresh() {
+    onRefreshStart?.call();
+
     _flatList = [];
     _nodes.clear();
     _indexNodes.clear();
@@ -422,6 +454,8 @@ abstract class ZoTreeDataController<D> {
     );
 
     update();
+
+    onRefreshEnd?.call();
   }
 
   /// 重新根据展开、筛选状态更新要展示的列表，关联信息等
@@ -538,13 +572,17 @@ abstract class ZoTreeDataController<D> {
   ///
   /// 注意：由于遍历尚未完成，[ZoTreeDataNode.next] 等依赖后续节点或子级遍历结果的属性不可用
   @protected
-  void reloadEach(ZoTreeDataEachArgs args) {}
+  void reloadEach(ZoTreeDataEachArgs args) {
+    onReloadEach?.call(args);
+  }
 
   /// 内部通过 [update] 对数据循环处理时，会在每个 node 构造完成后调用
   ///
   /// 注意：由于遍历尚未完成，[ZoTreeDataNode.next] 等依赖后续节点或子级遍历结果的属性不可用
   @protected
-  void refreshEach(ZoTreeDataEachArgs args) {}
+  void refreshEach(ZoTreeDataEachArgs args) {
+    onRefreshEach?.call(args);
+  }
 
   /// 内部通过 [update] 对数据循环处理时，会在循环中对满足显示条件的每个数据调用该方法，
   /// 可以用来做一些外部的数据同步工作，它以实际节点顺序的倒序循环

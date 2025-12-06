@@ -34,7 +34,7 @@ mixin _TreeActionsMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
       controller.expand(node.parent!.value);
     }
 
-    final itemTop = _getOptionOffset(value) + widget.padding.top;
+    final itemTop = _getOptionOffset(value) + _padding.top;
 
     final fixedOptionData = _getOptionFixedOptions(value);
 
@@ -43,6 +43,10 @@ mixin _TreeActionsMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
 
     var position = max(itemTop - adjustOffset, 0.0);
 
+    final defaultHeight = _style!.getSizedExtent(widget.size);
+
+    final itemHeight = node.data.height ?? defaultHeight;
+
     if (smartScroll) {
       final scrollOffset = scrollController.offset;
       final viewportHeight = scrollController.position.viewportDimension;
@@ -50,7 +54,7 @@ mixin _TreeActionsMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
       final visibleTop = scrollOffset + fixedOptionData.fixedHeight;
       final visibleBottom = scrollOffset + viewportHeight;
 
-      final itemBottom = itemTop + node.data.height;
+      final itemBottom = itemTop + itemHeight;
 
       // 是否完全可见
       final isVisible = itemTop >= visibleTop && itemBottom <= visibleBottom;
@@ -69,11 +73,11 @@ mixin _TreeActionsMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
       } else {
         // 选项在下方时，跳转到底部
         final midLine = scrollOffset + viewportHeight / 2;
-        final itemMid = itemTop + node.data.height / 2;
+        final itemMid = itemTop + itemHeight / 2;
 
         if (itemMid > midLine) {
           position = max(
-            itemTop - viewportHeight + node.data.height + offset,
+            itemTop - viewportHeight + itemHeight + offset,
             0.0,
           );
         }
@@ -108,7 +112,7 @@ mixin _TreeActionsMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
   /// 重置展开状态
   void _resetExpand() {
     controller.expandAll = false;
-    controller.expander.unselectAll(false);
+    controller.expander.batch(controller.expander.unselectAll, false);
   }
 
   /// 对指定的单个节点执行选中行为
@@ -131,8 +135,6 @@ mixin _TreeActionsMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
   /// 对多选的处理
   void _multipleSelectHandle(ZoTreeDataNode<ZoOption> node) {
     final isSelected = selector.isSelected(node.value);
-
-    print("isSelected: ${isSelected} ${ZoShortcutsHelper.isSingleKeyPressed}");
 
     if (ZoShortcutsHelper.isSingleKeyPressed &&
         ZoShortcutsHelper.isCommandPressed) {

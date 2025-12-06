@@ -17,10 +17,14 @@ class ZoOptionView extends StatelessWidget {
     this.leading,
     this.trailing,
     this.padding,
+    this.decorationPadding,
+    this.height,
     this.verticalSpacing,
     this.horizontalSpacing,
     this.activeColor,
     this.highlightColor,
+    this.iconTheme,
+    this.textStyle,
     this.onTap,
     this.onContextAction,
     this.onActiveChanged,
@@ -63,6 +67,12 @@ class ZoOptionView extends StatelessWidget {
   /// 间距
   final EdgeInsets? padding;
 
+  /// 仅用于装饰的边距，不影响实际布局空间，用于多个相同组件并列时，添加间距，但是不影响事件触发的边距
+  final EdgeInsets? decorationPadding;
+
+  /// 高度，会优先取 [option] 中的高度
+  final double? height;
+
   /// 纵向内容间的间距
   final double? verticalSpacing;
 
@@ -74,6 +84,12 @@ class ZoOptionView extends StatelessWidget {
 
   /// highlight 状态的背景色
   final Color? highlightColor;
+
+  /// 调整图标样式
+  final IconThemeData? iconTheme;
+
+  /// 文本样式
+  final TextStyle? textStyle;
 
   /// 点击, 若返回一个 future, 可进入loading状态
   final dynamic Function(ZoTriggerEvent event)? onTap;
@@ -92,16 +108,7 @@ class ZoOptionView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final style = context.zoStyle;
-
-    var hasChild = false;
-
-    if (option.children != null && option.children!.isNotEmpty) {
-      hasChild = true;
-    }
-
-    if (option.loader != null) {
-      hasChild = true;
-    }
+    final hasChild = option.isBranch && option.children!.isNotEmpty;
 
     Widget? header;
     Widget? leadingNode;
@@ -115,6 +122,7 @@ class ZoOptionView extends StatelessWidget {
 
     if (option.builder != null) {
       header = option.builder!(context);
+
       // 完全自定义时去掉默认的部分样式
       padding = this.padding ?? EdgeInsets.zero;
     } else {
@@ -133,7 +141,7 @@ class ZoOptionView extends StatelessWidget {
     final ZoOptionEventData data = (option: option, context: context);
 
     return SizedBox(
-      height: option.height,
+      height: height ?? option.height,
       child: ZoTile(
         header: header,
         leading: leadingNode,
@@ -150,9 +158,11 @@ class ZoOptionView extends StatelessWidget {
         highlightColor: highlightColor,
         padding: padding,
         verticalSpacing: verticalSpacing,
-        horizontalSpacing: horizontalSpacing ?? style.space1,
-        decorationPadding: const EdgeInsets.symmetric(vertical: 1),
-        iconTheme: const IconThemeData(size: ZoOptionView.iconSize),
+        horizontalSpacing: horizontalSpacing,
+        decorationPadding:
+            decorationPadding ?? const EdgeInsets.symmetric(vertical: 1),
+        iconTheme: iconTheme,
+        textStyle: textStyle,
         onTap: onTap,
         onContextAction: onContextAction,
         onActiveChanged: onActiveChanged,
@@ -176,6 +186,7 @@ class ZoOptionViewList extends StatefulWidget {
     this.maxHeight,
     this.maxHeightFactor = ZoOptionViewList.defaultHeightFactor,
     this.padding,
+    this.size,
     this.loading = false,
     this.hasDecoration = true,
     this.scrollController,
@@ -213,6 +224,9 @@ class ZoOptionViewList extends StatefulWidget {
   /// 内间距
   final EdgeInsets? padding;
 
+  /// 选项尺寸,优先级低于直接在选项中设置的高度
+  final ZoSize? size;
+
   /// 是否处于加载状态
   final bool loading;
 
@@ -247,6 +261,17 @@ class _ZoOptionViewListState extends State<ZoOptionViewList> {
   /// 是否处于加载状态
   bool loading = false;
 
+  late ZoStyle style;
+
+  /// 预计算一些信息，在每个 itemBuilder 中使用
+  late double itemDefaultHeight;
+
+  late IconThemeData itemIconTheme;
+
+  late TextStyle itemTextStyle;
+
+  late double itemHorizontalSpacing;
+
   @override
   void initState() {
     super.initState();
@@ -266,6 +291,14 @@ class _ZoOptionViewListState extends State<ZoOptionViewList> {
   void didChangeDependencies() {
     super.didChangeDependencies();
 
+    style = context.zoStyle;
+
+    // 这些计算在 didChangeDependencies 中执行, 避免每个itemBuilder重复计算
+    itemDefaultHeight = style.getSizedExtent(widget.size);
+    itemIconTheme = IconThemeData(size: style.getSizedIconSize(widget.size));
+    itemTextStyle = TextStyle(fontSize: style.getSizedFontSize(widget.size));
+    itemHorizontalSpacing = style.getSizedSpace(widget.size);
+
     updateScrollDatas();
   }
 
@@ -281,11 +314,12 @@ class _ZoOptionViewListState extends State<ZoOptionViewList> {
     final maxHeight = widget.maxHeight ?? size.height * widget.maxHeightFactor;
 
     var height = 0.0;
+    final defaultHeight = style.getSizedExtent(widget.size);
 
     scrollable = false;
 
     for (final option in widget.options) {
-      height += option.height;
+      height += option.height ?? defaultHeight;
 
       if (height > maxHeight) {
         scrollable = true;
@@ -293,13 +327,7 @@ class _ZoOptionViewListState extends State<ZoOptionViewList> {
       }
     }
 
-    var paddingHeight = 0.0;
-
-    if (widget.padding != null) {
-      paddingHeight = widget.padding!.top + widget.padding!.bottom;
-    }
-
-    listHeight = height > 0 ? height + paddingHeight : 0;
+    listHeight = height > 0 ? height : 0;
   }
 
   Widget? itemBuilder(BuildContext context, int index) {
@@ -311,24 +339,66 @@ class _ZoOptionViewListState extends State<ZoOptionViewList> {
     final isLoading = widget.loadingCheck?.call(opt) ?? false;
     final isHighlight = widget.highlightCheck?.call(opt) ?? false;
 
-    return ZoOptionView(
-      key: ValueKey(opt.value),
-      onTap: widget.onTap,
-      onActiveChanged: widget.onActiveChanged,
-      onFocusChanged: widget.onFocusChanged,
-      option: opt,
-      active: isActive,
-      loading: isLoading,
-      highlight: isHighlight,
+    final hasChild = opt.isBranch && (opt.children?.isNotEmpty ?? false);
+
+    Widget? header;
+
+    EdgeInsets? padding = EdgeInsets.symmetric(
+      horizontal: style.space2,
+    );
+
+    if (opt.builder != null) {
+      header = opt.builder!(context);
+    } else {
+      if (opt.title != null) {
+        header = DefaultTextStyle.merge(
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          child: opt.title!,
+        );
+      }
+    }
+
+    return Builder(
+      builder: (context) {
+        final ZoOptionEventData data = (option: opt, context: context);
+
+        return SizedBox(
+          height: opt.height ?? itemDefaultHeight,
+          child: ZoTile(
+            key: ValueKey(opt.value),
+            header: header,
+            leading: opt.leading,
+            trailing: opt.trailing,
+            enabled: opt.enabled,
+            arrow: hasChild,
+            active: isActive,
+            loading: isLoading,
+            highlight: isHighlight,
+            interactive: opt.interactive,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            disabledColor: Colors.transparent,
+            padding: padding,
+            horizontalSpacing: itemHorizontalSpacing,
+            decorationPadding: const EdgeInsets.symmetric(vertical: 1),
+            iconTheme: itemIconTheme,
+            textStyle: itemTextStyle,
+            onTap: widget.onTap,
+            onActiveChanged: widget.onActiveChanged,
+            onFocusChanged: widget.onFocusChanged,
+            data: data,
+          ),
+        );
+      },
     );
   }
 
   double? itemExtent(index, dimensions) {
     final opt = widget.options.elementAtOrNull(index);
-    return opt?.height;
+    return opt?.height ?? style.getSizedExtent(widget.size);
   }
 
-  Widget buildMain(ZoStyle style, ZoLocalizationsDefault locale) {
+  Widget buildMain(ZoLocalizationsDefault locale) {
     if (loading || widget.loading) {
       return const ZoProgress(
         size: ZoSize.small,
@@ -338,7 +408,7 @@ class _ZoOptionViewListState extends State<ZoOptionViewList> {
     if (widget.options.isEmpty) {
       return ZoOptionView(
         option: ZoOption(
-          height: 28,
+          height: style.sizeSM,
           title: Text(locale.noData, style: style.hintTextStyle),
           value: "__EMPTY__",
           interactive: false,
@@ -365,11 +435,13 @@ class _ZoOptionViewListState extends State<ZoOptionViewList> {
 
   @override
   Widget build(BuildContext context) {
-    final style = context.zoStyle;
     final locale = context.zoLocale;
 
+    final widgetPadding =
+        widget.padding ?? EdgeInsets.all(style.getSizedSpace(widget.size));
+
     return Container(
-      padding: widget.padding ?? EdgeInsets.all(style.space2),
+      padding: widgetPadding,
       width: double.infinity,
       decoration: !widget.hasDecoration
           ? null
@@ -385,7 +457,7 @@ class _ZoOptionViewListState extends State<ZoOptionViewList> {
         mainAxisSize: MainAxisSize.min,
         children: [
           ?widget.toolbar,
-          buildMain(style, locale),
+          buildMain(locale),
         ],
       ),
     );

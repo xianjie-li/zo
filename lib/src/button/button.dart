@@ -82,21 +82,13 @@ class ZoButton extends StatelessWidget {
     final isIconButton = icon != null && child == null;
 
     // 按钮尺寸
-    final btnSize = switch (size) {
-      ZoSize.small => style.sizeSM,
-      ZoSize.medium => style.sizeMD,
-      ZoSize.large => style.sizeLG,
-    };
+    final btnSize = style.getSizedExtent(size);
 
     // 文本尺寸
-    final textSize = switch (size) {
-      ZoSize.small => style.fontSizeSM,
-      ZoSize.medium => style.fontSize,
-      ZoSize.large => style.fontSizeMD,
-    };
+    final textSize = style.getSizedFontSize(size);
 
     // 图标尺寸, 图标按钮使用偏大一点的尺寸
-    final iconSize = isIconButton ? btnSize - 12 : textSize + 4;
+    final iconSize = style.getSizedIconSize(size, !isIconButton);
 
     // 横向间距
     var padding = switch (size) {

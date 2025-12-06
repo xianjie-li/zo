@@ -170,6 +170,7 @@ class ZoSelectState extends ZoCustomFormState<Iterable<Object>, ZoSelect> {
       selected: value,
       selectionType: widget.selectionType,
       branchSelectable: widget.branchSelectable,
+      size: widget.size,
       toolbar: widget.toolbar,
       dismissMode: ZoOverlayDismissMode.close,
       autoFocus: false, // 手动控制
@@ -193,6 +194,9 @@ class ZoSelectState extends ZoCustomFormState<Iterable<Object>, ZoSelect> {
       }
       if (oldWidget.branchSelectable != widget.branchSelectable) {
         menuEntry.branchSelectable = widget.branchSelectable;
+      }
+      if (oldWidget.size != widget.size) {
+        menuEntry.size = widget.size;
       }
       if (oldWidget.toolbar != widget.toolbar) {
         menuEntry.toolbar = widget.toolbar;

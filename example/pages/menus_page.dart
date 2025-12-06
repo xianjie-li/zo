@@ -274,7 +274,18 @@ class _MenusPageState extends State<MenusPage> {
           children: [
             ZoCell(
               span: 2.8,
+              child: ZoOptionViewList(
+                options: options1,
+                size: ZoSize.small,
+              ),
+            ),
+            ZoCell(
+              span: 2.8,
               child: ZoOptionViewList(options: options1),
+            ),
+            ZoCell(
+              span: 3.6,
+              child: ZoOptionViewList(options: options1, size: ZoSize.large),
             ),
             ZoCell(span: 0.4),
             ZoCell(

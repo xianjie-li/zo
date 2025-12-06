@@ -295,8 +295,11 @@ class _TreePageState extends State<TreePage> {
               ),
               child: ZoTree(
                 maxHeight: 400,
-                pinedActiveBranch: true,
+                // pinedActiveBranch: true,
                 key: treeKey,
+                // textStyle: TextStyle(color: Colors.red),
+                // iconTheme: IconThemeData(color: Colors.red),
+                // size: ZoSize.large,
                 options: options1,
                 matchString: filterString,
                 value: const ["value 4"],
@@ -313,6 +316,15 @@ class _TreePageState extends State<TreePage> {
                     });
                   }
                 },
+                // headerBuilder: (event) {
+                //   return Text(
+                //     '${event.node.data.title}',
+                //     style: TextStyle(
+                //       fontWeight: FontWeight.bold,
+                //       color: Colors.red,
+                //     ),
+                //   );
+                // },
                 // expandTopLevel: true,
                 // expandAll: true,
                 expandByTapRow: (node) {
@@ -322,7 +334,7 @@ class _TreePageState extends State<TreePage> {
                 implicitMultipleSelection: true,
                 // branchSelectable: false,
                 onTap: (node) {
-                  print("tapRow: ${node}");
+                  print("tapRow: ${node.node.value}");
                 },
                 // leadingBuilder: (event) {
                 //   return ZoButton(

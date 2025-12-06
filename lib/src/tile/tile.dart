@@ -37,6 +37,8 @@ class ZoTile extends StatelessWidget {
     this.interactive = true,
     this.padding,
     this.decorationPadding,
+    this.backgroundWidget,
+    this.foregroundWidget,
     this.verticalSpacing,
     this.horizontalSpacing,
     this.footerSpacing,
@@ -94,6 +96,12 @@ class ZoTile extends StatelessWidget {
 
   /// 仅用于装饰的边距，不影响实际布局空间，用于多个相同组件并列时，添加间距，但是不影响事件触发的边距
   final EdgeInsets? decorationPadding;
+
+  /// 额外挂载内容到与内容所在的 stack 后方
+  final Widget? backgroundWidget;
+
+  /// 额外挂载内容到与内容所在的 stack 前方
+  final Widget? foregroundWidget;
 
   /// 纵向内容间的间距
   final double? verticalSpacing;
@@ -197,6 +205,7 @@ class ZoTile extends StatelessWidget {
 
       list.add(
         Row(
+          key: const ValueKey("__cross_content__"),
           spacing: horizontalSpacing ?? style.space3,
           mainAxisAlignment: MainAxisAlignment.start,
           crossAxisAlignment: crossAxisAlignment,
@@ -227,6 +236,7 @@ class ZoTile extends StatelessWidget {
 
     list.add(
       Expanded(
+        key: const ValueKey("__main_content__"),
         child: Column(
           spacing: verticalSpacing ?? style.space2,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -237,15 +247,17 @@ class ZoTile extends StatelessWidget {
     );
 
     final arrowNode = arrow
-        ? const Icon(
+        ? Icon(
+            key: const ValueKey("__arrow__"),
             Icons.arrow_forward_ios_rounded,
-            size: 14,
+            size: (iconTheme?.size ?? style.getSizedIconSize()) - 4,
           )
         : null;
 
     if (trailing != null && arrowNode != null) {
       list.add(
         Row(
+          key: const ValueKey("__trailing__"),
           spacing: horizontalSpacing ?? style.space3,
           mainAxisSize: MainAxisSize.min,
           children: [trailing!, arrowNode],
@@ -264,7 +276,6 @@ class ZoTile extends StatelessWidget {
 
     return Column(
       spacing: footerSpacing ?? style.space4,
-      // mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [child, if (footer != null) footer!],
     );
@@ -324,8 +335,6 @@ class ZoTile extends StatelessWidget {
     ZoStyle style,
     Color? statusColor,
   ) {
-    if (focusBorder) {}
-
     if (this.style != ZoTileStyle.border) return (null, null);
 
     if (statusColor != null) {
@@ -347,13 +356,15 @@ class ZoTile extends StatelessWidget {
     final statusColor = _getStatusColor(style);
     final curColor = _getBgColor(style);
 
-    final mainContent = Row(
+    Widget mainContent = Row(
+      key: const ValueKey("__main_container__"),
       spacing: horizontalSpacing ?? style.space3,
       mainAxisAlignment: MainAxisAlignment.center,
-      // mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: crossAxisAlignment,
       children: _buildMainContent(style, statusColor),
     );
+
+    mainContent = _withOuterFooter(style, mainContent);
 
     final (border, activeBorder) = _getBorder(style, statusColor);
 
@@ -379,9 +390,11 @@ class ZoTile extends StatelessWidget {
       textStyle: textStyle,
       padding: padding ?? EdgeInsets.all(style.space3),
       decorationPadding: decorationPadding,
+      backgroundWidget: backgroundWidget,
+      foregroundWidget: foregroundWidget,
       radius: BorderRadius.circular(style.borderRadius),
       data: data,
-      child: _withOuterFooter(style, mainContent),
+      child: mainContent,
     );
 
     return mainNode;

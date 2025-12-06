@@ -90,6 +90,14 @@ int deepHash(Object? value) {
   return value.hashCode;
 }
 
+/// 判断指定颜色是否应使用浅色文本
+bool useLighterText(Color color) {
+  // 如果颜色包含较大的透明度，则使用浅色文本
+  if (color.a < 0.5) return false;
+
+  return color.computeLuminance() < 0.5;
+}
+
 /// 防抖
 class Debouncer {
   final Duration delay;
@@ -161,10 +169,93 @@ class Throttler {
   }
 }
 
-/// 判断指定颜色是否应使用浅色文本
-bool useLighterText(Color color) {
-  // 如果颜色包含较大的透明度，则使用浅色文本
-  if (color.a < 0.5) return false;
+/// 一个唯一对象，我们获取它的 hashCode 作为唯一标识
+final _uniqueMemoObject = Object();
 
-  return color.computeLuminance() < 0.5;
+/// 一个可调用对象，它的所有实例都相等并且具有相同的 hashCode，在必须向 widget 传递字面量回调时使用，
+/// 可以避免回调导致 widget 在每一次 build 中被重构
+///
+/// 一个常见的使用场景:
+///
+/// ```dart
+/// options.map((item) {
+///   return MyListItem(onTap: MemoCallback((event) {
+///     outerHandler(event, item);
+///   }));
+/// }).toList()
+/// ```
+class MemoCallback<A, R> {
+  const MemoCallback(this.callback);
+
+  /// 上下文数据
+  final R Function(A arg) callback;
+
+  /// 实现 call 方法，使其能伪装成普通函数 Function(Event)
+  R call(A arg) {
+    return callback(arg);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+
+    return other is MemoCallback<A, R>;
+  }
+
+  @override
+  int get hashCode => _uniqueMemoObject.hashCode;
+}
+
+/// 专门用于 VoidCallback 的 [MemoCallback] 包装
+class MemoVoidCallback extends MemoCallback<void, void> {
+  MemoVoidCallback(VoidCallback callback) : super((_) => callback());
+
+  @override
+  void call([void _]) => callback(null);
+}
+
+/// 专门用于 VoidCallback 的 [MemoCallback] 包装
+class MemoVoidCallback2 {
+  const MemoVoidCallback2(this.callback);
+
+  /// 上下文数据
+  final void Function() callback;
+
+  /// 实现 call 方法，使其能伪装成普通函数 Function(Event)
+  void call() {
+    return callback();
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+
+    return other is MemoVoidCallback2;
+  }
+
+  @override
+  int get hashCode => _uniqueMemoObject.hashCode;
+}
+
+/// 接收两个参数的 [MemoCallback]
+class MemoCallback2Arg<A1, A2, R> {
+  const MemoCallback2Arg(this.callback);
+
+  /// 上下文数据
+  final R Function(A1 arg1, A2 arg2) callback;
+
+  /// 实现 call 方法，使其能伪装成普通函数 Function(Event)
+  R call(A1 arg1, A2 arg2) {
+    return callback(arg1, arg2);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+
+    return other is MemoCallback2Arg<A1, A2, R>;
+  }
+
+  @override
+  int get hashCode => _uniqueMemoObject.hashCode;
 }

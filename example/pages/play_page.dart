@@ -51,15 +51,10 @@ class _PlayPageState extends State<PlayPage> {
                   onTap: (event) {
                     print("onTap");
                   },
-                  onActiveChanged: (event) {
-                    print("onActiveChanged ${event.toggle}");
+                  onDrag: (event) {
+                    print("drag");
                   },
-                  onContextAction: (event) {
-                    print("onContextAction");
-                  },
-                  // onDrag: (event) {
-                  //   print("drag");
-                  // },
+                  enabled: false,
                   child: Container(
                     width: 200,
                     height: 200,

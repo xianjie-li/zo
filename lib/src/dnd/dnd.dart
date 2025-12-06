@@ -340,6 +340,7 @@ class _ZoDNDState extends State<ZoDND> {
     return ZoTrigger(
       enabled: node.draggable,
       onDrag: onDrag,
+      canRequestFocus: false,
       longPressDragOnTouch: widget.longPressDragOnTouch,
       child: buildChild(context),
     );
@@ -407,6 +408,9 @@ class ZoDNDHandler extends StatelessWidget {
     return ZoTrigger(
       data: (node, context),
       enabled: node.draggable,
+      longPressDragOnTouch: false,
+      canRequestFocus: false,
+      notification: true,
       onDrag: onDrag,
       child: child,
     );

@@ -411,10 +411,13 @@ class ZoDialog extends ZoOverlayEntry {
     };
 
     return ZoTrigger(
+      data: this,
       changeCursor: drawer == null,
       dragAxis: axis,
       onDrag: _onDrag,
       behavior: HitTestBehavior.opaque,
+      canRequestFocus: false,
+      notification: true,
       child: child,
     );
   }

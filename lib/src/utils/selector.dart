@@ -171,13 +171,13 @@ class ZoSelector<Val, Opt> extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 取消选中所有值, 可以设置 [notify] 为 false 来取消通知，这在销毁等场景可能会游泳
-  void unselectAll([bool notify = true]) {
+  /// 取消选中所有值, 可以设置 [notify] 为 false 来取消通知，这在销毁等场景可能会有用
+  void unselectAll() {
     if (_selected.isEmpty) return;
 
     _selected.clear();
 
-    if (notify) notifyListeners();
+    notifyListeners();
   }
 
   /// 反选指定值
@@ -214,6 +214,31 @@ class ZoSelector<Val, Opt> extends ChangeNotifier {
     _selected.addAll(values);
 
     notifyListeners();
+  }
+
+  /// 临时拦截操作
+  bool _blockNotify = false;
+
+  /// 批量处理操作，只进一次通知, 也可以设置 notify = false 来禁用通知
+  void batch(VoidCallback action, [bool notify = true]) {
+    _blockNotify = true;
+
+    try {
+      action();
+    } catch (e) {
+      rethrow;
+    } finally {
+      _blockNotify = false;
+
+      if (notify) notifyListeners();
+    }
+  }
+
+  @override
+  @protected
+  void notifyListeners() {
+    if (_blockNotify) return;
+    super.notifyListeners();
   }
 
   @override

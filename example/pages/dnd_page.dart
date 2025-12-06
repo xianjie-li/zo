@@ -55,6 +55,7 @@ class _DNDPageState extends State<DNDPage> {
                     border: Border.all(color: Colors.black),
                   ),
                   height: 300,
+                  width: 300,
                   child: SingleChildScrollView(
                     child: Column(
                       children: [
@@ -68,7 +69,7 @@ class _DNDPageState extends State<DNDPage> {
                             ),
                           ),
                         ),
-                        SizedBox.square(dimension: 500),
+                        SizedBox.square(dimension: 800),
                         ZoDND(
                           child: Container(
                             height: 100.0,
@@ -77,8 +78,44 @@ class _DNDPageState extends State<DNDPage> {
                             child: const Center(child: Text("DND B")),
                           ),
                         ),
+                        _TestBuilder(
+                          label: "A:",
+                        ),
                       ],
                     ),
+                  ),
+                ),
+                Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.black),
+                  ),
+                  height: 300,
+                  width: 300,
+                  child: ListView(
+                    children: [
+                      Container(
+                        height: 100.0,
+                        width: 100.0,
+                        color: Colors.cyan,
+                        child: Center(
+                          child: Text(
+                            "Value is updated to: $acceptedData",
+                          ),
+                        ),
+                      ),
+                      SizedBox.square(dimension: 800),
+                      ZoDND(
+                        child: Container(
+                          height: 100.0,
+                          width: 100.0,
+                          color: Colors.lightGreenAccent,
+                          child: const Center(child: Text("DND B")),
+                        ),
+                      ),
+                      _TestBuilder(
+                        label: "B:",
+                      ),
+                    ],
                   ),
                 ),
                 ZoDND(
@@ -227,6 +264,40 @@ class _DNDPageState extends State<DNDPage> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _TestBuilder extends StatefulWidget {
+  const _TestBuilder({
+    super.key,
+    required this.label,
+  });
+
+  final String label;
+
+  @override
+  State<_TestBuilder> createState() => __TestBuilderState();
+}
+
+class __TestBuilderState extends State<_TestBuilder> {
+  @override
+  void initState() {
+    print("tinit");
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    print("tbuild");
+
+    return RenderTrigger(
+      onPaintImmediately: (box) {
+        print(box);
+      },
+      child: SizedBox.square(
+        child: Text("${widget.label}"),
+        dimension: 100,
       ),
     );
   }

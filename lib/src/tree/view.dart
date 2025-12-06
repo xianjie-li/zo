@@ -4,7 +4,7 @@ part of "tree.dart";
 mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
     implements _TreeBaseMixin, _TreeActionsMixin, _TreeDragSortMixin {
   /// 更新 _fixedHeight
-  void _updateFixedHeight() {
+  void _updateFixedHeight([bool skipUpdate = false]) {
     if (widget.maxHeight == null) {
       _fixedHeight = null;
       return;
@@ -12,7 +12,9 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
 
     final maxHeight = widget.maxHeight!;
 
-    double contentHeight = widget.padding.top + widget.padding.bottom;
+    double contentHeight = _padding.top + _padding.bottom;
+
+    final defaultHeight = _style!.getSizedExtent(widget.size);
 
     for (final option in controller.filteredFlatList) {
       if (contentHeight > maxHeight) {
@@ -20,7 +22,7 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
         break;
       }
 
-      contentHeight += option.height;
+      contentHeight += (option.height ?? defaultHeight);
     }
 
     final newFixedHeight = min(contentHeight, maxHeight);
@@ -29,7 +31,7 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
 
     _fixedHeight = newFixedHeight;
 
-    if (isChanged && !_isInit) {
+    if (isChanged && !_isInit && !skipUpdate) {
       setState(() {});
     }
   }
@@ -74,9 +76,6 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
 
     if (optNode == null) return const SizedBox.shrink();
 
-    // 是否分支节点
-    final isBranch = option.isBranch;
-
     bool expandByRow = widget.expandByTapRow == null
         ? true
         : widget.expandByTapRow!(optNode);
@@ -95,7 +94,7 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
     final (leadNode, identWidth) = _buildLeadingNode(
       optNode: optNode,
       isFixedBuilder: isFixedBuilder,
-      isBranch: isBranch,
+      isBranch: option.isBranch,
       isSelected: isSelected,
       expandByRow: expandByRow,
     );
@@ -106,25 +105,31 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
     // 左侧预估总间距，用于修正 identWidth
     final estimatedIdentSpacing = horizontalSpace;
 
+    final optionPadding = EdgeInsets.only(
+      // 左侧因为有展开图标本身的空白，需要设置得更小
+      left: horizontalSpace,
+      // 右侧设置固定间距，因为容器本身有间距了，这里只是让右侧内容看起来不那么拥挤
+      right: _style!.space2,
+    );
+
+    Widget? header;
+
+    if (option.builder != null) {
+      header = option.builder!(context);
+    } else if (widget.headerBuilder != null) {
+      header = widget.headerBuilder!(tEvent);
+    } else if (option.title != null) {
+      header = DefaultTextStyle.merge(
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        child: option.title!,
+      );
+    }
+
     Widget renderChild(ZoDNDBuildContext? dndContext) {
-      return ZoOptionView(
+      return ZoTile(
         key: ValueKey(value),
-        option: option,
-        arrow: false,
-        active: isSelected,
-        padding: EdgeInsets.symmetric(
-          horizontal: horizontalSpace,
-          vertical: 0,
-        ),
-        horizontalSpacing: horizontalSpace,
-        activeColor: widget.activeColor,
-        highlightColor: widget.highlightColor,
-        loading: controller.isAsyncLoading(value),
-        onTap: (event) => _onOptionTap(event, expandByRow),
-        onContextAction: widget.onContextAction == null
-            ? null
-            : _onContextAction,
-        onFocusChanged: _onFocusChanged,
+        header: header,
         leading: Row(
           spacing: horizontalSpace,
           children: [
@@ -135,6 +140,39 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
           ],
         ),
         trailing: widget.trailingBuilder?.call(tEvent),
+        enabled: option.enabled,
+        arrow: false,
+        active: isSelected,
+        loading: controller.isAsyncLoading(value),
+        crossAxisAlignment: CrossAxisAlignment.center,
+        padding: optionPadding,
+        horizontalSpacing: horizontalSpace,
+        decorationPadding: const EdgeInsets.symmetric(vertical: 1),
+        disabledColor: Colors.transparent,
+        activeColor: widget.activeColor,
+        highlightColor: widget.highlightColor,
+        data: (option: option, context: context),
+        iconTheme: _itemIconTheme,
+        textStyle: _itemTextStyle,
+        backgroundWidget: Positioned.fill(
+          key: const ValueKey("__IndentLine"),
+          child: IgnorePointer(
+            child: Padding(
+              padding: EdgeInsetsGeometry.only(left: horizontalSpace),
+              child: _indentLineBuilder(
+                optNode: optNode,
+                isFixedBuilder: isFixedBuilder,
+              ),
+            ),
+          ),
+        ),
+        onTap: MemoCallback(
+          (ZoTriggerEvent event) => _onOptionTap(event, expandByRow),
+        ),
+        onContextAction: widget.onContextAction == null
+            ? null
+            : _onContextAction,
+        onFocusChanged: _onFocusChanged,
       );
     }
 
@@ -157,7 +195,7 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
   }) {
     final indentSpaceNumber = isBranch ? optNode.level : optNode.level + 1;
 
-    final oneWidth = widget.indentSize.width;
+    final oneWidth = _indentSize.width;
 
     var identWidth = oneWidth * indentSpaceNumber;
 
@@ -169,6 +207,7 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
     }
 
     final leadingNode = GestureDetector(
+      key: const ValueKey("__ExpandNode"),
       behavior: HitTestBehavior.opaque,
       onTap: isBranch
           ? () => _onToggleButtonTap(optNode, isFixedBuilder)
@@ -187,23 +226,29 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
             ),
           if (isBranch)
             SizedBox(
-              key: const ValueKey("__Expand"),
-              height: widget.indentSize.height,
+              key: const ValueKey("__ExpandIcon"),
+              height: _indentSize.height,
               width: oneWidth,
               child: Opacity(
                 opacity: hasChildren ? 1 : _style!.disableOpacity,
                 child: AnimatedRotation(
-                  turns: controller.expander.isSelected(optNode.value)
-                      ? 0.25
-                      : 0.0,
+                  turns: controller.isExpanded(optNode.value) ? 0.25 : 0.0,
                   duration: const Duration(milliseconds: 150),
-                  child: Icon(
-                    widget.togglerIcon ?? Icons.arrow_right_rounded,
-                    size: widget.indentSize.height,
-                    color: isSelected
-                        // 因为嵌入到了 ZoInteractiveBox 中，需要确保颜色与选项文本一致
-                        ? _activeTextColor
-                        : _style!.textColor,
+                  child: Transform.scale(
+                    // 适当放大，让展开图标更明细一些
+                    scale: 1.2,
+                    child: IconTheme.merge(
+                      data: IconThemeData(
+                        size: _indentSize.height,
+                        color: isSelected
+                            // 因为嵌入到了 ZoInteractiveBox 中，需要确保颜色与选项文本一致
+                            ? _activeTextColor
+                            : _style!.textColor,
+                      ).merge(widget.iconTheme),
+                      child: Icon(
+                        widget.togglerIcon ?? Icons.arrow_right_rounded,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -226,13 +271,91 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
     return (leadingNode, identWidth);
   }
 
+  /// 渲染缩进线
+  Widget _indentLineBuilder({
+    required ZoTreeDataNode<ZoOption> optNode,
+    required bool isFixedBuilder,
+  }) {
+    if (isFixedBuilder || !widget.indentLine) return const SizedBox.shrink();
+
+    final belongList = optNode.parent?.data.children ?? [];
+    final isLast = belongList.lastOrNull == optNode.data;
+
+    final num = optNode.level;
+
+    final oneWidth = _indentSize.width;
+
+    final lastStatusList = _getLastStatusList(optNode);
+
+    final List<Widget> children = [];
+
+    for (int i = 0; i < num; i++) {
+      final isLevelLast = lastStatusList[i];
+      final isCurrentLast = i == num - 1;
+
+      if (isLevelLast && !isCurrentLast) {
+        children.add(
+          SizedBox(
+            key: ValueKey(i),
+            width: oneWidth,
+          ),
+        );
+      } else {
+        children.add(
+          _ZoTreeIndentLineIndicator(
+            key: ValueKey(i),
+            width: oneWidth,
+            color: _style!.outlineColor,
+            isCorner: i == num - 1 ? isLast : false,
+          ),
+        );
+      }
+    }
+
+    return Row(
+      children: children,
+    );
+  }
+
+  /// 获取节点及其所有祖先是不是各自所在节点的最后一个节点
+  List<bool> _getLastStatusList(ZoTreeDataNode<ZoOption> node) {
+    final List<bool> list = [];
+
+    ZoTreeDataNode<ZoOption>? curNode = node;
+
+    while (curNode != null) {
+      // 根层级没有参考线
+      if (curNode.level == 0) break;
+
+      final lastParentChild = curNode.parent?.data.children?.lastOrNull;
+
+      list.insert(0, lastParentChild == curNode.data);
+
+      curNode = curNode.parent;
+    }
+
+    return list;
+  }
+
   double _treeRowExtentBuilder(
     int index,
     SliverLayoutDimensions layoutDimensions,
   ) {
     final option = controller.filteredFlatList.elementAtOrNull(index);
     if (option == null) return 0;
-    return option.height;
+
+    return option.height ?? _style!.getSizedExtent(widget.size);
+  }
+
+  /// 传递给 SliverVariedExtentList 以便复用 renderObject，另一个主要原因是，
+  /// 节点变更后滚动组件后方的所有节点renderObject状态会丢失，从下方拖动到上方时事件被中断
+  int? _findChildIndexCallback(Key key) {
+    if (key is ValueKey) {
+      final index = controller.getFilteredIndex(key.value);
+      return index;
+    }
+
+    return null;
   }
 
   /// 渲染缩进 dot
@@ -241,16 +364,14 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
     required int index,
     required int indentSpaceNumber,
   }) {
-    if (!widget.indentDots) return null;
+    if (!widget.leafDot) return null;
 
-    final show = widget.onlyLeafIndentDot
-        ? !isBranch && index == indentSpaceNumber - 1
-        : true;
+    final show = !isBranch && index == indentSpaceNumber - 1;
 
     if (!show) return null;
 
     return const Center(
-      child: _ZoTreeIndentIndicator(),
+      child: _ZoTreeIndentDotIndicator(),
     );
   }
 
@@ -274,12 +395,14 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
     _offsetCache.clear();
     _offsetCacheValueList.clear();
 
-    double offset = widget.padding.top;
+    double offset = _padding.top;
+
+    final defaultHeight = _style!.getSizedExtent(widget.size);
 
     for (final option in controller.filteredFlatList) {
       _offsetCache[option.value] = offset;
       _offsetCacheValueList.add(option.value);
-      offset += option.height;
+      offset += option.height ?? defaultHeight;
     }
 
     if (!_isInit) {
@@ -302,6 +425,8 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
     List<Object> newFixedOptions = [];
     double newFixedOptionsHeight = 0;
 
+    final defaultHeight = _style!.getSizedExtent(widget.size);
+
     for (final optValue in _offsetCacheValueList) {
       // 获取父级和占用的fixed高度
       final (:parents, :fixedHeight, :node) = _getOptionFixedOptions(optValue);
@@ -311,7 +436,7 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
       // 展开的选项检测顶部可见性、未展开的检测底部可见性
       final optionOffset = controller.isExpanded(optValue)
           ? _offsetCache[optValue]!
-          : _offsetCache[optValue]! + node.data.height;
+          : _offsetCache[optValue]! + (node.data.height ?? defaultHeight);
 
       final offset = scrollController.position.pixels + fixedHeight;
 
@@ -336,16 +461,16 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
 
     final List<Widget> ls = [];
 
+    final defaultHeight = _style!.getSizedExtent(widget.size);
+
     for (var optionValue in _fixedOptions) {
       final node = controller.getNode(optionValue);
 
       if (node == null) continue;
 
       // 构造选项节点，组件目前固定无动画，如果后续要支持应该需要调整此处
-      final fixedNode = ConstrainedBox(
-        constraints: BoxConstraints(
-          maxHeight: node.data.height,
-        ),
+      final fixedNode = SizedBox(
+        height: node.data.height ?? defaultHeight,
         child: _treeNodeBuilder(
           context,
           node.data,
@@ -370,9 +495,9 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
               color: _style?.surfaceColor,
             ),
             padding: EdgeInsets.fromLTRB(
-              widget.padding.left,
+              _padding.left,
               _fixedOptionsPadding,
-              widget.padding.right,
+              _padding.right,
               _fixedOptionsPadding,
             ),
             height: _fixedOptionsHeight,
@@ -469,5 +594,87 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
     }
 
     _useLightText = useLighterText(widget.activeColor!);
+  }
+}
+
+/// 渲染树节点前方的缩进指示点
+class _ZoTreeIndentDotIndicator extends StatelessWidget {
+  const _ZoTreeIndentDotIndicator({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox.square(
+      dimension: 2.4,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Colors.grey[400],
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+    );
+  }
+}
+
+/// 渲染树节点前方的缩进指示线
+class _ZoTreeIndentLineIndicator extends StatelessWidget {
+  const _ZoTreeIndentLineIndicator({
+    super.key,
+    required this.width,
+    required this.color,
+    this.isCorner = false,
+  });
+
+  /// 渲染拐角
+  final bool isCorner;
+
+  /// 宽度
+  final double width;
+
+  /// 颜色
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget node;
+
+    if (isCorner) {
+      node = Align(
+        alignment: Alignment.topRight,
+        child: FractionallySizedBox(
+          heightFactor: 0.52,
+          child: Container(
+            width: width / 2 + 0.5,
+            decoration: BoxDecoration(
+              border: Border(
+                left: BorderSide(
+                  width: 1,
+                  color: color,
+                ),
+                bottom: BorderSide(
+                  width: 1,
+                  color: color,
+                ),
+                top: BorderSide.none,
+                right: BorderSide.none,
+              ),
+            ),
+          ),
+        ),
+      );
+    } else {
+      node = Center(
+        child: Container(
+          width: 1,
+          decoration: BoxDecoration(
+            color: color,
+          ),
+        ),
+      );
+    }
+
+    return SizedBox(
+      width: width,
+      child: node,
+    );
   }
 }

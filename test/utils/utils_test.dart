@@ -1,3 +1,4 @@
+import "package:flutter/foundation.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:zo/zo.dart";
 
@@ -296,5 +297,23 @@ void main() {
     expect(list, [7, 2, 3, 4, 5, 6, 1]);
 
     return future;
+  });
+
+  test("MemoCallback", () {
+    final m1 = MemoCallback((int a) {
+      print(a);
+    });
+
+    final m2 = MemoCallback((int b) {
+      print(b);
+    });
+
+    m1(1);
+    m1(2);
+
+    expect(m1.hashCode == m2.hashCode, true);
+
+    expect(m1 == m2, true);
+    expect(m1.call == m2.call, false);
   });
 }

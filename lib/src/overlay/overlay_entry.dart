@@ -9,6 +9,9 @@ part of "package:zo/src/overlay/overlay.dart";
 /// 路由层: 通过 [route] 启用, 它会在 open 时向路由栈 push 一个新的路由, 用户可通过 Navigator.pop()
 /// 等路由 api 来关闭路由层
 ///
+/// 层拖动：在层内部添加 [ZoTrigger]，启用它的拖动事件，并将层实例作为其 data 参数，层会自动监听向上冒泡的拖动事件，
+/// 然后进行拖动处理
+///
 /// ZoOverlayEntry 本身是一个 [Listenable] 对象, 会在其大部分关键属性变更时进行通知
 class ZoOverlayEntry extends ChangeNotifier {
   ZoOverlayEntry({

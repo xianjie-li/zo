@@ -59,29 +59,40 @@ mixin _TreeDragSortMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
           // 上下添加少量偏移，让指示线能刚好放置在选项中间，左侧添加缩进距离偏移
           dropIndicatorPadding: EdgeInsets.fromLTRB(identWidth, -1, 0, -1),
           feedback: _dndFeedbackBuilder(optNode.data.title),
-          onDragStart: (e) => _onDragStart(
-            event: e,
-            optNode: optNode,
-            context: context,
+          onDragStart: MemoCallback(
+            (ZoDNDEvent e) => _onDragStart(
+              event: e,
+              optNode: optNode,
+              context: context,
+            ),
           ),
-          onDragEnd: (e) => _onDragEnd(
-            event: e,
-            optNode: optNode,
-            context: context,
+          onDragEnd: MemoCallback(
+            (ZoDNDEvent e) => _onDragEnd(
+              event: e,
+              optNode: optNode,
+              context: context,
+            ),
           ),
-          onExpand: (e) => _onDragExpand(
-            event: e,
-            optNode: optNode,
-            context: context,
+          onExpand: MemoCallback(
+            (ZoDNDEvent e) => _onDragExpand(
+              event: e,
+              optNode: optNode,
+              context: context,
+            ),
           ),
-          onAccept: (e) => _onDragAccept(
-            event: e,
-            optNode: optNode,
-            context: context,
+          onAccept: MemoCallback(
+            (ZoDNDEvent e) => _onDragAccept(
+              event: e,
+              optNode: optNode,
+              context: context,
+            ),
           ),
-          builder: (context, dndContext) {
+          builder: MemoCallback2Arg((
+            BuildContext context,
+            ZoDNDBuildContext dndContext,
+          ) {
             return builder(dndContext);
-          },
+          }),
         );
       },
     );

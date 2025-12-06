@@ -52,7 +52,7 @@ class ZoTreeDataEachArgs<D> {
   /// 当前节点
   ZoTreeDataNode<D> node;
 
-  /// 当前索引，索引可能不是连续的，因为前方节点可能会被过滤
+  /// 当前索引，索引可能不是连续的，因为前方节点可能会被过滤，循环也可能是倒序的(在update回调中)
   int index;
 }
 

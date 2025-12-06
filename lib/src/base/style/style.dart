@@ -4,6 +4,7 @@ import "package:zo/src/base/types/types.dart";
 /// 扩展 BuildContext, 用于更方便的获取 style
 extension ZoStyleContext on BuildContext {
   ZoStyle get zoStyle => Theme.of(this).extension<ZoStyle>()!;
+  ZoStyle get readZoStyle => Theme.of(this).extension<ZoStyle>()!;
 }
 
 /// Zo 基础样式配置
@@ -13,13 +14,17 @@ extension ZoStyleContext on BuildContext {
 /// 并将 ZoStyle 设置为 extensions
 /// - 直接将 ZoStyle 作为 ThemeData 的 extensions 来使用
 ///
+/// 特定组件的样式可通过 [InheritedTheme] 实现，[ZoStyle] 中仅应该存在基础且通用的样式配置
+///
 /// 约定:
 /// - *Variant 后缀: 特定样式的变体, 可能用于改样式某种状态下的样式
 class ZoStyle extends ThemeExtension<ZoStyle> {
   ZoStyle({
     required this.brightness,
+    this.extensions,
     this.alpha = 160,
     this.disableOpacity = 0.4,
+
     this.primaryColor = Colors.blue,
     this.secondaryColor = Colors.cyan,
     this.tertiaryColor = Colors.red,
@@ -69,6 +74,7 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
     this.space9 = 36,
     this.space10 = 40,
 
+    this.widgetSize = ZoSize.medium,
     this.sizeSM = 28,
     this.sizeMD = 34,
     this.sizeLG = 40,
@@ -175,6 +181,9 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
 
   /// 控制是否为暗黑模式
   Brightness brightness;
+
+  /// 添加主题扩展
+  Iterable<ThemeExtension<dynamic>>? extensions;
 
   /// 与当前style的brightness相反的样式, 在亮色主题下, 它对应暗色主题
   /// 使用者需要在初始化style实例后调用 [connectReverse] 方法来连接两者, 如果没有进行连接,
@@ -338,6 +347,9 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
   final double space9;
   final double space10;
 
+  /// 组件的预设尺寸类型
+  final ZoSize widgetSize;
+
   /// 对应 [ZoSize] small 的尺寸
   final double sizeSM;
 
@@ -346,6 +358,46 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
 
   /// 对应 [ZoSize] large 的尺寸
   final double sizeLG;
+
+  /// 根据传入或当前 [widgetSize] 获取的合适的组件尺寸
+  double getSizedExtent([ZoSize? wSize]) {
+    return switch (wSize ?? widgetSize) {
+      ZoSize.medium => sizeMD,
+      ZoSize.small => sizeSM,
+      ZoSize.large => sizeLG,
+    };
+  }
+
+  /// 根据传入或当前 [widgetSize] 获取间距
+  double getSizedSpace([ZoSize? wSize]) {
+    return switch (wSize ?? widgetSize) {
+      ZoSize.medium => space2,
+      ZoSize.small => space1,
+      ZoSize.large => space3,
+    };
+  }
+
+  /// 根据传入或当前 [widgetSize] 获取文本大小
+  double getSizedFontSize([ZoSize? wSize]) {
+    return switch (wSize ?? widgetSize) {
+      ZoSize.medium => fontSize,
+      ZoSize.small => fontSizeSM,
+      ZoSize.large => fontSizeMD,
+    };
+  }
+
+  /// 根据传入或当前 [widgetSize] 获取合适的图标大小，传入 [textIcon] 可以调整图标尺寸类型，
+  /// 文本图标会以文本尺寸为依据，稍大于文本，独立图标则略小于 [widgetSize] 组件的尺寸
+  double getSizedIconSize([ZoSize? wSize, bool textIcon = false]) {
+    if (textIcon) {
+      return getSizedFontSize(wSize) + 4;
+    }
+
+    // 让small时尺寸不要过小
+    final adjustSize = wSize == ZoSize.small ? 12 : 16;
+
+    return getSizedExtent(wSize) - adjustSize;
+  }
 
   /// 圆角
   final double borderRadius;
@@ -423,13 +475,14 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
       hoverColor: hoverColor,
       highlightColor: highlightColor,
       disabledColor: disabledColor,
-      extensions: [this],
+      extensions: [this, ...?extensions, ...theme.extensions.values],
     );
   }
 
   @override
   ZoStyle copyWith({
     Brightness? brightness,
+    Iterable<ThemeExtension<dynamic>>? extensions,
     int? alpha,
     double? disableOpacity,
     Color? primaryColor,
@@ -477,6 +530,7 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
     double? space8,
     double? space9,
     double? space10,
+    ZoSize? widgetSize,
     double? sizeSM,
     double? sizeMD,
     double? sizeLG,
@@ -490,6 +544,7 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
   }) {
     return ZoStyle(
       brightness: brightness ?? this.brightness,
+      extensions: extensions ?? this.extensions,
       disableOpacity: disableOpacity ?? this.disableOpacity,
       primaryColor: primaryColor ?? this.primaryColor,
       secondaryColor: secondaryColor ?? this.secondaryColor,
@@ -538,6 +593,7 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
       space8: space8 ?? this.space8,
       space9: space9 ?? this.space9,
       space10: space10 ?? this.space10,
+      widgetSize: widgetSize ?? this.widgetSize,
       sizeSM: sizeSM ?? this.sizeSM,
       sizeMD: sizeMD ?? this.sizeMD,
       sizeLG: sizeLG ?? this.sizeLG,
@@ -558,6 +614,7 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
     // 通常只有颜色类的需要添加线性插值, 其他内容在切换主题时是不需要动画的
     return ZoStyle(
       brightness: other.brightness,
+      extensions: extensions ?? other.extensions,
       alpha: other.alpha,
       disableOpacity: other.disableOpacity,
       primaryColor: Color.lerp(primaryColor, other.primaryColor, t)!,
@@ -617,6 +674,7 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
       space8: other.space8,
       space9: other.space9,
       space10: other.space10,
+      widgetSize: other.widgetSize,
       sizeSM: other.sizeSM,
       sizeMD: other.sizeMD,
       sizeLG: other.sizeLG,

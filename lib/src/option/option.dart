@@ -1,4 +1,4 @@
-/// 提供了所有选项和渲染相关的抽象，这些选项用于 Select、Menu、Tree 等组件
+/// 提供了选项相关的抽象，这些选项用于 Select、Menu、Tree 等组件
 ///
 /// 核心：[ZoOption] 类，表示一个树形的数据选项，它包含 [ZoOptionSection] / [ZoOptionDivider] 两个装饰用的变体
 ///
@@ -24,7 +24,7 @@ class ZoOption {
     this.children,
     this.loader,
     this.enabled = true,
-    this.height = ZoOption.defaultHeight,
+    this.height,
     this.matchString,
     this.data,
     this.builder,
@@ -36,9 +36,6 @@ class ZoOption {
          title != null || builder != null,
          "Must provide either title or builder",
        );
-
-  /// 默认高度
-  static const double defaultHeight = 34;
 
   /// 表示该项的唯一值
   Object value;
@@ -57,8 +54,9 @@ class ZoOption {
 
   /// 高度
   ///
-  /// 每个选项都会有一个确切的高度, 用来在包含大量的数据时实现动态加载&卸载
-  double height;
+  /// 每个选项都会有一个确切的高度, 用来在包含大量的数据时实现动态加载&卸载，
+  /// 不传时默认使用 [ZoStyle.getSizedExtent] 获取
+  double? height;
 
   /// 在搜索 / 过滤等功能中用作匹配该项的字符串, 如果未设置, 会尝试从 [title] 中获取文本,
   /// 但要求其必须是一个 Text 组件
@@ -72,7 +70,7 @@ class ZoOption {
     return children != null || loader != null;
   }
 
-  /// 自定义内容构造器, 会覆盖 [title] 等选项
+  /// 自定义内容构造器, 会覆盖 [title] 等选项, 不同的组件可能实现不同，也可能完全不支持
   Widget Function(BuildContext context)? builder;
 
   /// 前导内容
@@ -159,17 +157,17 @@ class ZoOption {
   ZoOption copyWith({
     Object? value,
     Widget? title,
+    List<ZoOption>? children,
+    ZoTreeDataLoader<ZoOption>? loader,
+    bool? enabled,
+    double? height,
+    String? matchString,
+    Object? data,
     Widget Function(BuildContext context)? builder,
     Widget? leading,
     Widget? trailing,
-    double? height,
-    bool? enabled,
     bool? interactive,
-    List<ZoOption>? children,
-    ZoTreeDataLoader<ZoOption>? loader,
     double? optionsWidth,
-    String? matchString,
-    Object? data,
   }) {
     return ZoOption(
       value: value ?? this.value,
@@ -196,13 +194,14 @@ class ZoOptionSection extends ZoOption {
   ) : super(
         value: "ZoSection ${createTempId()}",
         interactive: false,
+        height: 32,
         builder: (context) {
           final style = context.zoStyle;
 
           return Container(
-            height: ZoOption.defaultHeight - 2,
-            alignment: Alignment.bottomLeft,
-            padding: EdgeInsets.all(style.space2),
+            height: 32,
+            alignment: const Alignment(-1, 0.4),
+            padding: EdgeInsets.symmetric(horizontal: style.space2),
             child: Text(
               title,
               style: TextStyle(
@@ -221,6 +220,7 @@ class ZoOptionDivider extends ZoOption {
     : super(
         value: "ZoDivider ${createTempId()}",
         interactive: false,
+        height: 16,
         builder: (context) {
           return const Center(
             child: Divider(

@@ -26,6 +26,8 @@ class ZoInteractiveBox extends StatefulWidget {
     this.alignment,
     this.padding,
     this.decorationPadding,
+    this.backgroundWidget,
+    this.foregroundWidget,
     this.width,
     this.height,
     this.constraints,
@@ -100,6 +102,12 @@ class ZoInteractiveBox extends StatefulWidget {
 
   /// 仅用于装饰的边距，不影响实际布局空间，用于多个相同组件并列时，添加间距，但是不影响事件触发的边距
   final EdgeInsets? decorationPadding;
+
+  /// 额外挂载内容到与内容所在的 stack 后方
+  final Widget? backgroundWidget;
+
+  /// 额外挂载内容到与内容所在的 stack 前方
+  final Widget? foregroundWidget;
 
   /// 宽度
   final double? width;
@@ -230,7 +238,7 @@ class _ZoInteractiveBoxState extends State<ZoInteractiveBox> {
       builder: (animate) {
         return FadeTransition(
           opacity: animate.animation,
-          child: Container(
+          child: DecoratedBox(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(
                 style.borderRadius,
@@ -319,15 +327,16 @@ class _ZoInteractiveBoxState extends State<ZoInteractiveBox> {
   Widget withTextAndIconColor(Widget child, Color? textColor) {
     if (textColor == null) return child;
 
-    final iconTheme = widget.iconTheme ?? const IconThemeData();
-    final textStyle = widget.textStyle ?? const TextStyle();
+    final iconTheme = IconThemeData(color: textColor).merge(widget.iconTheme);
+
+    final textStyle = TextStyle(
+      color: textColor,
+    ).merge(widget.textStyle);
 
     return IconTheme.merge(
-      data: iconTheme.copyWith(color: textColor),
+      data: iconTheme,
       child: DefaultTextStyle.merge(
-        style: textStyle.copyWith(
-          color: textColor,
-        ),
+        style: textStyle,
         child: child,
       ),
     );
@@ -376,7 +385,7 @@ class _ZoInteractiveBoxState extends State<ZoInteractiveBox> {
         canRequestFocus: widget.interactive && widget.canRequestFocus,
         onActiveChanged: onActiveChanged,
         onFocusChanged: onFocusChanged,
-        onContextAction: widget.onActiveChanged == null
+        onContextAction: widget.onContextAction == null
             ? null
             : onContextAction,
         onTap: onTap,
@@ -393,6 +402,7 @@ class _ZoInteractiveBoxState extends State<ZoInteractiveBox> {
           borderRadius: radius,
           child: Stack(
             children: [
+              ?widget.backgroundWidget,
               // 背景层, 和内容分开, 防止被遮罩反馈影响显示
               Positioned.fill(
                 key: const ValueKey("BG"),
@@ -417,8 +427,8 @@ class _ZoInteractiveBoxState extends State<ZoInteractiveBox> {
                   right: decorationPadding.right,
                   bottom: decorationPadding.bottom,
                   child: IgnorePointer(
-                    child: Opacity(
-                      opacity: !isLoading && needHighlight ? 1 : 0,
+                    child: Visibility(
+                      visible: !isLoading && needHighlight,
                       child: DecoratedBox(
                         decoration: BoxDecoration(
                           borderRadius: radius,
@@ -437,8 +447,8 @@ class _ZoInteractiveBoxState extends State<ZoInteractiveBox> {
                   right: decorationPadding.right,
                   bottom: decorationPadding.bottom,
                   child: IgnorePointer(
-                    child: Opacity(
-                      opacity: isLoading ? 0 : 1,
+                    child: Visibility(
+                      visible: !isLoading,
                       child: buildTapEffect(style, tapMaskColor),
                     ),
                   ),
@@ -453,6 +463,7 @@ class _ZoInteractiveBoxState extends State<ZoInteractiveBox> {
                 constraints: widget.constraints,
                 child: widget.child,
               ),
+              ?widget.foregroundWidget,
             ],
           ),
         ),

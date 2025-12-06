@@ -89,10 +89,17 @@ State/SelectState添加of
 - x 子级为空时展开图标置灰
 - x 触摸设备拖动: 是否需要更改trigger实现, 长按拖动
 - x bug 加载状态不会更新到ui
-- 尺寸定制：option.size改为非必传，字体缩小
-- 提升样式扩展性
-- 层级缩进线
-- 复盘代码，整理table实现中可能会复用的部分
+- x 尺寸定制：option.size改为非必传，字体缩小
+  - x padding / autoHeight 检查: 跳转位置、fixedHeight、
+  - x 检查item builder
+  - x 尺寸检查
+- x 提升样式扩展性
+  - x 添加 headerBuilder
+- x trigger 支持 pan 最小触发距离，检查点击就触发pan的原因
+- x 层级缩进线
+- x 清理代码，整理table实现中可能会复用的部分
+- x 性能调试
+- x 文档
 - x 包括固定区域高度的第一个完整可见节点，如果它有父节点，全部放到顶部显示
 - x 进行 _updateOptionOffsetCache 后更新固定项
 - x 点击和折叠时，跳转滚动位置到该选项, 点击选项不能进行折叠操作
@@ -164,3 +171,9 @@ x 拆分 Controller 代码
 x 添加reload、refresh等节点的完善hook，提供回调和抽象方法
 x indexPath作为treeData成员
 x tree组件中可抽象到控制器的逻辑,比如展开、收起等
+
+
+层级缩进线
+层级0不显示
+其他层级显示竖线
+末尾节点显示拐角线
