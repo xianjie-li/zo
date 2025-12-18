@@ -2,8 +2,6 @@ import "dart:async";
 import "dart:collection";
 
 import "package:flutter/widgets.dart";
-import "package:zo/src/utils/app_state.dart";
-import "package:zo/src/utils/utils.dart";
 import "package:zo/zo.dart";
 
 /// 包含参数响应的异步future获取函数
@@ -36,11 +34,11 @@ class Fetcher<Data, Payload> extends ChangeNotifier {
     this.payloadHash,
     this.dataBuild,
     this.initialFetch = true,
-    this.staleTime = const Duration(minutes: 3),
-    this.cacheTime = const Duration(minutes: 30),
+    this.staleTime,
+    this.cacheTime,
     this.cachePayload = false,
     this.action = false,
-    this.refetchInterval = Duration.zero,
+    this.refetchInterval,
     this.retry = 0,
     this.onSuccess,
     this.onError,
@@ -51,6 +49,12 @@ class Fetcher<Data, Payload> extends ChangeNotifier {
     _data = data;
     _payload = payload;
   }
+
+  static Duration defaultStaleTime = const Duration(minutes: 3);
+
+  static Duration defaultCacheTime = const Duration(minutes: 30);
+
+  static Duration defaultRefetchInterval = Duration.zero;
 
   /// 是否已执行初始化操作
   var _instantiated = false;
@@ -155,11 +159,17 @@ class Fetcher<Data, Payload> extends ChangeNotifier {
 
   /// 在初始化时, 如果命中了缓存, 会额外根据 staleTime 进行判断, 如果缓存数据的时间超过
   /// 此时间, 会先使用缓存数据占位, 然后发起更新请求
-  final Duration staleTime;
+  final Duration? staleTime;
+  Duration get _staleTime {
+    return staleTime ?? defaultStaleTime;
+  }
 
   /// 缓存时间, 初始化阶段如果存在缓存, 会直接取缓存结果, 此选项会作为缓存功能的整体开关, 当
   /// 设置为 [Duration.zero] 时, 缓存相关的功能均会被禁用
-  final Duration cacheTime;
+  final Duration? cacheTime;
+  Duration get _cacheTime {
+    return cacheTime ?? defaultCacheTime;
+  }
 
   /// 如果启用, 会将 payload 也进行缓存, 缓存以当前 fetchFn 为key
   final bool cachePayload;
@@ -174,7 +184,10 @@ class Fetcher<Data, Payload> extends ChangeNotifier {
   ///
   /// 计时从第一次触发请求后开始, 如果计时期间通过任意方式触发了请求, 则会在请求完毕后重新开始
   /// 计时
-  final Duration refetchInterval;
+  final Duration? refetchInterval;
+  Duration get _refetchInterval {
+    return refetchInterval ?? defaultRefetchInterval;
+  }
 
   /// 获取数据失败时, 自动重新获取的次数
   final double retry;
@@ -235,14 +248,14 @@ class Fetcher<Data, Payload> extends ChangeNotifier {
   void staleRefresh() {
     // 未加载数据, 未启用时直接跳过
     if (_instantiated =
-        false || fetchAt == null || staleTime == Duration.zero || action) {
+        false || fetchAt == null || _staleTime == Duration.zero || action) {
       return;
     }
 
     // 未进行过任何请求
     if (data == null && error == null) return;
 
-    if (DateTime.now().difference(fetchAt!) > staleTime) {
+    if (DateTime.now().difference(fetchAt!) > _staleTime) {
       fetch();
     }
   }
@@ -269,7 +282,7 @@ class Fetcher<Data, Payload> extends ChangeNotifier {
     _updateHash();
 
     // 尝试获取已有缓存
-    if (!action && cacheTime > Duration.zero) {
+    if (!action && _cacheTime > Duration.zero) {
       final cachePayload = _cache.get(fetchFn ?? fetchVoidFn!, true);
 
       // 获取 data, null也可能是有效缓存
@@ -291,10 +304,10 @@ class Fetcher<Data, Payload> extends ChangeNotifier {
         needInitialLoad = false;
 
         // 处理 staleTime
-        if (staleTime > Duration.zero) {
+        if (_staleTime > Duration.zero) {
           final diff = DateTime.now().difference(cacheData.time);
 
-          if (diff > staleTime) {
+          if (diff > _staleTime) {
             needInitialLoad = true;
           }
         }
@@ -362,8 +375,8 @@ class Fetcher<Data, Payload> extends ChangeNotifier {
       // action或非原始请求都不写入缓存
       // 不用执行 completer.future == future 对比, 因为即使请求已被覆盖, 前面请求的内容
       // 仍然值得缓存
-      if (cacheTime > Duration.zero && !action && !isCacheTask) {
-        _cache.set(_hashKey, res, cacheTime);
+      if (_cacheTime > Duration.zero && !action && !isCacheTask) {
+        _cache.set(_hashKey, res, _cacheTime);
         _cache.cacheSyncEvent.emit((
           data: res,
           fetcher: this,
@@ -374,7 +387,7 @@ class Fetcher<Data, Payload> extends ChangeNotifier {
         /// 缓存 payload, 另一个理想的时机是在 payload 的 setter 中, 但在请求完成后缓存能
         /// 使 payload 与 data 成对
         if (cachePayload) {
-          _cache.set(fetchFn ?? fetchVoidFn!, payload, cacheTime, true);
+          _cache.set(fetchFn ?? fetchVoidFn!, payload, _cacheTime, true);
         }
       }
 
@@ -457,8 +470,8 @@ class Fetcher<Data, Payload> extends ChangeNotifier {
   void _startRefetch() {
     _clearTimers();
 
-    if (refetchInterval > Duration.zero) {
-      _refetchTimer = Timer(refetchInterval, () {
+    if (_refetchInterval > Duration.zero) {
+      _refetchTimer = Timer(_refetchInterval, () {
         if (appVisibleChecker.visible) {
           _runTask();
         } else {
@@ -492,7 +505,7 @@ class Fetcher<Data, Payload> extends ChangeNotifier {
     if (_loading) return;
     if (arg.fetcher == this || arg.hashKey != _hashKey) return;
     // 缓存未启用时不同步
-    if (action || cacheTime == Duration.zero) return;
+    if (action || _cacheTime == Duration.zero) return;
 
     if (arg.data is Data?) {
       data = arg.data as Data?;

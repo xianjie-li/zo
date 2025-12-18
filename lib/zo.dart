@@ -1,7 +1,6 @@
 export "src/base/base.dart";
 export "src/button/button.dart";
 export "src/fetcher/fetcher.dart";
-export "src/hooks/hooks.dart";
 export "src/input/input.dart";
 export "src/interactive_box/interactive_box.dart";
 export "src/layout/layout.dart";
@@ -23,3 +22,4 @@ export "src/tree_data/tree_data.dart";
 export "src/tree/tree.dart";
 export "src/dnd/dnd.dart";
 export "src/form/form.dart";
+export "src/tabs/tabs.dart";

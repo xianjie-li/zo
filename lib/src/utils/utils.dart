@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:flutter/material.dart";
 import "package:flutter/widgets.dart";
 
 export "operation_history.dart";
@@ -8,6 +9,7 @@ export "global_cursor.dart";
 export "mutator.dart";
 export "selector.dart";
 export "shortcuts.dart";
+export "prop_instance_coordinator.dart";
 
 // const int maxIntValue = kIsWeb ? 9007199254740991 : 9223372036854775807;
 // const int minIntValue = kIsWeb ? -9007199254740991 : -9223372036854775808;
@@ -90,12 +92,9 @@ int deepHash(Object? value) {
   return value.hashCode;
 }
 
-/// 判断指定颜色是否应使用浅色文本
-bool useLighterText(Color color) {
-  // 如果颜色包含较大的透明度，则使用浅色文本
-  if (color.a < 0.5) return false;
-
-  return color.computeLuminance() < 0.5;
+/// 判断颜色是否是深色, 如果颜色包含透明通道，需要将颜色混合后传入：`Color.alphaBlend(color, backgroundColor)`
+bool isDarkColor(Color color) {
+  return ThemeData.estimateBrightnessForColor(color) == Brightness.dark;
 }
 
 /// 防抖

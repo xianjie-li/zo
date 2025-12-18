@@ -94,7 +94,7 @@ mixin _TreeShortcutsMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
 
     // 首次全选操作：清空当前所有选中，然后选中当前层所有节点
     if (_allSelectActionCount == 1) {
-      final list = controller.getSiblings(focusNode!, true);
+      final list = controller.getSiblings(focusNode!, _canSelected);
       final values = list.map((o) => o.value);
 
       selector.setSelected(values);
@@ -130,7 +130,7 @@ mixin _TreeShortcutsMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
       return KeyEventResult.handled;
     }
 
-    final list = controller.getSiblings(lastMoveParent, true);
+    final list = controller.getSiblings(lastMoveParent, _canSelected);
 
     final values = list.map((o) => o.value);
 

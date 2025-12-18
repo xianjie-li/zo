@@ -294,7 +294,7 @@ class _TreePageState extends State<TreePage> {
                 ),
               ),
               child: ZoTree(
-                maxHeight: 400,
+                // maxHeight: 400,
                 // pinedActiveBranch: true,
                 key: treeKey,
                 // textStyle: TextStyle(color: Colors.red),
@@ -600,32 +600,32 @@ class _TreePageState extends State<TreePage> {
                 );
               },
             ),
-            // Container(
-            //   // height: 500,
-            //   constraints: BoxConstraints(maxHeight: 500),
-            //   decoration: BoxDecoration(
-            //     border: Border.all(
-            //       color: style.outlineColor,
-            //     ),
-            //   ),
-            //   child: Align(
-            //     alignment: AlignmentGeometry.topLeft,
-            //     child: DecoratedBox(
-            //       decoration: BoxDecoration(
-            //         border: Border.all(color: Colors.red),
-            //       ),
-            //       child: ZoTree(
-            //         // options: [],
-            //         options: options2,
-            //         maxHeight: 200,
-            //         // indentDots: false,
-            //         // enable: false,
-            //         // indentSize: Size(18, 18),
-            //         // togglerIcon: Icons.arrow_right_alt_outlined,
-            //       ),
-            //     ),
-            //   ),
-            // ),
+            Container(
+              // height: 500,
+              constraints: BoxConstraints(maxHeight: 500),
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: style.outlineColor,
+                ),
+              ),
+              child: Align(
+                alignment: AlignmentGeometry.topLeft,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.red),
+                  ),
+                  child: ZoTree(
+                    // options: [],
+                    options: options2,
+                    maxHeight: 200,
+                    // indentDots: false,
+                    // enable: false,
+                    // indentSize: Size(18, 18),
+                    // togglerIcon: Icons.arrow_right_alt_outlined,
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),

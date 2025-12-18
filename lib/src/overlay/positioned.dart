@@ -7,12 +7,12 @@ part of "package:zo/src/overlay/overlay.dart";
 /// Positioned 还根据 preventOverflow direction 启用 popper 定位功能, 并通过 preventOverflow
 /// 配置调整自身的位置
 ///
-/// 依赖的 entry 属性有: offset / rect / alignment / direction / preventOverflow
+/// 依赖的 entry 属性有: offset / rect / alignment / direction / preventOverflow / constrainsToView
 ///
 /// 定位目标 / 层 / 容器:
 /// - 定位目标由 rect / offset / alignment 等定位属性确定
 /// - 层指的是 renderObject.child 子对象, 其表示我们要绘制的层内容
-/// - 容器是当前 RenderObject, 其所在空间位有效布局区域
+/// - 容器是当前 RenderObject, 其所在空间为有效布局区域
 ///
 /// 定位属性会由 globalPosition 转换为 localPosition 后再容器内进行定位
 ///
@@ -89,18 +89,20 @@ class OverlayPositionedRenderObject extends RenderBox
   /// 最后一次方向布局中使用的方向
   ZoPopperDirection? direction;
 
-  Offset? _manualPosition;
-
   /// 手动指定布局位置, 设置后, 后续布局会优先使用此位置进行布局
   ///
   /// - 在 entry 中传入的位置变更后失效
   /// - 方向布局时无效
   Offset? get manualPosition => _manualPosition;
-
+  Offset? _manualPosition;
   set manualPosition(Offset? value) {
     _manualPosition = value;
     markNeedsPaint();
   }
+
+  /// 内部额外施加的布局约束，用于 [ZoOverlayEntry.constrainsToView] 将内容尺寸限制
+  /// 到可用区域
+  BoxConstraints? internalConstraints;
 
   @override
   bool hitTestChildren(BoxHitTestResult result, {required Offset position}) {
@@ -123,8 +125,21 @@ class OverlayPositionedRenderObject extends RenderBox
   void performLayout() {
     if (child == null) return;
 
-    child!.layout(constraints.loosen(), parentUsesSize: true);
+    // 清理残留的内部限制
+    if (!entry.constrainsToView || entry.direction == null) {
+      internalConstraints = null;
+    }
 
+    if (internalConstraints != null) {
+      child!.layout(
+        internalConstraints!.enforce(constraints.loosen()),
+        parentUsesSize: true,
+      );
+    } else {
+      child!.layout(constraints.loosen(), parentUsesSize: true);
+    }
+
+    // 该尺寸为 Positioned 的最大可用尺寸
     size = constraints.biggest;
   }
 
@@ -164,6 +179,8 @@ class OverlayPositionedRenderObject extends RenderBox
       (layoutOffset, directionLayoutData) = _directionLayout(context, offset);
       direction = directionLayoutData.direction;
     }
+
+    _updateAvailableSpace(directionLayoutData);
 
     final BoxParentData childParentData = child!.parentData as BoxParentData;
 
@@ -225,9 +242,7 @@ class OverlayPositionedRenderObject extends RenderBox
   /// - 获取 target
   /// - 获取不同方向的摆放位置, 位置需要加上 distance, 并包含 hasOverflow 信息
   /// - 如果未设置 preventOverflow 或无遮挡, 直接根据方向返回位置
-  /// - flip: 主轴方向被遮挡时, 若相反方向可用则移动到相反方向, flip 只会在相对方向切换,
-  /// 不会变更轴向
-  /// - 进行 flip 后, 如果交叉轴存在被遮挡部分, 尝试调整交叉轴偏移, 使元素保持在视口中,
+  /// - flip: 挑选合适方向进行放置，并对交叉轴使用偏移，使其保持在视口中
   /// - 当前使用位置/交叉轴偏移调整等需要向上通知, 方便使用者对 popper arrow 等进行位置调整
   (Offset, ZoDirectionLayoutData) _directionLayout(
     PaintingContext context,
@@ -298,7 +313,7 @@ class OverlayPositionedRenderObject extends RenderBox
     return Rect.fromCenter(center: Offset(pos.dx, pos.dy), width: 0, height: 0);
   }
 
-  /// 一个复杂的方法 :) 它获取指定模板不同方向的放置位置和遮挡状态
+  /// 一个复杂的方法 :) 它获取指定目標不同方向的放置位置和遮挡状态
   HashMap<ZoPopperDirection, ZoDirectionLayoutData> _calcDirectionDataMap(
     Rect targetRect,
   ) {
@@ -450,12 +465,33 @@ class OverlayPositionedRenderObject extends RenderBox
       horizontalTopCrossOverflowDistance += fixPos;
     }
 
+    final topAvailableSpace = Size(
+      size.width,
+      targetRect.top,
+    );
+
+    final bottomAvailableSpace = Size(
+      size.width,
+      size.height - targetRect.bottom,
+    );
+
+    final leftAvailableSpace = Size(
+      targetRect.left,
+      size.height,
+    );
+
+    final rightAvailableSpace = Size(
+      size.width - targetRect.right,
+      size.height,
+    );
+
     data[ZoPopperDirection.top] = ZoDirectionLayoutData(
       direction: ZoPopperDirection.top,
       position: topPosition,
       mainOverflow: topOverflow,
       crossOverflow: verticalCenterCrossOverflowDistance != 0.0,
       crossOverflowDistance: verticalCenterCrossOverflowDistance,
+      availableSpace: topAvailableSpace,
     );
 
     data[ZoPopperDirection.topLeft] = ZoDirectionLayoutData(
@@ -464,6 +500,7 @@ class OverlayPositionedRenderObject extends RenderBox
       mainOverflow: topOverflow,
       crossOverflow: verticalLeftCrossOverflowDistance != 0.0,
       crossOverflowDistance: verticalLeftCrossOverflowDistance,
+      availableSpace: topAvailableSpace,
     );
 
     data[ZoPopperDirection.topRight] = ZoDirectionLayoutData(
@@ -472,6 +509,7 @@ class OverlayPositionedRenderObject extends RenderBox
       mainOverflow: topOverflow,
       crossOverflow: verticalRightCrossOverflowDistance != 0.0,
       crossOverflowDistance: verticalRightCrossOverflowDistance,
+      availableSpace: topAvailableSpace,
     );
 
     data[ZoPopperDirection.bottom] = ZoDirectionLayoutData(
@@ -480,6 +518,7 @@ class OverlayPositionedRenderObject extends RenderBox
       mainOverflow: bottomOverflow,
       crossOverflow: verticalCenterCrossOverflowDistance != 0.0,
       crossOverflowDistance: verticalCenterCrossOverflowDistance,
+      availableSpace: bottomAvailableSpace,
     );
 
     data[ZoPopperDirection.bottomLeft] = ZoDirectionLayoutData(
@@ -488,6 +527,7 @@ class OverlayPositionedRenderObject extends RenderBox
       mainOverflow: bottomOverflow,
       crossOverflow: verticalLeftCrossOverflowDistance != 0.0,
       crossOverflowDistance: verticalLeftCrossOverflowDistance,
+      availableSpace: bottomAvailableSpace,
     );
 
     data[ZoPopperDirection.bottomRight] = ZoDirectionLayoutData(
@@ -496,6 +536,7 @@ class OverlayPositionedRenderObject extends RenderBox
       mainOverflow: bottomOverflow,
       crossOverflow: verticalRightCrossOverflowDistance != 0.0,
       crossOverflowDistance: verticalRightCrossOverflowDistance,
+      availableSpace: bottomAvailableSpace,
     );
 
     data[ZoPopperDirection.left] = ZoDirectionLayoutData(
@@ -504,6 +545,7 @@ class OverlayPositionedRenderObject extends RenderBox
       mainOverflow: leftOverflow,
       crossOverflow: horizontalCenterCrossOverflowDistance != 0.0,
       crossOverflowDistance: horizontalCenterCrossOverflowDistance,
+      availableSpace: leftAvailableSpace,
     );
 
     data[ZoPopperDirection.leftTop] = ZoDirectionLayoutData(
@@ -512,6 +554,7 @@ class OverlayPositionedRenderObject extends RenderBox
       mainOverflow: leftOverflow,
       crossOverflow: horizontalTopCrossOverflowDistance != 0.0,
       crossOverflowDistance: horizontalTopCrossOverflowDistance,
+      availableSpace: leftAvailableSpace,
     );
 
     data[ZoPopperDirection.leftBottom] = ZoDirectionLayoutData(
@@ -520,6 +563,7 @@ class OverlayPositionedRenderObject extends RenderBox
       mainOverflow: leftOverflow,
       crossOverflow: horizontalBottomCrossOverflowDistance != 0.0,
       crossOverflowDistance: horizontalBottomCrossOverflowDistance,
+      availableSpace: leftAvailableSpace,
     );
 
     data[ZoPopperDirection.right] = ZoDirectionLayoutData(
@@ -528,6 +572,7 @@ class OverlayPositionedRenderObject extends RenderBox
       mainOverflow: rightOverflow,
       crossOverflow: horizontalCenterCrossOverflowDistance != 0.0,
       crossOverflowDistance: horizontalCenterCrossOverflowDistance,
+      availableSpace: rightAvailableSpace,
     );
 
     data[ZoPopperDirection.rightTop] = ZoDirectionLayoutData(
@@ -536,6 +581,7 @@ class OverlayPositionedRenderObject extends RenderBox
       mainOverflow: rightOverflow,
       crossOverflow: horizontalTopCrossOverflowDistance != 0.0,
       crossOverflowDistance: horizontalTopCrossOverflowDistance,
+      availableSpace: rightAvailableSpace,
     );
 
     data[ZoPopperDirection.rightBottom] = ZoDirectionLayoutData(
@@ -544,26 +590,102 @@ class OverlayPositionedRenderObject extends RenderBox
       mainOverflow: rightOverflow,
       crossOverflow: horizontalBottomCrossOverflowDistance != 0.0,
       crossOverflowDistance: horizontalBottomCrossOverflowDistance,
+      availableSpace: rightAvailableSpace,
     );
 
     return data;
   }
 
-  /// 根据方向 map 挑选当前合适的显示方向, 主要是执行 flip 操作
+  /// 根据方向 map 挑选当前合适的显示方向, 简要流程见 [_directionLayout] 文档
   ZoDirectionLayoutData _pickDirection(
     Map<ZoPopperDirection, ZoDirectionLayoutData> data,
   ) {
-    var curData = data[entry.direction]!;
+    final curData = data[entry.direction]!;
 
-    if (curData.mainOverflow && entry.preventOverflow) {
-      final revData = data[_getReverseDirection(entry.direction!)]!;
+    // 如果未开启防遮挡，直接返回原始数据
+    if (!entry.preventOverflow) return curData;
 
-      if (!revData.mainOverflow) {
-        curData = revData;
+    // 指定方向可用
+    if (_isDirectionCapable(curData)) {
+      return curData;
+    }
+
+    // 相反方向可用
+    final revData = data[_getReverseDirection(entry.direction!)]!;
+    if (_isDirectionCapable(revData)) {
+      return revData;
+    }
+
+    // 寻找最佳的其他方向，代码走到这里，说明上下(或左右)都彻底放不下了，需要在剩余方向中寻找一个
+    // - 首选：能完全容纳的
+    // - 次选：如果都不能完全容纳，选可视面积最大的
+
+    ZoDirectionLayoutData? bestCandidate;
+    double maxVisibleArea = -1.0;
+
+    // 用来标记是否找到了完美适配的方向，如果找到了，就不再考虑那些会被裁剪的方向了
+    bool foundCapable = false;
+
+    for (final candidate in data.values) {
+      if (candidate == curData || candidate == revData) continue;
+
+      final bool isCapable = _isDirectionCapable(candidate);
+
+      // 如果我们已经找到了完美适配的方向，就忽略那些不能适配的
+      if (foundCapable && !isCapable) continue;
+
+      // 如果当前是完美适配，但之前没找到过，通过 foundCapable 标记提升优先级
+      if (isCapable && !foundCapable) {
+        foundCapable = true;
+        maxVisibleArea = -1.0; // 重置最大面积，因为之前的面积是基于"会被裁剪"的那些计算的
+      }
+
+      // 计算可视面积
+      // 如果 isCapable 为 true，这里的 area 其实就是完整面积
+      // 如果 isCapable 为 false，这里计算的是裁剪后的面积
+      final double visibleWidth = candidate.availableSpace.width.clamp(
+        0.0,
+        overlaySize.width,
+      );
+      final double visibleHeight = candidate.availableSpace.height.clamp(
+        0.0,
+        overlaySize.height,
+      );
+      final double area = visibleWidth * visibleHeight;
+
+      if (area > maxVisibleArea) {
+        maxVisibleArea = area;
+        bestCandidate = candidate;
       }
     }
 
-    return curData;
+    return bestCandidate ?? curData;
+  }
+
+  /// 判断方向是否有能力完全展示弹层
+  /// - 主轴必须不溢出
+  /// - 交叉轴虽然可能溢出，但总空间必须足够容纳弹层，可通过位置偏移修复
+  bool _isDirectionCapable(ZoDirectionLayoutData data) {
+    // 主轴溢出，无法通过偏移修复
+    if (data.mainOverflow) return false;
+
+    // 交叉轴没有溢出
+    if (!data.crossOverflow) return true;
+
+    // 如果交叉轴溢出了，检查是否有足够的空间通过偏移来修复
+    // 获取当前方向对应的交叉轴尺寸限制
+    final double availableCrossSize = isVerticalDirection(data.direction)
+        ? data.availableSpace.width
+        : data.availableSpace.height;
+
+    // 获取弹层在该交叉轴上的实际尺寸
+    final double overlayCrossSize = isVerticalDirection(data.direction)
+        ? overlaySize.width
+        : overlaySize.height;
+
+    // 只要总空间够大，我们认为可以通过偏移修复，所以视为可用
+    // 允许 1 像素的误差容忍
+    return availableCrossSize >= (overlayCrossSize - 1.0);
   }
 
   /// 获取指定方向的相反方向
@@ -584,50 +706,38 @@ class OverlayPositionedRenderObject extends RenderBox
     };
   }
 
-  /// 绘制 target 调试框
-  /// ignore: unused_element
-  void _debugTargetPosition(
-    PaintingContext context,
-    Offset offset,
-    Rect target,
+  /// 传入方向布局的 directionLayoutData，更新 [internalConstraints] 并按需触发绘制
+  void _updateAvailableSpace(
+    ZoDirectionLayoutData? directionLayoutData,
   ) {
-    final t = target.shift(offset);
-    context.canvas.drawRect(
-      t.isEmpty ? t.inflate(2) : t,
-      Paint()
-        ..color = Colors.black
-        ..style = PaintingStyle.stroke,
-    );
-  }
+    if (directionLayoutData == null ||
+        !entry.constrainsToView ||
+        entry.direction == null) {
+      internalConstraints = null;
+      return;
+    }
 
-  /// 绘制方向布局的调试框
-  /// ignore: unused_element
-  void _debugDirectionPosition(
-    PaintingContext context,
-    Offset offset,
-    HashMap<ZoPopperDirection, ZoDirectionLayoutData> directionDataMap,
-  ) {
-    for (var element in directionDataMap.entries) {
-      var x = element.value.position.dx + offset.dx;
-      var y = element.value.position.dy + offset.dy;
+    final availableSpace = directionLayoutData.availableSpace;
 
-      final isVertical = element.key.name.startsWith(RegExp(r"^(top|bottom)"));
-      final isHorizontal = !isVertical;
+    final newConstraints = BoxConstraints(
+      maxWidth: availableSpace.width,
+      maxHeight: availableSpace.height,
+    ).normalize();
 
-      if (isVertical && element.value.crossOverflow) {
-        x = x + element.value.crossOverflowDistance;
-      }
+    final changed = newConstraints != internalConstraints;
 
-      if (isHorizontal && element.value.crossOverflow) {
-        y = y + element.value.crossOverflowDistance;
-      }
+    final hasOverflow =
+        overlaySize.width > availableSpace.width ||
+        overlaySize.height > availableSpace.height;
 
-      context.canvas.drawRect(
-        Rect.fromLTWH(x, y, overlaySize.width, overlaySize.height),
-        Paint()
-          ..color = element.value.crossOverflow ? Colors.red : Colors.blue
-          ..style = PaintingStyle.stroke,
-      );
+    if (changed && hasOverflow) {
+      internalConstraints = newConstraints;
+
+      WidgetsBinding.instance.addPostFrameCallback((d) {
+        if (attached) {
+          markNeedsLayout();
+        }
+      });
     }
   }
 }

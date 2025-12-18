@@ -1,4 +1,5 @@
 import "package:flutter/material.dart";
+import "package:zo/src/trigger/gesture_recognizer/immediate_pan.dart";
 import "package:zo/zo.dart";
 
 class DNDPage extends StatefulWidget {
@@ -82,6 +83,38 @@ class _DNDPageState extends State<DNDPage> {
                           label: "A:",
                         ),
                       ],
+                    ),
+                  ),
+                ),
+                RawGestureDetector(
+                  gestures: {
+                    ImmediatePanGestureRecognizer:
+                        GestureRecognizerFactoryWithHandlers<
+                          ImmediatePanGestureRecognizer
+                        >(
+                          () => ImmediatePanGestureRecognizer(debugOwner: this),
+                          (ImmediatePanGestureRecognizer instance) {
+                            instance.onUpdate = (e) {
+                              print("onUpdate");
+                            };
+                            instance.onStart = (e) {
+                              print("onStart");
+                            };
+                            instance.onEnd = (e) {
+                              print("onEnd");
+                            };
+                          },
+                        ),
+                  },
+                  child: GestureDetector(
+                    onTap: () {
+                      print("tap");
+                    },
+                    child: Container(
+                      height: 100.0,
+                      width: 100.0,
+                      color: Colors.lightGreenAccent,
+                      child: const Center(child: Text("ImmediatePan")),
                     ),
                   ),
                 ),

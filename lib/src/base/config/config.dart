@@ -1,9 +1,6 @@
-import "package:flutter/material.dart";
-import "../style/style.dart";
+import "package:flutter/widgets.dart";
 
-/// 为子级所有组件提供通用配置, 配置不会响应变更, 应在挂载时确定
-///
-/// 样式类配置应放在 [ZoStyle] 而不是此处
+/// 为子级所有组件提供通用常量配置, 这些配置不会响应变更, 用于提供超时时间、重试次数等不需要经常更新的配置
 class ZoConfig extends InheritedWidget {
   const ZoConfig({
     super.key,

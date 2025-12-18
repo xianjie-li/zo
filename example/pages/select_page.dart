@@ -74,7 +74,6 @@ class _SelectPageState extends State<SelectPage> {
 
   @override
   Widget build(BuildContext context) {
-    print(123);
     return Scaffold(
       body: SingleChildScrollView(
         clipBehavior: Clip.none,
@@ -83,6 +82,8 @@ class _SelectPageState extends State<SelectPage> {
           spacing: 12,
           runSpacing: 12,
           children: [
+            ZoInput(),
+            ZoInput(),
             ZoInput(),
             SizedBox(
               width: 400,
@@ -113,39 +114,42 @@ class _SelectPageState extends State<SelectPage> {
               },
             ),
             SizedBox(
-              width: 400,
-              child: ZoSelect(
-                value: const ["Option 2"],
-                selectionType: ZoSelectionType.multiple,
-                options: options,
-                size: ZoSize.small,
-              ),
+              height: 500,
             ),
-            SizedBox(
-              width: 400,
-              child: ZoSelect(
-                selectionType: ZoSelectionType.multiple,
-                options: options,
-                size: ZoSize.large,
-              ),
-            ),
-            SizedBox(
-              width: 400,
-              child: ZoSelect(
-                selectionType: ZoSelectionType.single,
-                options: options,
-                size: ZoSize.large,
-              ),
-            ),
-            ZoInput(),
-            Focus(
-              onKeyEvent: (node, event) {
-                print(event.logicalKey);
-                return KeyEventResult.ignored;
-              },
-              skipTraversal: true,
-              child: ZoInput(),
-            ),
+            // SizedBox(
+            //   width: 400,
+            //   child: ZoSelect(
+            //     value: const ["Option 2"],
+            //     selectionType: ZoSelectionType.multiple,
+            //     options: options,
+            //     size: ZoSize.small,
+            //   ),
+            // ),
+            // SizedBox(
+            //   width: 400,
+            //   child: ZoSelect(
+            //     selectionType: ZoSelectionType.multiple,
+            //     options: options,
+            //     size: ZoSize.large,
+            //   ),
+            // ),
+            // SizedBox(
+            //   width: 400,
+            //   child: ZoSelect(
+            //     selectionType: ZoSelectionType.single,
+            //     options: options,
+            //     size: ZoSize.large,
+            //   ),
+            // ),
+            // ZoInput(),
+            // Focus(
+            //   onKeyEvent: (node, event) {
+            //     print(event.logicalKey);
+            //     return KeyEventResult.ignored;
+            //   },
+            //   skipTraversal: true,
+            //   child: ZoInput(),
+            // ),
           ],
         ),
       ),

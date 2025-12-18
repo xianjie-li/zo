@@ -11,6 +11,43 @@ part "node.dart";
 part "status.dart";
 part "expands.dart";
 
+/// [ZoTreeDataController] 的更新类型
+enum ZoTreeDataUpdateType {
+  reload,
+  refresh,
+  update,
+}
+
+/// [ZoTreeDataController] 的生命周期各阶段
+enum ZoTreeDataPhases {
+  /// 初始化开始
+  initStart,
+
+  /// 初始化开始
+  initEnd,
+
+  /// reload 开始
+  reloadStart,
+
+  /// reload 结束
+  reloadEnd,
+
+  /// 刷新开始
+  refreshStart,
+
+  /// 刷新结束
+  refreshEnd,
+
+  /// 更新开始
+  updateStart,
+
+  /// 更新结束
+  updateEnd,
+
+  /// 销毁
+  dispose,
+}
+
 /// 树形数据管理器，它在初始化节点缓存必要信息，用于后续进行高效的树节点查询，并提供了树数据处理和渲染的很多工具，
 /// 比如展开管理、选中管理、筛选、变更操作、异步加载、节点查询方法、用于渲染的平铺列表等
 ///
@@ -42,16 +79,11 @@ abstract class ZoTreeDataController<D> {
     bool caseSensitive = false,
     RegExp? matchRegexp,
     ZoTreeDataFilter<D>? filter,
+    this.onPhaseChanged,
     this.onUpdateEach,
-    this.onUpdateStart,
-    this.onUpdateEnd,
     this.onReloadEach,
-    this.onReloadStart,
-    this.onReloadEnd,
     this.onRefreshEach,
-    this.onRefreshStart,
-    this.onRefreshEnd,
-    this.onFilterCompleted,
+    this.onFiltered,
     this.onMutation,
     this.onLoadStatusChanged,
   }) : _matchRegexp = matchRegexp,
@@ -59,6 +91,8 @@ abstract class ZoTreeDataController<D> {
        _caseSensitive = caseSensitive,
        _filter = filter,
        _data = data {
+    phaseChanged(ZoTreeDataPhases.initStart);
+
     selector = ZoSelector(
       selected: selected,
       valueGetter: getValue,
@@ -73,7 +107,7 @@ abstract class ZoTreeDataController<D> {
 
     mutator = ZoMutator<ZoTreeDataOperation>(
       operationHandle: _operationHandle,
-      onMutation: _onMutation,
+      onMutation: didMutation,
     );
 
     // 选中项更新时，更新筛选信息
@@ -89,6 +123,8 @@ abstract class ZoTreeDataController<D> {
     });
 
     reload();
+
+    phaseChanged(ZoTreeDataPhases.initEnd);
   }
 
   /// 是否将所有选项视为开启，在不需要管理展开状态的组件中，可以始终保持此项为 true 来确保所有选项都是打开的
@@ -173,41 +209,26 @@ abstract class ZoTreeDataController<D> {
   List<D> get filteredFlatList => _filteredFlatList;
   List<D> _filteredFlatList = [];
 
+  /// 运行的不同阶段调用
+  ValueChanged<ZoTreeDataPhases>? onPhaseChanged;
+
   /// 内部通过 [update] 对数据循环处理时，会在循环中对满足显示条件的每个数据调用该方法，
   /// 可以用来做一些外部的数据同步工作，它以实际节点顺序的倒序循环
   ValueChanged<ZoTreeDataEachArgs>? onUpdateEach;
-
-  /// 在 [update] 开始之前调用
-  VoidCallback? onUpdateStart;
-
-  /// 在 [update] 结束后调用
-  VoidCallback? onUpdateEnd;
 
   /// 内部通过 [reload] 对数据循环处理时，会在循环中的每个数据调用该方法，
   /// 可以用来做一些外部的数据同步工作
   ValueChanged<ZoTreeDataEachArgs>? onReloadEach;
 
-  /// 在 [reload] 开始之前调用
-  VoidCallback? onReloadStart;
-
-  /// 在 [reload] 结束后调用
-  VoidCallback? onReloadEnd;
-
   /// 内部通过 [refresh] 对数据循环处理时，会在循环中的每个数据调用该方法，
   /// 可以用来做一些外部的数据同步工作
   ValueChanged<ZoTreeDataEachArgs>? onRefreshEach;
 
-  /// 在 [refresh] 开始之前调用
-  VoidCallback? onRefreshStart;
-
-  /// 在 [refresh] 结束后调用
-  VoidCallback? onRefreshEnd;
-
-  /// 在存在筛选条件时，如果存在匹配项, 会在完成筛选后调用此方法进行通知，回调会传入所有严格匹配的数据，
-  /// 可以在用来在筛选完成后添加高亮首选项等优化
+  /// 在存在筛选条件时，会在完成筛选后调用此方法进行通知，回调会传入所有严格匹配的数据，
+  /// 可以在用来在筛选完成后添加高亮/聚焦首选项等优化
   ///
-  /// 与 [onUpdateEnd] 很相似，但它仅在筛选包含变更时才调用
-  ValueChanged<List<ZoTreeDataNode<D>>>? onFilterCompleted;
+  /// 调用时机与 updateEnd 基本一样，但它仅在筛选包含变更时才调用
+  ValueChanged<List<ZoTreeDataNode<D>>>? onFiltered;
 
   /// 发生变更操作时通过此方法进行通知
   void Function(ZoMutatorDetails<ZoTreeDataOperation> details)? onMutation;
@@ -257,7 +278,7 @@ abstract class ZoTreeDataController<D> {
   /// 请通过 [getFilteredIndex] 使用，它会自动进行方向处理
   final HashMap<Object, int> _filteredReverseIndex = HashMap();
 
-  // # # # # # # # 数据 D 适配方法 # # # # # # #
+  // # # # # # # # 数据 & 适配方法 # # # # # # #
 
   /// 获取传入数据的浅拷贝版本
   @protected
@@ -291,8 +312,14 @@ abstract class ZoTreeDataController<D> {
 
   /// 数据源需要通过外部数据完全替换时使用，此操作会清理所有缓存信息并重载跟数据
   void reload() {
+    if (_batchActions != null) {
+      _batchActions!.add(ZoTreeDataUpdateType.reload);
+      return;
+    }
+
+    phaseChanged(ZoTreeDataPhases.reloadStart);
+
     // 清理现有缓存、clone 数据, 同时创建node，生成各 processedData / flatList
-    onReloadStart?.call();
 
     _processedData = [];
     _flatList = [];
@@ -380,12 +407,17 @@ abstract class ZoTreeDataController<D> {
 
     update();
 
-    onReloadEnd?.call();
+    phaseChanged(ZoTreeDataPhases.reloadEnd);
   }
 
   /// 数据在内部被可控的更新，比如通过内部 api 新增、删除、排序等，此操作会重新计算节点的关联关系、flatList 等
   void refresh() {
-    onRefreshStart?.call();
+    if (_batchActions != null) {
+      _batchActions!.add(ZoTreeDataUpdateType.refresh);
+      return;
+    }
+
+    phaseChanged(ZoTreeDataPhases.refreshStart);
 
     _flatList = [];
     _nodes.clear();
@@ -455,12 +487,17 @@ abstract class ZoTreeDataController<D> {
 
     update();
 
-    onRefreshEnd?.call();
+    phaseChanged(ZoTreeDataPhases.refreshEnd);
   }
 
   /// 重新根据展开、筛选状态更新要展示的列表，关联信息等
   void update() {
-    onUpdateStart?.call();
+    if (_batchActions != null) {
+      _batchActions!.add(ZoTreeDataUpdateType.update);
+      return;
+    }
+
+    phaseChanged(ZoTreeDataPhases.updateStart);
 
     final List<D> filteredList = [];
 
@@ -486,9 +523,7 @@ abstract class ZoTreeDataController<D> {
     _lastFilter = filter;
 
     final needEmitFilterEvent =
-        filterChanged &&
-        !isSelectChangedRefreshing &&
-        onFilterCompleted != null;
+        filterChanged && !isSelectChangedRefreshing && onFiltered != null;
 
     var cacheIndex = 0;
 
@@ -560,18 +595,80 @@ abstract class ZoTreeDataController<D> {
     _filteredFlatList = filteredList;
 
     if (needEmitFilterEvent && exactMatchNode.isNotEmpty) {
-      onFilterCompleted!(exactMatchNode);
+      filtered(exactMatchNode);
     }
 
-    onUpdateEnd?.call();
+    phaseChanged(ZoTreeDataPhases.updateEnd);
+  }
+
+  /// 不为 null 时，会拦截更新操作，并在结束后按需进行单次更新
+  List<ZoTreeDataUpdateType>? _batchActions;
+
+  /// 批量处理更新操作，拦截其中的 [reload] / [refresh] / [update] 操作，并在结束后统一进行更新, 也可以设置 notify = false 来禁用通知
+  void batch(VoidCallback action, [bool notify = true]) {
+    // 嵌套batch直接跳过，使用外层的
+    if (_batchActions != null) return;
+
+    _batchActions = [];
+
+    try {
+      action();
+    } catch (e) {
+      rethrow;
+    } finally {
+      ZoTreeDataUpdateType? updateType = ZoTreeDataUpdateType.update;
+
+      // 获取要要实际更新的类型
+      if (notify && _batchActions!.isNotEmpty) {
+        int minLevel = 3;
+
+        for (var action in _batchActions!) {
+          // 为每个级别设置一个数值，越小的优先级越高
+          final level = switch (action) {
+            ZoTreeDataUpdateType.update => 3,
+            ZoTreeDataUpdateType.refresh => 2,
+            ZoTreeDataUpdateType.reload => 1,
+          };
+
+          if (level < minLevel) {
+            minLevel = level;
+            updateType = action;
+          }
+        }
+      }
+
+      _batchActions = null;
+
+      if (notify && updateType != null) {
+        switch (updateType) {
+          case ZoTreeDataUpdateType.update:
+            update();
+            break;
+          case ZoTreeDataUpdateType.refresh:
+            refresh();
+            break;
+          case ZoTreeDataUpdateType.reload:
+            reload();
+            break;
+        }
+      }
+    }
   }
 
   // # # # # # # # Hook # # # # # # #
+
+  /// 声明周期变更时触发的回调
+  @protected
+  @mustCallSuper
+  void phaseChanged(ZoTreeDataPhases phase) {
+    onPhaseChanged?.call(phase);
+  }
 
   /// 内部通过 [reload] 对数据循环处理时，会在每个 node 构造完成后调用
   ///
   /// 注意：由于遍历尚未完成，[ZoTreeDataNode.next] 等依赖后续节点或子级遍历结果的属性不可用
   @protected
+  @mustCallSuper
   void reloadEach(ZoTreeDataEachArgs args) {
     onReloadEach?.call(args);
   }
@@ -580,6 +677,7 @@ abstract class ZoTreeDataController<D> {
   ///
   /// 注意：由于遍历尚未完成，[ZoTreeDataNode.next] 等依赖后续节点或子级遍历结果的属性不可用
   @protected
+  @mustCallSuper
   void refreshEach(ZoTreeDataEachArgs args) {
     onRefreshEach?.call(args);
   }
@@ -590,6 +688,19 @@ abstract class ZoTreeDataController<D> {
   @mustCallSuper
   void updateEach(ZoTreeDataEachArgs args) {
     onUpdateEach?.call(args);
+  }
+
+  @protected
+  @mustCallSuper
+  void filtered(List<ZoTreeDataNode<D>> extraMatches) {
+    onFiltered?.call(extraMatches);
+  }
+
+  @protected
+  @mustCallSuper
+  void didMutation(ZoMutatorDetails<ZoTreeDataOperation> details) {
+    _onMutation(details);
+    onMutation?.call(details);
   }
 
   /// 销毁对象

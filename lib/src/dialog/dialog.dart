@@ -51,6 +51,7 @@ class ZoDialog extends ZoOverlayEntry {
     super.customWrap,
     super.curve,
     super.duration,
+    super.constrainsToView,
   }) : _draggable = draggable,
        _drawer = drawer,
        _height = height,
@@ -84,9 +85,9 @@ class ZoDialog extends ZoOverlayEntry {
     }
   }
 
-  static const defaultWidth = 320.0;
+  static double defaultWidth = 320.0;
 
-  static const defaultDrawerWidth = 400.0;
+  static double defaultDrawerWidth = 400.0;
 
   Widget? _content;
 

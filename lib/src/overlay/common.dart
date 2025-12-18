@@ -30,6 +30,7 @@ class ZoDirectionLayoutData {
     required this.mainOverflow,
     required this.crossOverflow,
     required this.crossOverflowDistance,
+    required this.availableSpace,
   });
 
   /// 对应的方向
@@ -47,6 +48,9 @@ class ZoDirectionLayoutData {
   /// 交叉轴溢出的距离, 为正数表示从开始方向溢出, 为负数表示从结束方向溢出, position
   /// 加上此值就可以得到修正后的位置
   final double crossOverflowDistance;
+
+  /// 该方向的可用布局空间
+  final Size availableSpace;
 }
 
 /// 层布局和绘制阶段向外暴露的信息, 用于对层位置或绘制进行自定义

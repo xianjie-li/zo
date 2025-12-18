@@ -24,6 +24,8 @@ part "drag_sort.dart";
 /// - [ZoTreeState.controller] 选项控制器，提供了对数据进行增删改查的丰富接口、筛选、展开控制等
 /// - [ZoTreeState.selector] 手动控制选中项，作为表单控件时通常会通过 [ZoTree.value] / [ZoTree.onChanged] 控制
 /// - [ZoTreeState.jumpTo] 和 [ZoTreeState.focusOption] 跳转到指定选项
+///
+/// 如果要在层中渲染菜单给用户选择，menus 模块提供了一个 [ZoTreeMenu]
 class ZoTree extends ZoCustomFormWidget<Iterable<Object>> {
   const ZoTree({
     super.key,
@@ -35,6 +37,8 @@ class ZoTree extends ZoCustomFormWidget<Iterable<Object>> {
     this.implicitMultipleSelection = true,
     this.scrollController,
     this.onTap,
+    this.onActiveChanged,
+    this.onFocusChanged,
     this.onContextAction,
     this.onMutation,
     this.expandByTapRow,
@@ -65,11 +69,13 @@ class ZoTree extends ZoCustomFormWidget<Iterable<Object>> {
     this.indentLine = true,
     this.pinedActiveBranch = true,
     this.pinedActiveBranchMaxLevel,
+    this.pinedContainerBackgroundColor,
     this.sortable = false,
     this.onSortConfirm,
     this.smartSortConfirm = true,
     this.draggableDetector,
     this.droppableDetector,
+    this.optionController,
   });
 
   /// 树形选项列表
@@ -91,7 +97,15 @@ class ZoTree extends ZoCustomFormWidget<Iterable<Object>> {
   final ScrollController? scrollController;
 
   /// 点击行触发
-  final void Function(ZoTreeEvent event)? onTap;
+  final ZoTriggerListener<ZoTreeEvent>? onTap;
+
+  /// 选项活动状态变更
+  /// - 鼠标: 表示位于组件上方
+  /// - 触摸设备: 按下触发, 松开或移动时关闭
+  final ZoTriggerListener<ZoTriggerToggleEvent>? onActiveChanged;
+
+  /// 选项焦点变更事件
+  final ZoTriggerListener<ZoTriggerToggleEvent>? onFocusChanged;
 
   /// 行上下文事件
   final void Function(ZoTreeEvent event, ZoTriggerEvent triggerEvent)?
@@ -194,6 +208,9 @@ class ZoTree extends ZoCustomFormWidget<Iterable<Object>> {
   /// 控制 [pinedActiveBranch] 可固定的最大层数
   final int? pinedActiveBranchMaxLevel;
 
+  /// 固定选项底部的容器背景色
+  final Color? pinedContainerBackgroundColor;
+
   /// 是否可拖动节点进行排序
   final bool sortable;
 
@@ -201,8 +218,6 @@ class ZoTree extends ZoCustomFormWidget<Iterable<Object>> {
   ///
   /// 为了防止确认期间其他变更导致移动数据失效(比如删除了移动节点), 确认期间所有变更会被缓冲，
   /// 并在确认操作完成后才执行，因此必须确保确认操作不会被挂起，否则将导致后续所有操作被拦截
-  ///
-  ///
   final Future<bool> Function(ZoTreeMoveConfirmArgs args)? onSortConfirm;
 
   /// 智能判断是否需要使用 onSortConfirm 提示，开启后，以下情况不再触发确认：
@@ -219,6 +234,9 @@ class ZoTree extends ZoCustomFormWidget<Iterable<Object>> {
     ZoTreeDataNode<ZoOption>? dragNode,
   )?
   droppableDetector;
+
+  /// 自行传入树选项控制器, 其部分参数会根据内部需要被覆盖
+  final ZoOptionController? optionController;
 
   @override
   State<ZoTree> createState() => ZoTreeState();
@@ -238,30 +256,53 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree>
 
     _isInit = true;
 
-    _controller = ZoOptionController(
-      data: widget.options,
-      selected: widget.value,
-      expandAll: widget.expandAll,
-      matchString: widget.matchString,
-      matchRegexp: widget.matchRegexp,
-      caseSensitive: widget.caseSensitive,
-      filter: widget.filter,
-      onUpdateStart: _onUpdateStart,
-      onUpdateEach: _onUpdateEach,
-      onUpdateEnd: _onUpdateEnd,
-      onFilterCompleted: _onFilterComplete,
-      onMutation: widget.onMutation,
-      onLoadStatusChanged: widget.onLoadStatusChanged,
+    // 处理传入控制器和内部控制器的同步
+    _controllerCoordinator = ZoPropInstanceCoordinator<ZoOptionController>(
+      instance: widget.optionController,
+      create: (isInit) {
+        return ZoOptionController(
+          data: widget.options,
+          selected: widget.value,
+          expandAll: isInit ? widget.expandAll : false,
+          matchString: widget.matchString,
+          matchRegexp: widget.matchRegexp,
+          filter: widget.filter,
+          caseSensitive: widget.caseSensitive,
+        );
+      },
+      active: (ins) {
+        ins.onPhaseChanged = _onOptionPhaseChanged;
+        ins.onUpdateEach = _onUpdateEach;
+        ins.onFiltered = _onFilterComplete;
+        ins.onMutation = widget.onMutation;
+        ins.onLoadStatusChanged = widget.onLoadStatusChanged;
+
+        ins.selector.addListener(_onSelectChanged);
+        ins.expander.addListener(_onExpandChanged);
+      },
+      inactive: (ins) {
+        ins.onPhaseChanged = null;
+        ins.onUpdateEach = null;
+        ins.onFiltered = null;
+        ins.onMutation = null;
+        ins.onLoadStatusChanged = null;
+
+        ins.selector.removeListener(_onSelectChanged);
+        ins.expander.removeListener(_onExpandChanged);
+      },
+      destroy: (ins) {
+        ins.dispose();
+      },
     );
 
-    if (widget.expands.isNotEmpty) {
-      _controller.expander.setSelected(widget.expands);
-    } else if (_tempInitSelected.isNotEmpty) {
-      _controller.expander.setSelected(_tempInitSelected);
+    if (_controllerCoordinator.isInternal) {
+      if (widget.expands.isNotEmpty) {
+        controller.expander.setSelected(widget.expands);
+      } else if (_tempInitSelected.isNotEmpty) {
+        controller.expander.setSelected(_tempInitSelected);
+      }
     }
 
-    selector.addListener(_onSelectChanged);
-    _controller.expander.addListener(_onExpandChanged);
     scrollController.addListener(_onScrollChanged);
 
     _calcUseLightText();
@@ -370,16 +411,19 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree>
 
       scrollController.addListener(_onScrollChanged);
     }
+
+    // 只能在初始化阶段传入 optionController
+    assert(widget.optionController == oldWidget.optionController);
   }
 
   @override
   @protected
   dispose() {
-    selector.removeListener(_onSelectChanged);
     scrollController.removeListener(_onScrollChanged);
-    _controller.expander.removeListener(_onExpandChanged);
-    _controller.dispose();
+    _controllerCoordinator.dispose();
+
     _style = null;
+    _fixedHeightUpdateDebouncer.cancel();
     _fixedOptionsUpdateDebouncer.cancel();
     _innerScrollController.dispose();
     _focusNode.dispose();
@@ -393,7 +437,8 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree>
     selector.setSelected(widget.value ?? []);
   }
 
-  /// 更新selector的选中项到value并进行rerender
+  /// 更新 selector 的选中项到 value 并进行 rerender, 组件内均通过 selector 更改值，
+  /// 不直接设置 value
   void _onSelectChanged() {
     setState(() {
       value = selector.getSelected();
@@ -408,12 +453,6 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree>
     });
   }
 
-  void _onUpdateStart() {
-    if (_isInit) {
-      _tempInitSelected.clear();
-    }
-  }
-
   void _onUpdateEach(ZoTreeDataEachArgs args) {
     if (_isInit) {
       if (widget.expandAll) {
@@ -424,7 +463,27 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree>
     }
   }
 
-  /// 每次列表变更时更新组件
+  void _onOptionPhaseChanged(ZoTreeDataPhases phase) {
+    switch (phase) {
+      case ZoTreeDataPhases.updateStart:
+        _onUpdateStart();
+        break;
+      case ZoTreeDataPhases.updateEnd:
+        _onUpdateEnd();
+        break;
+      default:
+        break;
+    }
+  }
+
+  /// 更新开始前，清理临时数据
+  void _onUpdateStart() {
+    if (_isInit) {
+      _tempInitSelected.clear();
+    }
+  }
+
+  /// 每次列表变更结束时更新组件必要信息
   void _onUpdateEnd() {
     if (!_isInit && controller.isSelectChangedRefreshing) return;
 
@@ -476,10 +535,14 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree>
   Widget build(BuildContext context) {
     _activeTextColor = _getActiveTextColor();
 
-    return SizedBox(
-      height: controller.filteredFlatList.isEmpty
-          ? widget.maxHeight
-          : _fixedHeight,
+    final maxHeight = controller.filteredFlatList.isEmpty
+        ? widget.maxHeight
+        : _fixedHeight;
+
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxHeight: maxHeight ?? double.infinity,
+      ),
       child: Stack(
         children: [
           NotificationListener<ZoTriggerFocusNodeChangedNotification>(

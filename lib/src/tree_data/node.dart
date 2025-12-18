@@ -71,7 +71,7 @@ extension ZoTreeDataNodeExtension<D> on ZoTreeDataController<D> {
   /// 获取后一个节点，[filter] 可过滤掉不满足条件的数据
   ZoTreeDataNode<D>? getNextNode(
     ZoTreeDataNode<D> node, {
-    bool Function(ZoTreeDataNode<D> node)? filter,
+    ZoTreeDataFilter<D>? filter,
   }) {
     var curNode = node.next;
 
@@ -107,7 +107,7 @@ extension ZoTreeDataNodeExtension<D> on ZoTreeDataController<D> {
   /// 获取所有兄弟节点
   List<D> getSiblings(
     ZoTreeDataNode<D> node, [
-    bool filtered = false,
+    ZoTreeDataFilter<D>? filter,
   ]) {
     List<D> list = [];
 
@@ -117,12 +117,12 @@ extension ZoTreeDataNodeExtension<D> on ZoTreeDataController<D> {
       list = getChildrenList(node.parent!.data) ?? [];
     }
 
-    if (!filtered) {
+    if (filter == null) {
       return list;
     }
 
     return list.where((o) {
-      return isVisible(getValue(o));
+      return filter(getNode(getValue(o))!);
     }).toList();
   }
 

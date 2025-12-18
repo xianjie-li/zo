@@ -4,17 +4,21 @@ import "package:zo/src/base/types/types.dart";
 /// 扩展 BuildContext, 用于更方便的获取 style
 extension ZoStyleContext on BuildContext {
   ZoStyle get zoStyle => Theme.of(this).extension<ZoStyle>()!;
-  ZoStyle get readZoStyle => Theme.of(this).extension<ZoStyle>()!;
 }
 
-/// Zo 基础样式配置
+/// Zo组件的样式配置，包含颜色、字号、尺寸等基础样式配置，它可作为 [ThemeExtension] 添加到 flutter
+/// 的主题系统中使用，该类在 [BuildContext] 上扩展了 [ZoStyleContext.zoStyle] 属性来便捷的访问样式对象
 ///
 /// 有两种使用方式:
-/// - 通过 [toThemeData] 转换为 ThemeData 直接使用, 它会将相关样式覆盖为 ZoStyle 提供的样式,
+/// - 通过 [toThemeData] 转换为 ThemeData 使用, 它会将相关样式覆盖为 ZoStyle 提供的样式,
 /// 并将 ZoStyle 设置为 extensions
 /// - 直接将 ZoStyle 作为 ThemeData 的 extensions 来使用
 ///
-/// 特定组件的样式可通过 [InheritedTheme] 实现，[ZoStyle] 中仅应该存在基础且通用的样式配置
+/// 该类只存放基础样式信息，特定组件的样式/显示配置可通过继承 [InheritedTheme] 实现,
+/// 就像 [IconTheme] 和 [IconThemeData] 一样
+///
+/// 明暗主题：可以使用 [connectReverse] 来让两个明暗主题进行连接，随后，
+/// 可以方便的通过属性判当前主题类型、获取指定色调的主题、获取相反主题等
 ///
 /// 约定:
 /// - *Variant 后缀: 特定样式的变体, 可能用于改样式某种状态下的样式
@@ -24,17 +28,16 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
     this.extensions,
     this.alpha = 160,
     this.disableOpacity = 0.4,
-
     this.primaryColor = Colors.blue,
     this.secondaryColor = Colors.cyan,
     this.tertiaryColor = Colors.red,
+    Color? selectedColor,
     Color? barrierColor,
     Color? surfaceColor,
     Color? surfaceContainerColor,
-    Color? surfaceGrayColor,
-    Color? surfaceGrayColorVariant,
     Color? titleTextColor,
     Color? textColor,
+    Color? weakenTextColor,
     Color? hintTextColor,
     Color? disabledTextColor,
     this.infoColor = Colors.blue,
@@ -89,6 +92,12 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
   }) {
     final darkMode = brightness == Brightness.dark;
 
+    if (selectedColor != null) {
+      this.selectedColor = selectedColor;
+    } else {
+      this.selectedColor = primaryColor.withAlpha(180);
+    }
+
     this.barrierColor =
         barrierColor ??
         (darkMode
@@ -96,20 +105,20 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
             : Colors.white.withAlpha(200));
 
     this.surfaceColor =
-        surfaceColor ?? (darkMode ? Colors.grey[850]! : Colors.white);
+        surfaceColor ??
+        (darkMode ? const Color.fromARGB(255, 48, 48, 48) : Colors.white);
     this.surfaceContainerColor =
-        surfaceContainerColor ?? (darkMode ? Colors.grey[900]! : Colors.white);
-    this.surfaceGrayColor =
-        surfaceGrayColor ?? (darkMode ? Colors.grey[900]! : Colors.grey[50]!);
-    this.surfaceGrayColorVariant =
-        surfaceGrayColorVariant ??
-        (darkMode ? Colors.blueGrey[900]! : Colors.blueGrey[50]!);
+        surfaceContainerColor ??
+        (darkMode ? const Color.fromARGB(255, 40, 40, 40) : Colors.white);
     this.titleTextColor =
         titleTextColor ??
         (darkMode ? Colors.white.withAlpha(220) : Colors.black.withAlpha(200));
     this.textColor =
         textColor ??
         (darkMode ? Colors.white.withAlpha(200) : Colors.black.withAlpha(160));
+    this.weakenTextColor =
+        weakenTextColor ??
+        (darkMode ? Colors.white.withAlpha(180) : Colors.black.withAlpha(140));
     this.hintTextColor =
         hintTextColor ??
         (darkMode ? Colors.white.withAlpha(110) : Colors.black.withAlpha(90));
@@ -230,20 +239,17 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
   /// 第三色
   final Color tertiaryColor;
 
+  /// 选中项的标记色, 不传时默认通过 [primaryColor] 生产
+  late final Color selectedColor;
+
   /// 遮罩颜色
   late final Color barrierColor;
 
   /// 大范围容器表面色
   late final Color surfaceColor;
 
-  /// 组件表面色 (大部分组件可能不需要表面色, 与背景一致即可)
+  /// 组件表面色，大部分组件可能不需要表面色, 与背景一致即可，除非想和背景有明显区分
   late final Color surfaceContainerColor;
-
-  /// 用于部分组件的浅色背景
-  late final Color surfaceGrayColor;
-
-  /// 用于部分组件的浅色背景
-  late final Color surfaceGrayColorVariant;
 
   /// 表示强调的信息色
   final Color infoColor;
@@ -298,7 +304,10 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
   /// 界面中最常见的主要文本色
   late final Color textColor;
 
-  /// 提示文本色
+  /// 比主要文本色稍微弱化的文本色
+  late final Color weakenTextColor;
+
+  /// 弱化文本色
   late final Color hintTextColor;
 
   /// 禁用文本色
@@ -368,6 +377,35 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
     };
   }
 
+  /// 获取放置到 [getSizedExtent] 内部的交互组件的尺寸, 该尺寸比获取的尺寸更小一号
+  double getSizedSmallExtent([ZoSize? wSize]) {
+    final size = wSize ?? widgetSize;
+
+    return getSizedExtent(wSize) - (size == ZoSize.small ? 8 : 12);
+  }
+
+  /// 获取尺寸对应的图标大小，如果图标需要和文本混合排版，可以传入 [textMixing],
+  /// 它会使图标始终比文本大小大一些
+  double getSizedIconSize([ZoSize? wSize, bool textMixing = false]) {
+    if (textMixing) {
+      return getSizedFontSize(wSize) + 4;
+    }
+
+    // 让small时尺寸不要过小
+    final adjustSize = wSize == ZoSize.small ? 12 : 16;
+
+    return getSizedExtent(wSize) - adjustSize;
+  }
+
+  /// 获取比当前或传入尺寸小一号的尺寸，如果已经最小则直接返回
+  ZoSize getSmallerSize([ZoSize? wSize]) {
+    return switch (wSize ?? widgetSize) {
+      ZoSize.medium => ZoSize.small,
+      ZoSize.small => ZoSize.small,
+      ZoSize.large => ZoSize.medium,
+    };
+  }
+
   /// 根据传入或当前 [widgetSize] 获取间距
   double getSizedSpace([ZoSize? wSize]) {
     return switch (wSize ?? widgetSize) {
@@ -384,19 +422,6 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
       ZoSize.small => fontSizeSM,
       ZoSize.large => fontSizeMD,
     };
-  }
-
-  /// 根据传入或当前 [widgetSize] 获取合适的图标大小，传入 [textIcon] 可以调整图标尺寸类型，
-  /// 文本图标会以文本尺寸为依据，稍大于文本，独立图标则略小于 [widgetSize] 组件的尺寸
-  double getSizedIconSize([ZoSize? wSize, bool textIcon = false]) {
-    if (textIcon) {
-      return getSizedFontSize(wSize) + 4;
-    }
-
-    // 让small时尺寸不要过小
-    final adjustSize = wSize == ZoSize.small ? 12 : 16;
-
-    return getSizedExtent(wSize) - adjustSize;
   }
 
   /// 圆角
@@ -488,9 +513,11 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
     Color? primaryColor,
     Color? secondaryColor,
     Color? tertiaryColor,
+    Color? selectedColor,
     Color? barrierColor,
     Color? titleTextColor,
     Color? textColor,
+    Color? weakenTextColor,
     Color? hintTextColor,
     Color? disabledTextColor,
     Color? surfaceColor,
@@ -545,20 +572,21 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
     return ZoStyle(
       brightness: brightness ?? this.brightness,
       extensions: extensions ?? this.extensions,
+      alpha: alpha ?? this.alpha,
       disableOpacity: disableOpacity ?? this.disableOpacity,
       primaryColor: primaryColor ?? this.primaryColor,
       secondaryColor: secondaryColor ?? this.secondaryColor,
       tertiaryColor: tertiaryColor ?? this.tertiaryColor,
-      alpha: alpha ?? this.alpha,
+      selectedColor: selectedColor ?? this.selectedColor,
       barrierColor: barrierColor ?? this.barrierColor,
       titleTextColor: titleTextColor ?? this.titleTextColor,
       textColor: textColor ?? this.textColor,
+      weakenTextColor: weakenTextColor ?? this.weakenTextColor,
       hintTextColor: hintTextColor ?? this.hintTextColor,
       disabledTextColor: disabledTextColor ?? this.disabledTextColor,
       surfaceColor: surfaceColor ?? this.surfaceColor,
       surfaceContainerColor:
           surfaceContainerColor ?? this.surfaceContainerColor,
-      surfaceGrayColor: surfaceGrayColor ?? this.surfaceGrayColor,
       infoColor: infoColor ?? this.infoColor,
       successColor: successColor ?? this.successColor,
       warningColor: warningColor ?? this.warningColor,
@@ -620,9 +648,11 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
       primaryColor: Color.lerp(primaryColor, other.primaryColor, t)!,
       secondaryColor: Color.lerp(secondaryColor, other.secondaryColor, t)!,
       tertiaryColor: Color.lerp(tertiaryColor, other.tertiaryColor, t)!,
+      selectedColor: Color.lerp(selectedColor, other.selectedColor, t)!,
       barrierColor: Color.lerp(barrierColor, other.barrierColor, t),
       titleTextColor: Color.lerp(titleTextColor, other.titleTextColor, t),
       textColor: Color.lerp(textColor, other.textColor, t),
+      weakenTextColor: Color.lerp(warningColor, other.weakenTextColor, t),
       hintTextColor: Color.lerp(hintTextColor, other.hintTextColor, t),
       disabledTextColor: Color.lerp(
         disabledTextColor,
@@ -635,7 +665,6 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
         other.surfaceContainerColor,
         t,
       ),
-      surfaceGrayColor: Color.lerp(surfaceGrayColor, other.surfaceGrayColor, t),
       infoColor: Color.lerp(infoColor, other.infoColor, t)!,
       successColor: Color.lerp(successColor, other.successColor, t)!,
       warningColor: Color.lerp(warningColor, other.warningColor, t)!,

@@ -169,8 +169,6 @@ extension TreeDataMutationExtension<D> on ZoTreeDataController<D> {
     if (lastMoveOperation != null && lastMoveOperation.values.isNotEmpty) {
       selector.setSelected(lastMoveOperation.values);
     }
-
-    onMutation?.call(details);
   }
 
   /// 实现 [ZoMutatorOperationHandle]

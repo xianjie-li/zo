@@ -408,7 +408,6 @@ class ZoDNDHandler extends StatelessWidget {
     return ZoTrigger(
       data: (node, context),
       enabled: node.draggable,
-      longPressDragOnTouch: false,
       canRequestFocus: false,
       notification: true,
       onDrag: onDrag,

@@ -7,8 +7,12 @@ import "package:zo/zo.dart";
 
 /// 输入控件
 ///
-/// 数值输入: 根据泛型 T 的类型不同, 组件的输入类型会自动进行调整, 可选类型为 String - 字符串输入
-///  double - 浮点数输入 int - 整形输入, 若未明确声明类型且无法推断出T的类型, 会将其视为String
+/// 数值输入: 根据泛型 [T] 的类型不同, 组件的输入类型会自动进行调整, 可选类型为
+/// - String - 字符串输入
+/// - double - 浮点数输入
+/// - int - 整形输入
+///
+/// 若未明确声明类型且无法推断出T的类型, 会将其视为String
 ///
 /// ```dart
 /// Row(
@@ -28,7 +32,7 @@ class ZoInput<T> extends ZoCustomFormWidget<T> {
     this.max = 999999999999999,
     this.min = -999999999999999,
     this.clear = true,
-    this.size = ZoSize.medium,
+    this.size,
     this.onFocusChanged,
     this.onHoverChanged,
     this.obscureText = false,
@@ -77,7 +81,7 @@ class ZoInput<T> extends ZoCustomFormWidget<T> {
   final bool clear;
 
   /// 组件尺寸
-  final ZoSize size;
+  final ZoSize? size;
 
   /// 编辑完成时调用
   final ValueChanged<T>? onSubmitted;
@@ -100,7 +104,7 @@ class ZoInput<T> extends ZoCustomFormWidget<T> {
   /// 后导内容
   final List<Widget>? trailing;
 
-  /// 额外现实在输入区域的内容，它会通过 [Stack] 堆叠到输入区域的上方
+  /// 额外显示在输入区域的内容，它会通过 [Stack] 堆叠到输入区域的上方
   final Widget? extra;
 
   /// 对主输入区域添加自定义包装节点
@@ -466,15 +470,6 @@ class _ZoInputState<T> extends ZoCustomFormState<T, ZoInput<T>> {
     );
   }
 
-  double getStandardSize() {
-    final style = context.zoStyle;
-    return switch (widget.size) {
-      ZoSize.small => style.sizeSM,
-      ZoSize.medium => style.sizeMD,
-      ZoSize.large => style.sizeLG,
-    };
-  }
-
   /// 根据 leading / trailing 动态设置边距, 当显示图标按钮时使用更小的间距使视觉上更舒适
   EdgeInsetsGeometry getPadding(List<Widget> leading, List<Widget> trailing) {
     if (widget.padding != null) return widget.padding!;
@@ -621,7 +616,7 @@ class _ZoInputState<T> extends ZoCustomFormState<T, ZoInput<T>> {
         constraints:
             widget.constraints ??
             BoxConstraints(
-              minHeight: getStandardSize(),
+              minHeight: style.getSizedExtent(widget.size),
               maxWidth: style.breakPointSM,
             ),
         padding: getPadding(leading, trailing),

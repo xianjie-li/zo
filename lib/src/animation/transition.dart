@@ -24,17 +24,17 @@ class ZoTransition extends StatelessWidget {
     this.unmountOnExit = false,
     this.changeVisible = true,
     this.autoAlpha = true,
-    this.curve = ZoTransition.defaultCurve,
-    this.duration = ZoTransition.defaultDuration,
+    this.curve,
+    this.duration,
     this.reverseDuration,
     this.controller,
     this.controllerRef,
     this.onStatusChange,
   });
 
-  static const Duration defaultDuration = Durations.medium1;
+  static Duration defaultDuration = Durations.medium1;
 
-  static const Curve defaultCurve = Curves.ease;
+  static Curve defaultCurve = Curves.ease;
 
   /// 动画类型
   final ZoTransitionType type;
@@ -61,7 +61,7 @@ class ZoTransition extends StatelessWidget {
   final Widget child;
 
   /// 配置动画曲线
-  final Curve curve;
+  final Curve? curve;
 
   /// 动画持续时间
   final Duration? duration;
@@ -91,9 +91,9 @@ class ZoTransition extends StatelessWidget {
       unmountOnExit: unmountOnExit,
       changeVisible: changeVisible,
       autoAlpha: true,
-      duration: duration,
+      duration: duration ?? defaultDuration,
       reverseDuration: reverseDuration,
-      curve: curve,
+      curve: curve ?? defaultCurve,
       tween: Tween(begin: 1, end: 0),
       builder: buildFadeUnit,
       controller: controller,
@@ -122,9 +122,9 @@ class ZoTransition extends StatelessWidget {
       unmountOnExit: unmountOnExit,
       changeVisible: changeVisible,
       autoAlpha: autoAlpha,
-      duration: duration,
+      duration: duration ?? defaultDuration,
       reverseDuration: reverseDuration,
-      curve: curve,
+      curve: curve ?? defaultCurve,
       tween: tween,
       builder: buildZoomPunchUnit,
       controller: controller,
@@ -157,9 +157,9 @@ class ZoTransition extends StatelessWidget {
       unmountOnExit: unmountOnExit,
       changeVisible: changeVisible,
       autoAlpha: autoAlpha,
-      duration: duration,
+      duration: duration ?? defaultDuration,
       reverseDuration: reverseDuration,
-      curve: curve,
+      curve: curve ?? defaultCurve,
       tween: tween,
       builder: buildSlideUnit,
       controller: controller,

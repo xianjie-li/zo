@@ -173,6 +173,7 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
             ? null
             : _onContextAction,
         onFocusChanged: _onFocusChanged,
+        onActiveChanged: widget.onActiveChanged,
       );
     }
 
@@ -204,6 +205,15 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
     if (isBranch) {
       identWidth += oneWidth;
       hasChildren = optNode.data.children?.isNotEmpty ?? false;
+    }
+
+    Color? togglerColor = _style!.textColor;
+
+    // 包含选中子级时高亮显示展开图标
+    if (isSelected) {
+      togglerColor = _activeTextColor;
+    } else if (!isFixedBuilder && controller.hasSelectedChild(optNode.value)) {
+      togglerColor = _style!.selectedColor;
     }
 
     final leadingNode = GestureDetector(
@@ -240,10 +250,7 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
                     child: IconTheme.merge(
                       data: IconThemeData(
                         size: _indentSize.height,
-                        color: isSelected
-                            // 因为嵌入到了 ZoInteractiveBox 中，需要确保颜色与选项文本一致
-                            ? _activeTextColor
-                            : _style!.textColor,
+                        color: togglerColor,
                       ).merge(widget.iconTheme),
                       child: Icon(
                         widget.togglerIcon ?? Icons.arrow_right_rounded,
@@ -492,7 +499,8 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
         children: [
           Container(
             decoration: BoxDecoration(
-              color: _style?.surfaceColor,
+              color:
+                  widget.pinedContainerBackgroundColor ?? _style?.surfaceColor,
             ),
             padding: EdgeInsets.fromLTRB(
               _padding.left,
@@ -567,6 +575,8 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
   }
 
   void _onFocusChanged(ZoTriggerToggleEvent event) {
+    widget.onFocusChanged?.call(event);
+
     final option = _getOptionByEvent(event);
 
     if (event.toggle) {
@@ -593,7 +603,7 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
       return;
     }
 
-    _useLightText = useLighterText(widget.activeColor!);
+    _useLightText = isDarkColor(widget.activeColor!);
   }
 }
 

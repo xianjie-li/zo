@@ -150,7 +150,11 @@ mixin _TreeActionsMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
         ZoShortcutsHelper.isShiftPressed &&
         lastSelectedNodeValue != null) {
       selector.setSelected(
-        _getRangeVisibleValues(lastSelectedNodeValue!, node.value),
+        _getRangeVisibleValues(
+          lastSelectedNodeValue!,
+          node.value,
+          _canSelected,
+        ),
       );
       return;
     }
@@ -169,7 +173,11 @@ mixin _TreeActionsMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
   }
 
   /// 获取value1到value2区间的可见(未被筛选掉)选项值
-  List<Object> _getRangeVisibleValues(Object value1, Object value2) {
+  List<Object> _getRangeVisibleValues(
+    Object value1,
+    Object value2, [
+    ZoTreeDataFilter<ZoOption>? filter,
+  ]) {
     final values = <Object>[];
 
     if (value1 == value2) {
@@ -181,12 +189,18 @@ mixin _TreeActionsMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
     for (final option in controller.filteredFlatList) {
       final value = option.value;
 
-      if (startFlag) {
+      var valid = true;
+
+      if (filter != null) {
+        valid = filter(controller.getNode(value)!);
+      }
+
+      if (startFlag && valid) {
         values.add(value);
       }
 
       if (value == value1 || value == value2) {
-        values.add(value);
+        if (valid) values.add(value);
 
         if (!startFlag) {
           startFlag = true;

@@ -1,12 +1,3 @@
-/// # 实现概要，核心类：
-/// - [ZoOverlay] - 层的总控制中心，也是用户操作的主要api，它在内部维护原生的 [Overlay] 来渲染覆盖层
-/// - [ZoOverlayEntry] - 层配置，每一项对应一个显示的层组件，它提供了若干可读写的配置，[ZoOverlayView]
-/// 根据这些配置进行层的渲染，并监听层配置变更进行渲染更新，它提供了很多扩展接口， 使用者可以继承此类来实现自己高度定制化的层
-/// - [ZoOverlayView] - 一个widget，负责根据 entry 配置对其进行渲染， 每个 view 对应一个 entry
-/// - [ZoOverlayPositioned] - 对层进行定位的 renderObject，在渲染对象中定位是为了更好的布局性能，
-/// 如果使用传统组合 + 状态更新的方式会出现布局闪烁、低效等（布局 -> 检测位置 -> 更新状态 -> 布局）问题
-library;
-
 import "dart:async";
 import "dart:collection";
 import "dart:math" as math;
@@ -36,7 +27,7 @@ part "package:zo/src/overlay/positioned.dart";
 /// - 动画
 /// - 弹出阻止
 ///
-/// 该库为大部分场景提供了默认实现, 见: [ZoPopper], [ZoDialog], [ZoNotice]
+/// 该库为大部分场景提供了默认实现, 见: [ZoPopper], [ZoDialog], [ZoNotice]，[ZoMenu]
 ///
 /// 使用前必须将 ZoOverlayProvider 挂载到 widget 树尽量上方的位置, 并为其传入 navigatorKey
 ///
@@ -156,6 +147,13 @@ class ZoOverlay {
     return entry.currentOpen &&
         !isDelayClosing(entry) &&
         !isDelayDisposing(entry);
+  }
+
+  /// 判断指定层是否可见，相比 [isActive], 该方法包含了关闭中这个状态
+  bool isVisible(ZoOverlayEntry entry) {
+    return entry.currentOpen ||
+        isDelayClosing(entry) ||
+        isDelayDisposing(entry);
   }
 
   /// 连接 navigatorKey / overlayKey, 必须在执行其他 api 前先进行连接,
@@ -630,6 +628,9 @@ class _ZoOverlayViewState extends State<ZoOverlayView> {
   /// 未拖拽到关闭位置时, 还原动画的取消函数
   VoidCallback? _dragEndResetClear;
 
+  /// 传递给 LifeCycleTrigger 的key，在合适的实际增加它来重载组件以重新出发相关hook
+  double _lifeCycleTrigger = 0;
+
   @override
   void initState() {
     super.initState();
@@ -641,10 +642,8 @@ class _ZoOverlayViewState extends State<ZoOverlayView> {
 
     lastBarrier = entry.barrier;
 
-    if (entry.autoFocus) {
-      WidgetsBinding.instance.addPostFrameCallback((i) {
-        entry.focus();
-      });
+    if (entry.currentOpen && entry.autoFocus) {
+      entry.focus();
     }
   }
 
@@ -717,13 +716,22 @@ class _ZoOverlayViewState extends State<ZoOverlayView> {
 
   /// open状态变更
   void onOpenChanged(bool open) {
-    if (entry.autoFocus) {
+    if (open) {
+      // 每次开启时强制重载 lifeCycleTrigger 组件，使其能成功触发 initState 通知
+      _lifeCycleTrigger++;
+    }
+
+    if (open && entry.autoFocus) {
       entry.focus();
     }
 
     if (_dragEndResetClear != null) {
       _dragEndResetClear!();
       _dragEndResetClear = null;
+    }
+
+    if (!open) {
+      entry._mounted = false;
     }
 
     emitBarrierChanged();
@@ -815,7 +823,7 @@ class _ZoOverlayViewState extends State<ZoOverlayView> {
   /// 拖动实现
   bool onDrag(ZoTriggerDragEvent event) {
     // 只接收由层发起的事件
-    if (event.data! is ZoOverlayEntry) return false;
+    if (event.data is! ZoOverlayEntry) return false;
 
     final obj = entry.positionedRenderObject;
 
@@ -1033,14 +1041,7 @@ class _ZoOverlayViewState extends State<ZoOverlayView> {
     final style = context.zoStyle;
     final isActive = overlay.isActive(entry);
 
-    Widget child = LifeCycleTrigger(
-      initState: () {
-        entry._triggerMountedCallback();
-      },
-      child: widget.entry.overlayBuilder(context),
-    );
-
-    if (!entry.currentOpen) return const SizedBox.shrink();
+    Widget child = widget.entry.overlayBuilder(context);
 
     if (!entry.alwaysOnTop) {
       /// 添加外部点击关闭
@@ -1082,7 +1083,7 @@ class _ZoOverlayViewState extends State<ZoOverlayView> {
       child: child,
     );
 
-    // 定位
+    // 定位，ZoOverlayPositioned 组件本身在占用全屏空间，子级在该空间排布
     child = ZoOverlayPositioned(
       entry: widget.entry,
       renderObjectRef: renderObjectRef,
@@ -1096,10 +1097,7 @@ class _ZoOverlayViewState extends State<ZoOverlayView> {
       child = entry.animationWrap!(child, entry);
     }
 
-    final visible =
-        entry.currentOpen ||
-        overlay.isDelayClosing(entry) ||
-        overlay.isDelayDisposing(entry);
+    final visible = overlay.isVisible(entry);
 
     final barrier = buildBarrier(visible);
 
@@ -1108,9 +1106,18 @@ class _ZoOverlayViewState extends State<ZoOverlayView> {
       maintainState: true,
       maintainAnimation: true,
       child: Stack(
+        // tips: stack 是全屏范围
         children: [
           if (barrier != null) barrier,
           child,
+          // 需要一个探照节点，根据其生命周期来判断节点是否已经挂载完成
+          LifeCycleTrigger(
+            key: ValueKey(_lifeCycleTrigger),
+            initState: () {
+              entry._mounted = true;
+              entry._triggerMountedCallback();
+            },
+          ),
         ],
       ),
     );

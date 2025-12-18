@@ -21,6 +21,7 @@ class ZoButton extends StatelessWidget {
     this.autofocus = false,
     this.canRequestFocus = true,
     this.focusOnTap = true,
+    this.adjustSize,
   });
 
   /// 按钮主要内容
@@ -29,7 +30,7 @@ class ZoButton extends StatelessWidget {
   /// 是否是主要按钮, 将使用主题色作为颜色
   final bool primary;
 
-  /// 图标, 若未传入 [child] 将显示图标按钮
+  /// 图标, 传入后，如果同时传入了 [child] 会显示图文并排图标，否则会将按钮渲染为图标按钮
   final Widget? icon;
 
   /// 不通过边框 / 背景色等来强调按钮轮廓
@@ -53,7 +54,7 @@ class ZoButton extends StatelessWidget {
   /// 自定义颜色
   final Color? color;
 
-  /// 点击, 若返回一个 future, 可使按钮进入loading状态
+  /// 点击, 可返回一个 future 使按钮进入 loading 状态
   final dynamic Function()? onTap;
 
   /// 触发上下文操作, 在鼠标操作中表示右键点击, 在触摸操作中表示长按
@@ -68,8 +69,12 @@ class ZoButton extends StatelessWidget {
   /// 是否可获取焦点
   final bool canRequestFocus;
 
-  /// 是否可通过点击获得焦点, 需要同事启用点击相关的事件才能生效
+  /// 是否可通过点击获得焦点, 需要同时启用点击相关的事件才能生效
   final bool focusOnTap;
+
+  /// 手动调整按钮的最终尺寸, 当需要把按钮放置在类似按钮一样使用了标准 [ZoStyle.sizeMD] 等属性的容器中时，
+  /// 为了避免按钮和容器重叠，可以通过此项微调按钮尺寸
+  final double? adjustSize;
 
   dynamic _onTapHandle(ZoTriggerEvent event) {
     return onTap?.call();
@@ -107,6 +112,11 @@ class ZoButton extends StatelessWidget {
       minHeight = btnSize - 4;
       minWidth = minHeight;
       padding = 0;
+    }
+
+    if (adjustSize != null) {
+      minWidth += adjustSize!;
+      minHeight += adjustSize!;
     }
 
     // 是否显示边框

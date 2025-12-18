@@ -15,6 +15,7 @@ import "play_page.dart";
 import "progress_page.dart";
 import "result_page.dart";
 import "select_page.dart";
+import "tab_page.dart";
 import "transition_page.dart";
 import "tree_page/tree_page.dart";
 
@@ -121,6 +122,11 @@ class RouterLinks extends StatelessWidget {
               plain: true,
               child: const Text("DND"),
               onTap: () => toPage(context, const DNDPage()),
+            ),
+            ZoButton(
+              plain: true,
+              child: const Text("Tabs"),
+              onTap: () => toPage(context, const TabsPage()),
             ),
           ],
         ),

@@ -13,6 +13,9 @@ extension ZoLocalizationsContext on BuildContext {
 /// 获取 delegate, 并传给 MaterialApp.localizationsDelegates 等 flutter 多语言 api 来进行配置
 ///
 /// 然后, 在代码中通过 ZoLocalizations.of(context) 或 context.zoLocal 获取 ZoLocalizations 对象来使用
+///
+/// 该实现更适合作在底层组件中提供基础的多语言支持，因为它是轻量、可配置的，实际项目中可能会使用更复杂的方式，
+/// 比如将语言包存放在单独的可序列化文件中
 class ZoLocalizations {
   const ZoLocalizations();
 

@@ -41,8 +41,9 @@ class ZoOverlayEntry extends ChangeNotifier {
     ZoTransitionType? transitionType,
     ZoOverlayAnimationWrap? animationWrap,
     WidgetChildBuilder? customWrap,
-    Curve curve = ZoTransition.defaultCurve,
-    Duration duration = ZoTransition.defaultDuration,
+    Curve? curve,
+    Duration? duration,
+    bool constrainsToView = true,
   }) : _groupId = groupId ?? UniqueKey(),
        _onDispose = onDispose,
        _onDelayClosed = onDelayClosed,
@@ -63,6 +64,7 @@ class ZoOverlayEntry extends ChangeNotifier {
        _builder = builder,
        _curve = curve,
        _duration = duration,
+       _constrainsToView = constrainsToView,
        assert(offset != null || rect != null || alignment != null);
 
   double changeId = 0;
@@ -86,8 +88,12 @@ class ZoOverlayEntry extends ChangeNotifier {
   bool get pressed => _pressed;
   bool _pressed = false;
 
-  /// 层是否已被挂载
+  /// 层所在的 renderObject 是否已被挂载
   bool get attached => positionedRenderObject?.attached ?? false;
+
+  /// 层内部的组件挂载完成(initState已执行)后设置为 true，关闭后设置为 false，即使其因为动画尚未关闭完成
+  bool get mounted => _mounted;
+  bool _mounted = false;
 
   /// 当前层渲染的位置，如果层未开启，返回 null、
   Rect? get overlayRect {
@@ -343,7 +349,7 @@ class ZoOverlayEntry extends ChangeNotifier {
     overlay!.moveToBottom(this);
   }
 
-  /// 挂载回调
+  /// 挂载回调, 用于将聚焦等特定操作延迟到组件真正挂载完成后再执行
   final List<VoidCallback> _mountedCallbackList = [];
 
   /// 添加一个挂载回调，在层的 widget 挂载完成后调用一次
@@ -356,8 +362,10 @@ class ZoOverlayEntry extends ChangeNotifier {
     if (_mountedCallbackList.isEmpty) return;
 
     WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
-      for (final call in _mountedCallbackList) {
-        call();
+      if (mounted) {
+        for (final call in _mountedCallbackList) {
+          call();
+        }
       }
       _mountedCallbackList.clear();
     });
@@ -367,29 +375,36 @@ class ZoOverlayEntry extends ChangeNotifier {
   void focus() {
     if (!requestFocus || !currentOpen) return;
 
-    /// 如果层未挂载过，延迟挂载，防止focus失败
-    if (positionedRenderObject == null) {
-      addPostMountedCallback(focus);
+    if (!mounted) {
+      // 延迟到挂载完成后聚焦
+      _mountedCallbackList.add(() {
+        focusScopeNode.requestFocus();
+      });
       return;
     }
 
     focusScopeNode.requestFocus();
   }
 
-  /// 聚焦子项，会按以下优先级挑选要聚焦的节点, 若成功聚焦，返回true
+  /// 聚焦子项，会按以下优先级挑选要聚焦的节点, 若成功聚焦，返回 true
   /// - 已存在的聚焦子节点
   /// - 首个可聚焦子节点
   /// - 自身
   bool focusChild() {
     if (!requestFocus || !currentOpen) return false;
 
-    /// 如果层未挂载过，延迟挂载，防止focus失败
-    if (positionedRenderObject == null) {
+    if (!mounted) {
+      // 延迟到挂载完成后聚焦
       addPostMountedCallback(focusChild);
       // 这里应该不存在失败的可能
       return true;
     }
 
+    return _focusChild();
+  }
+
+  /// 执行 [focusChild] 的主逻辑
+  bool _focusChild() {
     if (focusScopeNode.focusedChild != null &&
         focusScopeNode.focusedChild!.canRequestFocus) {
       focusScopeNode.focusedChild!.requestFocus();
@@ -594,17 +609,17 @@ class ZoOverlayEntry extends ChangeNotifier {
   }
 
   /// 配置动画曲线
-  Curve get curve => _curve;
-  Curve _curve;
-  set curve(Curve value) {
+  Curve get curve => _curve ?? ZoTransition.defaultCurve;
+  Curve? _curve;
+  set curve(Curve? value) {
     _curve = value;
     changed();
   }
 
   /// 动画持续时间, 设置为0后可关闭动画
-  Duration get duration => _duration;
-  Duration _duration;
-  set duration(Duration value) {
+  Duration get duration => _duration ?? ZoTransition.defaultDuration;
+  Duration? _duration;
+  set duration(Duration? value) {
     _duration = value;
     changed();
   }
@@ -623,6 +638,14 @@ class ZoOverlayEntry extends ChangeNotifier {
   WidgetChildBuilder? _customWrap;
   set customWrap(WidgetChildBuilder? customWrap) {
     _customWrap = customWrap;
+    changed();
+  }
+
+  /// 是否通过最大 constrains 将层尺寸限制在屏幕可用范围, 对非方向布局无效
+  bool get constrainsToView => _constrainsToView;
+  bool _constrainsToView;
+  set constrainsToView(bool value) {
+    _constrainsToView = value;
     changed();
   }
 }

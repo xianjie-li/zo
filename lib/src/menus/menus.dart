@@ -1,31 +1,27 @@
-/// 通过 [ZoOverlayEntry] 实现层渲染，[ZoOptionViewList] 渲染具体的列表，[ZoOptionController] 管理选项数据，
-/// 每个层级的菜单单独持有一个 [ZoMenuEntry] 层，同级菜单复用一个层实例
-library;
-
 import "dart:async";
 
 import "package:flutter/services.dart";
 import "package:flutter/widgets.dart";
 import "package:zo/zo.dart";
 
-/// 渲染菜单层，支持树选项、选中处理、筛选、选项定制等
-class ZoMenuEntry extends ZoOverlayEntry {
+/// 菜单层的基类，抽象了 [ZoMenu] 和 [ZoTreeMenu] 的一些通用行为, 该类不假设菜单的具体样式，
+/// 但包含了最基础的行为，如定位、基础事件、尺寸控制、选中行为控制等
+abstract class ZoMenuEntry extends ZoOverlayEntry {
   ZoMenuEntry({
-    required List<ZoOption> options,
-    Iterable<Object>? selected,
-    ZoOption? option,
+    // required List<ZoOption> options, // 几个属性子类可能会想要接收并传递给 controller
+    // Iterable<Object>? selected,
+    // String? matchString,
+    // RegExp? matchRegexp,
+    // ZoTreeDataFilter<ZoOption>? filter,
     this.selectionType = ZoSelectionType.none,
     this.branchSelectable = false,
     this.dismissOnSelect = true,
     ZoSize? size,
     Widget? toolbar,
+    Widget? footer,
     double? maxHeight,
-    double maxHeightFactor = ZoOptionViewList.defaultHeightFactor,
-    double width = ZoMenuEntry.defaultMenuWidth,
-    this.inheritWidth = true,
+    double? width,
     bool loading = false,
-    String? matchString,
-    RegExp? matchRegexp,
     this.onTap,
     this.onActiveChanged,
     this.onFocusChanged,
@@ -37,6 +33,7 @@ class ZoMenuEntry extends ZoOverlayEntry {
     // super.route = false,
     // super.barrier = false,
     super.tapAwayClosable,
+    super.escapeClosable,
     super.dismissMode,
     super.requestFocus,
     super.autoFocus,
@@ -48,38 +45,24 @@ class ZoMenuEntry extends ZoOverlayEntry {
     super.onOpenChanged,
     super.onDelayClosed,
     super.onDispose,
-    super.direction = ZoPopperDirection.bottomLeft,
+    super.direction = ZoPopperDirection.rightTop,
     super.preventOverflow = true,
     super.transitionType,
     super.animationWrap,
     super.customWrap,
     super.curve,
-    super.duration = Duration.zero,
-  }) : _option = option,
-       _loading = loading,
+    // 关闭动画，让响应更高效
+    super.duration = const Duration(seconds: 0),
+    super.constrainsToView,
+  }) : _loading = loading,
        _width = width,
-       _maxHeightFactor = maxHeightFactor,
        _maxHeight = maxHeight,
        _size = size,
-       _toolbar = toolbar {
-    // menu 自行处理esc关闭行为
-    super.escapeClosable = false;
+       _toolbar = toolbar,
+       _footer = footer;
 
-    _openOptions = ZoSelector();
-
-    if (option == null) {
-      _initController(
-        ZoOptionController(
-          data: options,
-          // menu 自行管理 open 状态
-          expandAll: true,
-          selected: selected,
-          matchRegexp: matchRegexp,
-          matchString: matchString,
-        ),
-      );
-    }
-  }
+  /// 菜单默认宽度
+  static double defaultWidth = 240.0;
 
   /// 在独立控制器管理选项，便于后续在同样需要树形结构的组件中复用逻辑
   late final ZoOptionController controller;
@@ -88,8 +71,8 @@ class ZoMenuEntry extends ZoOverlayEntry {
   /// 获取包含树信息的选中项数据
   ZoSelector<Object, ZoOption> get selector => controller.selector;
 
-  /// 包含选中项各种信息的对象，相比 [selector] 包含更树形结构的选中信息，如果选项是扁平的或无需树信息，
-  /// 优先使用 [selector], 因为本属性会对整个树进行遍历
+  /// 包含选中项各种信息的对象，相比 [selector] 包含树形化的选中信息，如果选项是扁平的或无需树信息，
+  /// 优先使用 [selector], 因为 [selectedDatas] 会包含对整个树的遍历
   ZoOptionSelectedData get selectedDatas {
     return ZoOptionSelectedData.fromSelected(
       selector.getSelected(),
@@ -98,41 +81,27 @@ class ZoMenuEntry extends ZoOverlayEntry {
   }
 
   /// 选项列表
-  List<ZoOption> get options => _options;
-  List<ZoOption> _options = [];
+  List<ZoOption> get options => controller.data;
   set options(List<ZoOption> value) {
-    assert(option == null);
     controller.data = value;
-    changedAndCloseDescendantMenus();
   }
 
-  /// 用于过滤选项的文本, 传入后只显示包含该文本的选项
+  /// 通过自定义查询文本筛选选项，具体用法见 [ZoOptionController.matchRegexp]
   String? get matchString => controller.matchString;
   set matchString(String? value) {
-    assert(option == null);
     controller.matchString = value;
-    changedAndCloseDescendantMenus();
   }
 
-  /// 用于过滤选项的正则, 传入后只显示匹配的选项
+  /// 通过自定义正则筛选选项，具体用法见 [ZoOptionController.matchRegexp]
   RegExp? get matchRegexp => controller.matchRegexp;
   set matchRegexp(RegExp? value) {
-    assert(option == null);
     controller.matchRegexp = value;
-    changedAndCloseDescendantMenus();
   }
 
-  /// 菜单对应的选项, 只有子菜单会存在此项, 传入时, 如果 options 没有值, 并且选项包含了 loadOptions
-  /// 配置, 会通过 loadOptions 加载选项
-  ///
-  /// 只会由菜单内部为其子菜单设置, 对根菜单无效
-  ZoOption? get option => _option;
-  ZoOption? _option;
-  set option(ZoOption? value) {
-    // 仅子菜单可更改选项
-    assert(_option != null && value != null);
-    _option = value;
-    changedAndCloseDescendantMenus();
+  /// 通过自定义方法筛选选项，具体用法见 [ZoOptionController.filter]
+  ZoTreeDataFilter<ZoOption>? get filter => controller.filter;
+  set filter(ZoTreeDataFilter<ZoOption>? filter) {
+    controller.filter = filter;
   }
 
   /// 控制选择类型
@@ -160,7 +129,15 @@ class ZoMenuEntry extends ZoOverlayEntry {
     changed();
   }
 
-  /// 最大高度, 默认会根据视口尺寸和 [maxHeightFactor] 进行限制
+  /// 在底部渲染内容
+  Widget? get footer => _footer;
+  Widget? _footer;
+  set footer(Widget? value) {
+    _footer = value;
+    changed();
+  }
+
+  /// 最大高度
   double? get maxHeight => _maxHeight;
   double? _maxHeight;
   set maxHeight(double? value) {
@@ -168,24 +145,13 @@ class ZoMenuEntry extends ZoOverlayEntry {
     changed();
   }
 
-  /// 最大高度的比例, 设置 [maxHeight] 后此项无效
-  double get maxHeightFactor => _maxHeightFactor;
-  double _maxHeightFactor;
-  set maxHeightFactor(double value) {
-    _maxHeightFactor = value;
-    changed();
-  }
-
   /// 菜单宽度
-  double get width => _width;
-  double _width;
-  set width(double value) {
+  double get width => _width ?? defaultWidth;
+  double? _width;
+  set width(double? value) {
     _width = value;
     changed();
   }
-
-  /// 若子选项未设置宽度，是否继承父级宽度
-  bool inheritWidth;
 
   /// 是否处于加载状态
   bool get loading => _loading;
@@ -196,29 +162,241 @@ class ZoMenuEntry extends ZoOverlayEntry {
   }
 
   /// 选项被点击, 若返回一个 future, 可进入loading状态
-  dynamic Function(ZoTriggerEvent event)? onTap;
+  dynamic Function(ZoTreeDataNode<ZoOption> event)? onTap;
 
   /// 选项活动状态变更
   /// - 鼠标: 表示位于组件上方
   /// - 触摸设备: 按下触发, 松开或移动时关闭
   ZoTriggerListener<ZoTriggerToggleEvent>? onActiveChanged;
 
-  /// 焦点变更事件
+  /// 选项焦点变更事件
   ZoTriggerListener<ZoTriggerToggleEvent>? onFocusChanged;
+
+  @override
+  @protected
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  @protected
+  void activeChanged(ZoTriggerToggleEvent event) {
+    onActiveChanged?.call(event);
+  }
+
+  @protected
+  void focusChanged(ZoTriggerToggleEvent event) {
+    onFocusChanged?.call(event);
+  }
+
+  @protected
+  @override
+  Widget overlayBuilder(BuildContext context) {
+    var menuNode = buildMenus(context);
+
+    final style = context.zoStyle;
+
+    if (toolbar != null || footer != null) {
+      menuNode = Column(
+        spacing: context.zoStyle.space1,
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ?toolbar,
+          Flexible(
+            child: menuNode,
+          ),
+          ?footer,
+        ],
+      );
+    }
+
+    return SizedBox(
+      width: width,
+      child: Container(
+        padding: EdgeInsets.all(
+          (size ?? style.widgetSize) == ZoSize.small
+              ? style.space1
+              : style.space2,
+        ),
+        decoration: BoxDecoration(
+          color: style.surfaceContainerColor,
+          borderRadius: BorderRadius.circular(style.borderRadius),
+          border: Border.all(color: style.outlineColor),
+          boxShadow: [style.overlayShadow],
+        ),
+        child: menuNode,
+      ),
+    );
+  }
+
+  /// 子类需覆盖此方法来构造具体的菜单
+  @protected
+  Widget buildMenus(BuildContext context) {
+    return const SizedBox.shrink();
+  }
+}
+
+/// 渲染菜单层，支持级联展示、选中处理、筛选、选项定制等
+///
+/// 另见：
+/// - [ZoOverlayEntry]: 菜单控件继承至此类, 可以通过层 api 管理菜单的显示，或是用于更进阶的场景
+/// - [ZoOverlay]：进阶的层控制
+/// - [ZoSelect]：基于此组件渲染弹出层，但额外添加了用于交互的输入框等
+/// - [ZoTreeMenu]：通过树组件的菜单
+class ZoMenu extends ZoMenuEntry {
+  ZoMenu({
+    required List<ZoOption> options,
+    Iterable<Object>? selected,
+    String? matchString,
+    RegExp? matchRegexp,
+    ZoTreeDataFilter<ZoOption>? filter,
+    super.selectionType = ZoSelectionType.none,
+    super.branchSelectable = false,
+    super.dismissOnSelect = true,
+    super.size,
+    super.toolbar,
+    super.footer,
+    super.maxHeight,
+    double? maxHeightFactor, // 新增
+    super.width,
+    super.loading,
+    ZoOption? option,
+    this.inheritWidth = true,
+    super.onTap,
+    super.onActiveChanged,
+    super.onFocusChanged,
+    super.groupId,
+    // super.builder,
+    super.offset,
+    super.rect,
+    super.alignment,
+    // super.route = false,
+    // super.barrier = false,
+    super.tapAwayClosable,
+    super.dismissMode,
+    super.requestFocus,
+    super.autoFocus,
+    // super.alwaysOnTop,
+    // super.mayDismiss,
+    // super.onDismiss,
+    super.onHoverChanged,
+    super.onKeyEvent,
+    super.onOpenChanged,
+    super.onDelayClosed,
+    super.onDispose,
+    super.direction,
+    super.preventOverflow,
+    super.transitionType,
+    super.animationWrap,
+    super.customWrap,
+    super.curve,
+    super.duration,
+    super.constrainsToView,
+  }) : _option = option,
+       _maxHeightFactor = maxHeightFactor {
+    // menu 自行处理 esc 关闭行为
+    super.escapeClosable = false;
+
+    // menu 自行管理 open 状态
+    _openOptions = ZoSelector();
+
+    if (option == null) {
+      _initController(
+        ZoOptionController(
+          data: options,
+          // 强制所有项视为展开，由层自行管理
+          expandAll: true,
+          selected: selected,
+          matchRegexp: matchRegexp,
+          matchString: matchString,
+          filter: filter,
+        ),
+      );
+    }
+  }
+
+  /// 菜单默认宽度
+  static double defaultMenuWidth = 240.0;
+
+  /// 选项列表, 设置为当前要显示的子选项
+  List<ZoOption> viewOption = [];
+
+  /// 重写为获取显示的选项
+  @override
+  List<ZoOption> get options => viewOption;
+
+  /// 设置选项时直接设置到 controller 而不是用于内部的 _option
+  @override
+  set options(List<ZoOption> value) {
+    assert(option == null);
+    controller.data = value;
+    changedAndCloseDescendantMenus();
+  }
+
+  /// 通过自定义查询文本筛选选项，具体用法见 [ZoOptionController.matchRegexp]
+  @override
+  set matchString(String? value) {
+    assert(option == null);
+    controller.matchString = value;
+    changedAndCloseDescendantMenus();
+  }
+
+  /// 通过自定义正则筛选选项，具体用法见 [ZoOptionController.matchRegexp]
+  @override
+  set matchRegexp(RegExp? value) {
+    assert(option == null);
+    controller.matchRegexp = value;
+    changedAndCloseDescendantMenus();
+  }
+
+  /// 通过自定义方法筛选选项，具体用法见 [ZoOptionController.filter]
+  @override
+  set filter(ZoTreeDataFilter<ZoOption>? filter) {
+    assert(option == null);
+    controller.filter = filter;
+    changedAndCloseDescendantMenus();
+  }
+
+  /// 菜单对应的选项, 只有子菜单会存在此项, 传入时, 如果 options 没有值, 并且选项包含了 loadOptions
+  /// 配置, 会通过 loadOptions 加载选项
+  ///
+  /// 只会由菜单内部为其子菜单设置, 对根菜单无效
+  ZoOption? get option => _option;
+  ZoOption? _option;
+  set option(ZoOption? value) {
+    // 仅子菜单可更改选项
+    assert(_option != null && value != null);
+    _option = value;
+    changedAndCloseDescendantMenus();
+  }
+
+  /// 最大高度的比例, 设置 [maxHeight] 后此项无效
+  double get maxHeightFactor =>
+      _maxHeightFactor ?? ZoOptionViewList.defaultHeightFactor;
+  double? _maxHeightFactor;
+  set maxHeightFactor(double? value) {
+    _maxHeightFactor = value;
+    changed();
+  }
+
+  /// 菜单宽度
+  @override
+  double get width => _width ?? defaultMenuWidth;
+
+  /// 若子选项未设置宽度，是否继承父级宽度
+  bool inheritWidth;
 
   /// 标记当前层级菜单所有开启子菜单的选项, 它在每个层级的菜单间独立
   ///
   /// 仅作为标记, 组件内部需要负责同步开启状态的菜单与此项一致
   late final ZoSelector<Object, ZoOption> _openOptions;
 
-  /// 菜单默认宽度
-  static const defaultMenuWidth = 240.0;
-
   /// 父菜单层
-  ZoMenuEntry? _parent;
+  ZoMenu? _parent;
 
   /// 子菜单层, 同一级的所有选项复用一个层
-  ZoMenuEntry? _child;
+  ZoMenu? _child;
 
   /// 滚动控制器
   final _scrollController = ScrollController();
@@ -260,15 +438,28 @@ class ZoMenuEntry extends ZoOverlayEntry {
   );
 
   @override
+  @protected
   void dispose() {
     _unbindEvents();
     _scrollController.dispose();
     _openChildMenuTimer?.cancel();
-    controller.dispose();
     super.dispose();
   }
 
   @override
+  void activeChanged(ZoTriggerToggleEvent event) {
+    super.activeChanged(event);
+    _childMenuOpenCommonHandler(event);
+  }
+
+  @override
+  void focusChanged(ZoTriggerToggleEvent event) {
+    super.focusChanged(event);
+    _childMenuOpenCommonHandler(event);
+  }
+
+  @override
+  @protected
   void openChanged(bool open) {
     super.openChanged(open);
 
@@ -310,7 +501,7 @@ class ZoMenuEntry extends ZoOverlayEntry {
 
   /// 通过按键在相邻层之间移动焦点
   KeyEventResult _onShortcutsMove(bool isLeft) {
-    final List<ZoMenuEntry?> list = [_child, _parent]; // 子项放在前面，优先匹配
+    final List<ZoMenu?> list = [_child, _parent]; // 子项放在前面，优先匹配
 
     final Rect? rect = positionedRenderObject?.overlayRect;
 
@@ -344,7 +535,7 @@ class ZoMenuEntry extends ZoOverlayEntry {
 
     final List<Object> values = [];
 
-    for (final opt in options) {
+    for (final opt in viewOption) {
       if (branchSelectable || !opt.isBranch) {
         values.add(opt.value);
       }
@@ -371,7 +562,7 @@ class ZoMenuEntry extends ZoOverlayEntry {
 
   /// 更新当前菜单, 并关闭所有子菜单
   void changedAndCloseDescendantMenus() {
-    _options = controller.getChildren(value: option?.value);
+    viewOption = controller.getChildren(value: option?.value);
     changed();
     closeDescendantMenus();
   }
@@ -393,7 +584,7 @@ class ZoMenuEntry extends ZoOverlayEntry {
   /// 初始化控制器
   void _initController(ZoOptionController controller) {
     this.controller = controller;
-    _options = controller.getChildren(value: option?.value);
+    viewOption = controller.getChildren(value: option?.value);
     _bindEvents();
   }
 
@@ -428,9 +619,13 @@ class ZoMenuEntry extends ZoOverlayEntry {
   }
 
   void _onTap(ZoTriggerEvent event) {
-    onTap?.call(event);
-
     final ZoOptionEventData(:option) = event.data;
+
+    final node = controller.getNode(option.value);
+
+    if (node == null) return;
+
+    onTap?.call(node);
 
     if (!option.enabled) return;
 
@@ -457,16 +652,6 @@ class ZoMenuEntry extends ZoOverlayEntry {
     } else {
       controller.selector.toggle(option.value);
     }
-  }
-
-  void _onActiveChanged(ZoTriggerToggleEvent event) {
-    onActiveChanged?.call(event);
-    _childMenuOpenCommonHandler(event);
-  }
-
-  void _onFocusChanged(ZoTriggerToggleEvent event) {
-    onFocusChanged?.call(event);
-    _childMenuOpenCommonHandler(event);
   }
 
   void _childMenuOpenCommonHandler(ZoTriggerToggleEvent event) {
@@ -540,7 +725,7 @@ class ZoMenuEntry extends ZoOverlayEntry {
   }
 
   /// 获取最上层的 overlay
-  ZoMenuEntry _getTopOverlay() {
+  ZoMenu _getTopOverlay() {
     var parent = _parent;
 
     while (parent != null) {
@@ -555,9 +740,9 @@ class ZoMenuEntry extends ZoOverlayEntry {
   }
 
   /// 获取包括自身在内的所有关联层, 按从父级到子级的顺序排序
-  List<ZoMenuEntry> _getRelativeOverlay() {
-    final List<ZoMenuEntry> parents = [];
-    final List<ZoMenuEntry> children = [];
+  List<ZoMenu> _getRelativeOverlay() {
+    final List<ZoMenu> parents = [];
+    final List<ZoMenu> children = [];
 
     var parent = _parent;
     var child = _child;
@@ -581,7 +766,7 @@ class ZoMenuEntry extends ZoOverlayEntry {
   }
 
   /// 初始化或更新子菜单所在的层
-  ZoMenuEntry _initOrUpdateChildOverlay(ZoOption option, Rect target) {
+  ZoMenu _initOrUpdateChildOverlay(ZoOption option, Rect target) {
     // 子菜单固定使用已经 flip 的方向
     final currentDirection = _parent == null
         ? null
@@ -591,14 +776,14 @@ class ZoMenuEntry extends ZoOverlayEntry {
 
     final fallbackWidth = inheritWidth
         ? _getTopOverlay().width
-        : ZoMenuEntry.defaultMenuWidth;
+        : ZoMenu.defaultMenuWidth;
 
     final width = option.optionsWidth ?? fallbackWidth;
 
-    ZoMenuEntry child;
+    ZoMenu child;
 
     if (_child == null) {
-      child = ZoMenuEntry(
+      child = ZoMenu(
         rect: target,
         options: [],
         option: option,
@@ -673,24 +858,142 @@ class ZoMenuEntry extends ZoOverlayEntry {
 
   @protected
   @override
-  Widget overlayBuilder(BuildContext context) {
-    return SizedBox(
-      width: width,
-      child: ZoOptionViewList(
-        options: options,
-        option: option,
-        activeCheck: _isActive,
-        highlightCheck: _isHighlight,
-        size: size,
-        toolbar: toolbar,
-        maxHeight: maxHeight,
-        maxHeightFactor: maxHeightFactor,
-        loading: loading || _localLoading,
-        scrollController: _scrollController,
-        onTap: _onTap,
-        onActiveChanged: _onActiveChanged,
-        onFocusChanged: _onFocusChanged,
-      ),
+  Widget buildMenus(BuildContext context) {
+    return ZoOptionViewList(
+      options: options,
+      option: option,
+      activeCheck: _isActive,
+      highlightCheck: _isHighlight,
+      size: size,
+      maxHeight: maxHeight,
+      maxHeightFactor: maxHeightFactor,
+      loading: loading || _localLoading,
+      scrollController: _scrollController,
+      onTap: _onTap,
+      onActiveChanged: activeChanged,
+      onFocusChanged: focusChanged,
+      hasDecoration: false,
+    );
+  }
+}
+
+/// [ZoMenu] 的变体，它通过树组件渲染菜单层
+///
+/// 另见：
+/// - [ZoOverlayEntry]: 菜单控件继承至此类, 可以通过层 api 管理菜单的显示，或是用于更进阶的场景
+/// - [ZoOverlay]：进阶的层控制
+/// - [ZoSelect]：基于此组件渲染弹出层，但额外添加了用于交互的输入框等
+/// - [ZoMenu]：常规的级联菜单
+/// - [ZoTree]：内部使用的树形控件
+class ZoTreeMenu extends ZoMenuEntry {
+  ZoTreeMenu({
+    required List<ZoOption> options,
+    Iterable<Object>? selected,
+    String? matchString,
+    RegExp? matchRegexp,
+    ZoTreeDataFilter<ZoOption>? filter,
+    super.selectionType = ZoSelectionType.none,
+    super.branchSelectable = false,
+    super.dismissOnSelect = true,
+    super.size,
+    super.toolbar,
+    super.footer,
+    super.maxHeight,
+    super.width,
+    super.loading,
+    super.onTap,
+    super.onActiveChanged,
+    super.onFocusChanged,
+    super.groupId,
+    // super.builder,
+    super.offset,
+    super.rect,
+    super.alignment,
+    // super.route = false,
+    // super.barrier = false,
+    super.tapAwayClosable,
+    super.escapeClosable,
+    super.dismissMode,
+    super.requestFocus,
+    super.autoFocus,
+    // super.alwaysOnTop,
+    // super.mayDismiss,
+    // super.onDismiss,
+    super.onHoverChanged,
+    super.onKeyEvent,
+    super.onOpenChanged,
+    super.onDelayClosed,
+    super.onDispose,
+    super.direction,
+    super.preventOverflow,
+    super.transitionType,
+    super.animationWrap,
+    super.customWrap,
+    super.curve,
+    super.duration,
+    super.constrainsToView,
+  }) {
+    controller = ZoOptionController(
+      data: options,
+      expandAll: false,
+      selected: selected,
+      matchString: matchString,
+      matchRegexp: matchRegexp,
+      filter: filter,
+    );
+  }
+
+  /// 菜单默认宽度
+  static double defaultWidth = 460.0;
+
+  /// 菜单默认最大高度
+  static double defaultMaxHeight = 380.0;
+
+  /// 最大菜单高度
+  @override
+  double get maxHeight => _maxHeight ?? defaultMaxHeight;
+
+  /// 菜单宽度
+  @override
+  double get width => _width ?? defaultWidth;
+
+  @protected
+  void tapHandle(ZoTreeEvent event) {
+    onTap?.call(event.node);
+
+    // 未启用选择关闭或多选模式，无需关闭菜单
+    if (!dismissOnSelect || selectionType == ZoSelectionType.multiple) return;
+
+    // 分支节点不可选时阻止关闭
+    if (event.node.data.isBranch && !branchSelectable) return;
+
+    dismiss();
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
+  @override
+  @protected
+  Widget buildMenus(BuildContext context) {
+    return ZoTree(
+      optionController: controller,
+      options: options,
+      selectionType: selectionType,
+      branchSelectable: branchSelectable,
+      implicitMultipleSelection: false,
+      onTap: tapHandle,
+      onActiveChanged: activeChanged,
+      onFocusChanged: focusChanged,
+      padding: const EdgeInsets.all(0),
+      size: size,
+      maxHeight: maxHeight,
+      matchString: matchString,
+      matchRegexp: matchRegexp,
+      filter: filter,
+      pinedActiveBranch: false,
     );
   }
 }

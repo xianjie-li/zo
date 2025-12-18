@@ -48,64 +48,62 @@ class _BasePageState extends State<BasePage> {
                 runSpacing: 8,
                 children: [
                   const Text("primary:"),
-                  Container(width: 30, height: 30, color: zoStyle.primaryColor),
+                  Container(width: 60, height: 60, color: zoStyle.primaryColor),
                   const Text("secondary:"),
                   Container(
-                    width: 30,
-                    height: 30,
+                    width: 60,
+                    height: 60,
                     color: zoStyle.secondaryColor,
                   ),
                   const Text("tertiary:"),
                   Container(
-                    width: 30,
-                    height: 30,
+                    width: 60,
+                    height: 60,
                     color: zoStyle.tertiaryColor,
                   ),
                   const Text("surface:"),
                   Container(
-                    width: 30,
-                    height: 30,
+                    width: 60,
+                    height: 60,
                     decoration: BoxDecoration(
                       color: zoStyle.surfaceColor,
-                      border: Border.all(color: zoStyle.outlineColor),
                     ),
                   ),
                   const Text("surfaceContainer:"),
                   Container(
-                    width: 30,
-                    height: 30,
+                    width: 60,
+                    height: 60,
                     decoration: BoxDecoration(
                       color: zoStyle.surfaceContainerColor,
-                      border: Border.all(color: zoStyle.outlineColor),
                     ),
                   ),
                   const Text("focusColor:"),
-                  Container(width: 30, height: 30, color: zoStyle.focusColor),
+                  Container(width: 60, height: 60, color: zoStyle.focusColor),
                   const Text("hoverColor:"),
-                  Container(width: 30, height: 30, color: zoStyle.hoverColor),
+                  Container(width: 60, height: 60, color: zoStyle.hoverColor),
                   const Text("highlightColor:"),
                   Container(
-                    width: 30,
-                    height: 30,
+                    width: 60,
+                    height: 60,
                     color: zoStyle.highlightColor,
                   ),
                   const Text("disabledColor:"),
                   Container(
-                    width: 30,
-                    height: 30,
+                    width: 60,
+                    height: 60,
                     color: zoStyle.disabledColor,
                   ),
                   const Text("outline:"),
                   Container(
-                    width: 30,
-                    height: 30,
+                    width: 60,
+                    height: 60,
                     decoration: BoxDecoration(
                       border: Border.all(color: zoStyle.outlineColor, width: 1),
                     ),
                   ),
                   Container(
-                    width: 30,
-                    height: 30,
+                    width: 60,
+                    height: 60,
                     decoration: BoxDecoration(
                       border: Border.all(
                         color: zoStyle.outlineColorVariant,
@@ -151,7 +149,7 @@ class _BasePageState extends State<BasePage> {
               const PageTitle("Elevation"),
               Wrap(
                 spacing: 80,
-                runSpacing: 30,
+                runSpacing: 60,
                 children: [
                   Container(
                     decoration: BoxDecoration(
@@ -180,7 +178,7 @@ class _BasePageState extends State<BasePage> {
               const PageTitle("Elevation2"),
               Wrap(
                 spacing: 80,
-                runSpacing: 30,
+                runSpacing: 60,
                 children: [
                   Container(
                     decoration: BoxDecoration(
@@ -208,8 +206,8 @@ class _BasePageState extends State<BasePage> {
 
               const PageTitle("Size"),
               Wrap(
-                spacing: 30,
-                runSpacing: 30,
+                spacing: 60,
+                runSpacing: 60,
                 children: [
                   Container(
                     decoration: BoxDecoration(

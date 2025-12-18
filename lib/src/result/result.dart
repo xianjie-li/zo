@@ -137,7 +137,7 @@ class ZoResult extends StatelessWidget {
           width: double.infinity,
           padding: EdgeInsets.all(extraPadding),
           decoration: BoxDecoration(
-            color: style.surfaceGrayColor,
+            color: style.surfaceContainerColor,
             borderRadius: BorderRadius.circular(style.borderRadius),
           ),
           child: extra!,

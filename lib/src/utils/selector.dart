@@ -23,7 +23,7 @@ class ZoSelector<Val, Opt> extends ChangeNotifier {
   }) : _selected = selected == null ? HashSet() : HashSet.from(selected);
 
   /// 控制如何从 [Opt] 中获取选中值, 如果选项本身就代表值则不需要设置
-  Val Function(Opt)? valueGetter;
+  Val Function(Opt option)? valueGetter;
 
   /// 获取当前所有选项的函数，传入后，依赖 allOptions 的方法可以不再传入
   Iterable<Opt> Function()? optionsGetter;

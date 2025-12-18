@@ -1,11 +1,23 @@
-/// 组合 [ZoMenuEntry] 和 [ZoInput] 实现的下拉选择器
+/// 组合 [ZoMenu] 和 [ZoInput] 实现的下拉选择器
 library;
+
+import "dart:async";
 
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
 import "package:zo/zo.dart";
 
-/// 下拉选择组件
+/// 选项显示的菜单类型
+enum ZoSelectMenuType {
+  menu,
+  treeMenu,
+}
+
+/// 用于内容选择的表单控件，组合了 [ZoInput] 和 [ZoMenu] 来实现选取操作，它接收并渲染一组 [ZoOption],
+/// 提供了选择行为控制、样子定制、本地搜索、菜单类型控制等功能
+///
+/// 自适应菜单：默认情况下，根据屏幕宽度，小屏下会使用 [ZoTreeMenu] 作为选项层，大屏使用 [ZoMenu] ,
+/// 可以通过 [selectMenuType] 自行控制
 class ZoSelect extends ZoCustomFormWidget<Iterable<Object>> {
   const ZoSelect({
     super.key,
@@ -14,6 +26,7 @@ class ZoSelect extends ZoCustomFormWidget<Iterable<Object>> {
     required this.options,
     this.selectionType = ZoSelectionType.single,
     this.branchSelectable = false,
+    this.selectMenuType = ZoSelectMenuType.menu,
     this.toolbar,
     this.localSearch = true,
     this.onInputChanged,
@@ -21,7 +34,7 @@ class ZoSelect extends ZoCustomFormWidget<Iterable<Object>> {
     this.showOpenIndicator = true,
     this.customTagDecoration,
     this.clear = true,
-    this.size = ZoSize.medium,
+    this.size,
     this.hintText,
     this.leading,
     this.trailing,
@@ -43,6 +56,9 @@ class ZoSelect extends ZoCustomFormWidget<Iterable<Object>> {
 
   /// 控制选择类型, 默认为单选
   final ZoSelectionType selectionType;
+
+  /// 选项显示的菜单类型
+  final ZoSelectMenuType selectMenuType;
 
   /// 分支节点是否可选中
   final bool branchSelectable;
@@ -72,7 +88,7 @@ class ZoSelect extends ZoCustomFormWidget<Iterable<Object>> {
   final bool clear;
 
   /// 组件尺寸
-  final ZoSize size;
+  final ZoSize? size;
 
   /// 提示文本
   final Widget? hintText;
@@ -158,27 +174,19 @@ class ZoSelectState extends ZoCustomFormState<Iterable<Object>, ZoSelect> {
     delay: Durations.medium1,
   );
 
+  /// 输入框位置更新节流防抖
+  final _rectUpdateThrottler = Throttler(
+    delay: Durations.short1,
+  );
+
   @override
   @protected
   void initState() {
     super.initState();
 
-    _focusNode = widget.focusNode ?? FocusNode();
+    _init();
 
-    menuEntry = ZoMenuEntry(
-      options: widget.options,
-      selected: value,
-      selectionType: widget.selectionType,
-      branchSelectable: widget.branchSelectable,
-      size: widget.size,
-      toolbar: widget.toolbar,
-      dismissMode: ZoOverlayDismissMode.close,
-      autoFocus: false, // 手动控制
-      inheritWidth: false,
-      // height/width/matchString/autoFocus
-    );
-    selector.addListener(_onSelectChanged);
-    menuEntry.openChangedEvent.on(_onOpenChanged);
+    _focusNode = widget.focusNode ?? FocusNode();
   }
 
   @override
@@ -225,22 +233,63 @@ class ZoSelectState extends ZoCustomFormState<Iterable<Object>, ZoSelect> {
     }
   }
 
+  /// 初始化 entry 实例
+  void _init() {
+    if (widget.selectMenuType == ZoSelectMenuType.menu) {
+      menuEntry = _getMenu();
+    } else {
+      menuEntry = _getTreeMenu();
+    }
+
+    selector.addListener(_onSelectChanged);
+    menuEntry.openChangedEvent.on(_onOpenChanged);
+  }
+
+  ZoMenuEntry _getMenu() {
+    return ZoMenu(
+      options: widget.options,
+      selected: value,
+      selectionType: widget.selectionType,
+      branchSelectable: widget.branchSelectable,
+      size: widget.size,
+      toolbar: widget.toolbar,
+      dismissMode: ZoOverlayDismissMode.close,
+      direction: ZoPopperDirection.bottomLeft,
+      autoFocus: false, // 手动控制
+      inheritWidth: false,
+      // height/width/matchString/autoFocus
+    );
+  }
+
+  ZoMenuEntry _getTreeMenu() {
+    return ZoTreeMenu(
+      options: widget.options,
+      selected: value,
+      selectionType: widget.selectionType,
+      branchSelectable: widget.branchSelectable,
+      size: widget.size,
+      toolbar: widget.toolbar,
+      dismissMode: ZoOverlayDismissMode.close,
+      direction: ZoPopperDirection.bottomLeft,
+      autoFocus: false, // 手动控制
+      // height/width/matchString/autoFocus
+    );
+  }
+
   /// 切换菜单层开启状态
   void toggle() {
     if (menuEntry.currentOpen) {
       menuEntry.close();
     } else {
       menuEntry.open();
-      WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
-        menuEntry.focus();
-      });
+      menuEntry.focus();
     }
   }
 
   /// 聚焦处理
   ///
   /// 层的打开和关闭以及焦点处理
-  /// 1. 焦点：聚焦时打开层，失焦时，如果还层不处于按下状态、也未获得焦点，将其关闭
+  /// 1. 焦点：聚焦时打开层，失焦时，如果层不处于按下状态、也未获得焦点，将其关闭
   /// 2. 为了防止菜单层关闭后焦点回到输入框导致重新打开，需要设置一个时间值，小于时间值时不打开层
   /// 3. 输入框具有焦点时：按方向键下时，打开并移动焦点到菜单层，按escape键时，关闭层
   /// 4. 点击Input，如果层未打开，则打开层，防止第2、3步主动关闭后用户重新打开的情况
@@ -287,10 +336,20 @@ class ZoSelectState extends ZoCustomFormState<Iterable<Object>, ZoSelect> {
     setState(() {});
   }
 
-  /// 输入框区域点击
-  void _onTap(PointerDownEvent event) {
+  /// 接收 _onTap 事件时延迟开启触发，用于给其他时间阻塞的机会，因为 TapRegion 会优先触发
+  Timer? _tapRegionOpenTimer;
+
+  /// 清理 _onTap 的触发计时
+  void _stopTapRegionOpenTimer() {
+    _tapRegionOpenTimer?.cancel();
+    _tapRegionOpenTimer = null;
+  }
+
+  /// 输入框区域点击,
+  void _onTap(PointerUpEvent event) {
     if (!menuEntry.currentOpen) {
-      menuEntry.open();
+      _stopTapRegionOpenTimer();
+      _tapRegionOpenTimer = Timer(Duration.zero, menuEntry.open);
     }
   }
 
@@ -347,10 +406,33 @@ class ZoSelectState extends ZoCustomFormState<Iterable<Object>, ZoSelect> {
   void onPaint(RenderBox box) {
     _lastRect = box.localToGlobal(Offset.zero) & box.size;
 
+    _rectUpdateThrottler.run(() {
+      _updateOverlayPosition(_lastRect!);
+    });
+  }
+
+  /// 输入框位置变更时，根据位置调整显示方向、最大高度等
+  void _updateOverlayPosition(Rect rect) {
+    // final height = MediaQuery.heightOf(context);
+    // final viewPadding = MediaQuery.viewPaddingOf(context);
+
+    // final topSpace = rect.top;
+    // final bottomSpace = height - rect.bottom;
+    // final direction = topSpace > bottomSpace
+    //     ? ZoPopperDirection.topLeft
+    //     : ZoPopperDirection.bottomLeft;
+    // final maxHeight = (topSpace > bottomSpace ? topSpace : bottomSpace) - 24;
+
+    // print(
+    //   "top ${viewPadding} ${height} ${topSpace} ${bottomSpace} ${maxHeight}",
+    // );
+
     menuEntry.actions(() {
       menuEntry.rect = _lastRect;
-      menuEntry.width = box.size.width;
-    }, false);
+      menuEntry.width = rect.width;
+      // menuEntry.direction = direction;
+      // menuEntry.maxHeight = maxHeight;
+    }, menuEntry.currentOpen);
   }
 
   KeyEventResult _keyEvent(FocusNode node, KeyEvent event) {
@@ -404,15 +486,17 @@ class ZoSelectState extends ZoCustomFormState<Iterable<Object>, ZoSelect> {
     // 是否在左侧显示额外的间距，防止与光标重叠
     final showLeftPadding = _isFocus && length > 0;
 
+    // 标签的修正高度，根据标准尺寸扣减
+    final adjustHeight = switch (widget.size ?? style.widgetSize) {
+      ZoSize.small || ZoSize.medium => 8,
+      ZoSize.large => 10, // 大尺寸下额外调整2px，使其看起来更合适
+    };
+
     final list = selected.map((opt) {
       final (value, option) = opt;
       final text = option?.getTitleText() ?? value.toString();
 
-      final double height = switch (widget.size) {
-        ZoSize.medium => 26,
-        ZoSize.small => 20,
-        ZoSize.large => 30,
-      };
+      final double height = style.getSizedExtent(widget.size) - adjustHeight;
 
       final isSmall = widget.size == ZoSize.small;
 
@@ -426,7 +510,7 @@ class ZoSelectState extends ZoCustomFormState<Iterable<Object>, ZoSelect> {
       Color? textColor;
 
       if (decoration.color != null) {
-        final useLightText = useLighterText(decoration.color!);
+        final useLightText = isDarkColor(decoration.color!);
         if (useLightText && !isDarkMode) {
           textColor = Colors.white;
         }
@@ -473,6 +557,8 @@ class ZoSelectState extends ZoCustomFormState<Iterable<Object>, ZoSelect> {
                 size: ZoSize.small,
                 plain: true,
                 onTap: () {
+                  // 阻止点击导致层打开
+                  _stopTapRegionOpenTimer();
                   selector.unselect(value);
                 },
               ),
@@ -557,7 +643,7 @@ class ZoSelectState extends ZoCustomFormState<Iterable<Object>, ZoSelect> {
 
   Widget _mainWrapper(BuildContext context, Widget mainWidget) {
     return TapRegion(
-      onTapInside: _onTap,
+      onTapUpInside: _onTap,
       child: Focus(
         onKeyEvent: _keyEvent,
         skipTraversal: true,

@@ -72,11 +72,14 @@ class ZoNoticeEntry {
   final Widget Function(BuildContext context)? builder;
 }
 
+/// 进行应用内消息提醒, 支持指定各种消息位置, 样式和个性化配置
 final zoNotice = ZoNotice();
 
 var _instanceCount = 0;
 
 /// 进行应用内消息提醒, 支持指定各种消息位置, 样式和个性化配置
+///
+/// 这是一个单例类, 应始终使用提供的 [zoNotice] 对象进行调用
 class ZoNotice extends ChangeNotifier {
   ZoNotice() {
     assert(
@@ -209,10 +212,10 @@ class _NoticeView extends StatefulWidget {
   const _NoticeView({super.key});
 
   @override
-  State<_NoticeView> createState() => __NoticeViewState();
+  State<_NoticeView> createState() => _NoticeViewState();
 }
 
-class __NoticeViewState extends State<_NoticeView> {
+class _NoticeViewState extends State<_NoticeView> {
   /// 用于消息组件之间对同方向的消息自动关闭动画的暂停和启用进行通知
   final countDownEvent =
       EventTrigger<({ZoNoticePosition position, bool toggle})>();

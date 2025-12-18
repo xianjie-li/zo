@@ -25,7 +25,7 @@ class ZoAnimationKit extends TickerProvider {
   /// 记录所有活动的 [tickerCaller] callback
   final Map<dynamic, VoidCallback> _callerMap = {};
 
-  /// 对一高频调用的方法, 可以通过此方法间接调用, 它保证每一帧只会调用一次 [callback],
+  /// 对于高频调用的方法, 可以通过此方法间接调用, 它保证每一帧只会调用一次 [callback],
   /// [key] 用于标识调用者
   void tickerCaller(dynamic key, VoidCallback callback) {
     if (_callerTimer != null) {
@@ -62,7 +62,7 @@ class ZoAnimationKit extends TickerProvider {
 
   /// 指令式的创建并执行动画, 通过返回的函数可提前关闭动画
   ///
-  /// 它会在内部创建一个临时的 [AnimationController], 并在动画完成后消耗它
+  /// 它会在内部创建一个临时的 [AnimationController], 并在动画完成后销毁它
   VoidCallback animation<T>({
     Curve curve = Curves.ease,
     Tween<T>? tween,

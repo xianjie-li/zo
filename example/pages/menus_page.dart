@@ -34,7 +34,9 @@ class _MenusPageState extends State<MenusPage> {
     ZoOption(
       value: "value 5",
       title: Text("选项内容AAA"),
-      leading: ZoOptionView.emptyLeading,
+      leading: SizedBox(
+        width: 32,
+      ),
       children: [
         ZoOption(
           value: "value51",
@@ -89,7 +91,9 @@ class _MenusPageState extends State<MenusPage> {
     ZoOption(
       value: "value 5",
       title: Text("选项内容AAA"),
-      leading: ZoOptionView.emptyLeading,
+      leading: SizedBox(
+        width: 32,
+      ),
       optionsWidth: 160,
       children: [
         ZoOption(
@@ -107,7 +111,9 @@ class _MenusPageState extends State<MenusPage> {
     ZoOption(
       value: "value 5d1",
       title: Text("选项内容AAA"),
-      leading: ZoOptionView.emptyLeading,
+      leading: SizedBox(
+        width: 32,
+      ),
       children: [
         ZoOption(
           value: "value 5d1-1",
@@ -171,9 +177,117 @@ class _MenusPageState extends State<MenusPage> {
     ),
   ];
 
-  late ZoMenuEntry menu4 = ZoMenuEntry(
+  late List<ZoOption> optionsTree4 = [
+    ZoOption(
+      value: "Option 1",
+      title: Text("Option 1"),
+    ),
+    ZoOption(
+      value: "Option 2",
+      title: Text("Option 2"),
+    ),
+    ZoOption(
+      value: "Option 3",
+      title: Text("Option 3"),
+    ),
+    ZoOption(
+      value: "Option 4",
+      title: Text("Option 4"),
+      leading: Icon(Icons.copy),
+    ),
+    ZoOption(
+      value: "value 5",
+      title: Text("选项内容AAA"),
+      optionsWidth: 160,
+      children: [
+        ZoOption(
+          value: "value 5-11",
+          title: Text("选项内容AAA"),
+          leading: Icon(Icons.copy),
+        ),
+        ZoOption(
+          value: "value 5-12",
+          title: Text("选项内容AAA"),
+          leading: Icon(Icons.copy),
+        ),
+      ],
+    ),
+    ZoOption(
+      value: "value 5d1",
+      title: Text("选项内容AAA"),
+      children: [
+        ZoOption(
+          value: "value 5d1-1",
+          title: Text("选项内容BBB1"),
+          leading: Icon(Icons.copy),
+        ),
+        ZoOption(
+          value: "value 5d1-2",
+          title: Text("选项内容BBB2"),
+          leading: Icon(Icons.copy),
+          children: [
+            for (int i = 0; i < 30; i++)
+              ZoOption(
+                value: "value 5d1-2-$i",
+                title: Text("选项内容BBB4-$i"),
+                leading: Icon(Icons.copy),
+                children: [
+                  ZoOption(
+                    value: "value 5d1-2-$i-1",
+                    title: Text("选项内容AAA"),
+                    leading: Icon(Icons.copy),
+                    loader: loadOptions,
+                  ),
+                  ZoOption(
+                    value: "value 5d1-2-$i-2",
+                    title: Text("选项内容AAA"),
+                    leading: Icon(Icons.copy),
+                  ),
+                ],
+              ),
+          ],
+        ),
+        ZoOption(
+          value: "value 5d1-3",
+          title: Text("选项内容BBB3"),
+          leading: Icon(Icons.copy),
+        ),
+      ],
+    ),
+    ZoOption(
+      value: "Option 6",
+      title: Text("Option 5"),
+      leading: Icon(Icons.call),
+    ),
+    ZoOption(
+      value: "value 7",
+      title: Text(
+        "选项内容AAA选项内容AAA选项内容AAA选项内容AAA选项内容AAA",
+      ),
+      leading: Icon(Icons.copy),
+      enabled: false,
+    ),
+    ZoOption(
+      value: "value 8",
+      title: Text(
+        "选项内容AAA选项内容AAA选项内容AAA选项内容AAA选项内容AAA",
+      ),
+      leading: Icon(Icons.copy),
+      enabled: false,
+    ),
+  ];
+
+  late ZoMenu menu4 = ZoMenu(
     options: options4,
     dismissMode: ZoOverlayDismissMode.close,
+  );
+
+  late ZoTreeMenu menuTree4 = ZoTreeMenu(
+    options: optionsTree4,
+    dismissMode: ZoOverlayDismissMode.close,
+    selectionType: ZoSelectionType.multiple,
+    toolbar: Text("工具栏自定义"),
+    footer: Text("工具栏自定义"),
   );
 
   late List<ZoOption> options5 = [
@@ -213,8 +327,15 @@ class _MenusPageState extends State<MenusPage> {
     ),
   ];
 
-  late ZoMenuEntry menu5 = ZoMenuEntry(
+  late ZoMenu menu5 = ZoMenu(
     options: options5,
+    dismissMode: ZoOverlayDismissMode.close,
+    selectionType: ZoSelectionType.multiple,
+    branchSelectable: true,
+  );
+
+  late ZoTreeMenu menuTree5 = ZoTreeMenu(
+    options: optionsTree4,
     dismissMode: ZoOverlayDismissMode.close,
     selectionType: ZoSelectionType.multiple,
     branchSelectable: true,
@@ -292,7 +413,6 @@ class _MenusPageState extends State<MenusPage> {
               span: 2.8,
               child: ZoOptionViewList(
                 options: options2,
-                toolbar: Text("共500项, 已选中5项"),
               ),
             ),
             ZoCell(span: 0.4),
@@ -329,6 +449,28 @@ class _MenusPageState extends State<MenusPage> {
                     onContextAction: (event) {
                       menu5.offset = event.position;
                       zoOverlay.open(menu5);
+                      // Timer(Duration(milliseconds: 5000), () {
+                      //   print(111);
+                      //   menu5.matchString = "5";
+                      // });
+                    },
+                  ),
+                  ZoButton(
+                    child: Text("打开菜单 tree4"),
+                    onContextAction: (event) {
+                      menuTree4.offset = event.position;
+                      zoOverlay.open(menuTree4);
+                      // Timer(Duration(milliseconds: 5000), () {
+                      //   print(111);
+                      //   menu5.matchString = "5";
+                      // });
+                    },
+                  ),
+                  ZoButton(
+                    child: Text("打开菜单 tree5"),
+                    onContextAction: (event) {
+                      menuTree5.offset = event.position;
+                      zoOverlay.open(menuTree5);
                       // Timer(Duration(milliseconds: 5000), () {
                       //   print(111);
                       //   menu5.matchString = "5";

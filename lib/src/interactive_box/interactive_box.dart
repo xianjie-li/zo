@@ -1,12 +1,37 @@
 import "package:flutter/material.dart";
 import "package:zo/zo.dart";
 
+class ZoInteractiveBoxBuildArgs {
+  ZoInteractiveBoxBuildArgs({
+    required this.loading,
+    required this.enabled,
+    required this.interactive,
+    required this.active,
+    required this.focus,
+    this.data,
+  });
+
+  final bool loading;
+
+  final bool enabled;
+
+  final bool interactive;
+
+  final bool active;
+
+  final bool focus;
+
+  /// 传递给组件的原始 data
+  final dynamic data;
+}
+
 /// 一个预置了交互样式和回调的通用容器, 用于为 按钮 / 列表项 / 卡片 等提供通用的交互反馈行为,
 /// 它会在用户进行 点击 / 按下 / hover 等操作时自动添加适当的样式
 class ZoInteractiveBox extends StatefulWidget {
   const ZoInteractiveBox({
     super.key,
     this.child,
+    this.builder,
     this.loading = false,
     this.enabled = true,
     this.color,
@@ -37,12 +62,17 @@ class ZoInteractiveBox extends StatefulWidget {
     this.plain = false,
     this.textColorAdjust = true,
     this.disabledColor,
+    this.hoverColor,
+    this.tapEffectColor,
     this.iconTheme,
     this.textStyle,
   });
 
   /// 按钮主要内容
   final Widget? child;
+
+  /// 通过方法构造 child，会传入 active、focus 等状态
+  final Widget Function(ZoInteractiveBoxBuildArgs args)? builder;
 
   /// 是否显示加载状态
   final bool loading;
@@ -136,6 +166,12 @@ class ZoInteractiveBox extends StatefulWidget {
   /// 禁用状态的背景色
   final Color? disabledColor;
 
+  /// 光标悬浮状态的颜色
+  final Color? hoverColor;
+
+  /// 点击时的反馈色
+  final Color? tapEffectColor;
+
   /// 调整图标样式
   final IconThemeData? iconTheme;
 
@@ -225,7 +261,7 @@ class _ZoInteractiveBoxState extends State<ZoInteractiveBox> {
     controller!.reverse(from: 1);
   }
 
-  Widget buildTapEffect(ZoStyle style, Color maskColor) {
+  Widget buildTapEffect(ZoStyle style, Color maskColor, BorderRadius radius) {
     return ZoTransitionBase<double>(
       controllerRef: controllerRef,
       open: false,
@@ -240,9 +276,7 @@ class _ZoInteractiveBoxState extends State<ZoInteractiveBox> {
           opacity: animate.animation,
           child: DecoratedBox(
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(
-                style.borderRadius,
-              ),
+              borderRadius: radius,
               color: maskColor,
             ),
           ),
@@ -272,7 +306,7 @@ class _ZoInteractiveBoxState extends State<ZoInteractiveBox> {
 
     if (widget.enabled && widget.textColorAdjust) {
       if (color != null) {
-        if (useLighterText(color)) {
+        if (isDarkColor(color)) {
           // 固定使用白色
           textColor = Colors.white;
         } else {
@@ -295,29 +329,38 @@ class _ZoInteractiveBoxState extends State<ZoInteractiveBox> {
     return textColor;
   }
 
-  (Color? maskColor, Color tapMaskColor) getMaskColor(
+  (Color, Color) getMaskColor(
     ZoStyle style,
     Color? color,
   ) {
     // 按钮交互时显示的遮罩色
-    Color? maskColor;
+    Color maskColor;
 
-    if (color != null) {
-      // 有背景色使用白色遮罩
-      maskColor = Colors.white.withAlpha(80);
-    } else if (widget.color != null) {
-      // 有主色, 使用主色的浅色版本
-      maskColor = widget.color!.withAlpha(20);
+    if (widget.hoverColor != null) {
+      maskColor = widget.hoverColor!;
+    } else if (color != null) {
+      // 根据背景色明度使用不同的遮罩色，alphaBlend 用于处理颜色带透明通道的场景，传入 surfaceColor
+      // 是针对最常见情况，如果有异化的背景色，用户需要自行传入 widget.hoverColor 明确指定颜色
+      maskColor = isDarkColor(Color.alphaBlend(color, style.surfaceColor))
+          ? style.darkStyle.hoverColor
+          : style.lightStyle.hoverColor;
     } else {
       // 使用hover色
       maskColor = style.hoverColor;
     }
 
-    // 点击时显示的遮罩色, 大部分情况与 maskColor 一致, 在带背景色时改为使用黑色加强对比
-    var tapMaskColor = maskColor;
+    // 覆盖到 maskColor 之上，增加明度或暗度
+    Color tapMaskColor;
 
-    if (color != null) {
-      tapMaskColor = Colors.black.withAlpha(40);
+    if (color != null || widget.hoverColor != null) {
+      tapMaskColor =
+          isDarkColor(
+            Color.alphaBlend(color ?? widget.hoverColor!, style.surfaceColor),
+          )
+          ? Colors.white.withAlpha(80)
+          : Colors.black.withAlpha(15);
+    } else {
+      tapMaskColor = maskColor;
     }
 
     return (maskColor, tapMaskColor);
@@ -378,6 +421,32 @@ class _ZoInteractiveBoxState extends State<ZoInteractiveBox> {
 
     final decorationPadding = widget.decorationPadding ?? EdgeInsets.zero;
 
+    var padding = widget.padding;
+
+    // 内容区域的padding 需要加上 decorationPadding, 否则会内容移除背景区域，
+    // 这对用户来说会很不直观
+    if (widget.decorationPadding != null && widget.padding != null) {
+      padding = EdgeInsets.fromLTRB(
+        (widget.padding?.left ?? 0) + decorationPadding.left,
+        (widget.padding?.top ?? 0) + decorationPadding.top,
+        (widget.padding?.right ?? 0) + decorationPadding.right,
+        (widget.padding?.bottom ?? 0) + decorationPadding.bottom,
+      );
+    }
+
+    final child = widget.builder != null
+        ? widget.builder!(
+            ZoInteractiveBoxBuildArgs(
+              loading: isLoading,
+              enabled: widget.enabled,
+              interactive: widget.interactive,
+              active: active,
+              focus: focus,
+              data: widget.data,
+            ),
+          )
+        : widget.child;
+
     return withTextAndIconColor(
       ZoTrigger(
         enabled: widget.enabled && widget.interactive,
@@ -385,12 +454,13 @@ class _ZoInteractiveBoxState extends State<ZoInteractiveBox> {
         canRequestFocus: widget.interactive && widget.canRequestFocus,
         onActiveChanged: onActiveChanged,
         onFocusChanged: onFocusChanged,
-        onContextAction: widget.onContextAction == null
-            ? null
-            : onContextAction,
         onTap: onTap,
         onTapDown: onTapDown,
         onTapCancel: onTapCancel,
+        // context 不是必要事件，按需传入
+        onContextAction: widget.onContextAction == null
+            ? null
+            : onContextAction,
         focusNode: widget.focusNode,
         autofocus: widget.autofocus,
         focusOnTap: widget.focusOnTap,
@@ -449,7 +519,11 @@ class _ZoInteractiveBoxState extends State<ZoInteractiveBox> {
                   child: IgnorePointer(
                     child: Visibility(
                       visible: !isLoading,
-                      child: buildTapEffect(style, tapMaskColor),
+                      child: buildTapEffect(
+                        style,
+                        widget.tapEffectColor ?? tapMaskColor,
+                        radius,
+                      ),
                     ),
                   ),
                 ),
@@ -457,11 +531,11 @@ class _ZoInteractiveBoxState extends State<ZoInteractiveBox> {
               Container(
                 key: const ValueKey("CONTENT"),
                 alignment: widget.alignment,
-                padding: widget.padding,
+                padding: padding,
                 width: widget.width,
                 height: widget.height,
                 constraints: widget.constraints,
-                child: widget.child,
+                child: child,
               ),
               ?widget.foregroundWidget,
             ],

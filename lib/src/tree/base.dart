@@ -2,9 +2,10 @@ part of "tree.dart";
 
 /// 基础成员, 它们在不同功能共享
 mixin _TreeBaseMixin on ZoCustomFormState<Iterable<Object>, ZoTree> {
+  late ZoPropInstanceCoordinator<ZoOptionController> _controllerCoordinator;
+
   /// 选项、树形数据等管理
-  ZoOptionController get controller => _controller;
-  late ZoOptionController _controller;
+  ZoOptionController get controller => _controllerCoordinator.instance;
 
   /// 控制选中项
   ZoSelector<Object, ZoOption> get selector => controller.selector;
@@ -137,5 +138,15 @@ mixin _TreeBaseMixin on ZoCustomFormState<Iterable<Object>, ZoTree> {
     }
 
     return (parents: parents, fixedHeight: fixedHeight, node: node);
+  }
+
+  /// 检测选项是否是可选的，根据是否启用、是否分支节点等因素判断，
+  /// 不可见选项也视为可选的，如果需要需单独过滤
+  bool _canSelected(ZoTreeDataNode<ZoOption> node) {
+    if (!node.data.enabled) return false;
+
+    if (!widget.branchSelectable && node.data.isBranch) return false;
+
+    return true;
   }
 }

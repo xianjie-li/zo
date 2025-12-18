@@ -51,6 +51,7 @@ class ZoPopperEntry extends ZoOverlayEntry {
     super.customWrap,
     super.curve,
     super.duration,
+    super.constrainsToView,
   }) : _padding = padding,
        _borderColor = borderColor,
        _color = color,

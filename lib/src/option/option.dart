@@ -5,11 +5,12 @@
 /// 数据管理: 通过 [ZoOptionController] 来管理选项数据，它对树形数据提供了强大的抽象，以及预置的
 /// 展开管理、选中管理、筛选、变更操作、异步加载、节点查询方法、用于渲染的平铺列表等功能
 ///
-/// 预设样式：使用 [ZoOptionView]、[ZoOptionViewList] 两个组件可基于选项渲染预设的样式，
+/// 预设样式：使用 [ZoOptionViewList] 组件可基于选项渲染预设的样式，
 /// 这也是内部组件使用的样式组件
 library;
 
 import "dart:collection";
+import "dart:math";
 
 import "package:flutter/material.dart";
 import "package:zo/zo.dart";
@@ -187,13 +188,14 @@ class ZoOption {
   }
 }
 
-/// 表示一个分组区域的 [ZoOption]
+/// 表示一个分组区域的 [ZoOption], 此选项不可用于树组件
 class ZoOptionSection extends ZoOption {
   ZoOptionSection(
     String title,
   ) : super(
         value: "ZoSection ${createTempId()}",
         interactive: false,
+        enabled: false,
         height: 32,
         builder: (context) {
           final style = context.zoStyle;
@@ -214,12 +216,13 @@ class ZoOptionSection extends ZoOption {
       );
 }
 
-/// 表示一个分割线的 [ZoOption]
+/// 表示一个分割线的 [ZoOption], 此选项不可用于树组件
 class ZoOptionDivider extends ZoOption {
   ZoOptionDivider()
     : super(
         value: "ZoDivider ${createTempId()}",
         interactive: false,
+        enabled: false,
         height: 16,
         builder: (context) {
           return const Center(
@@ -245,10 +248,11 @@ class ZoOptionController extends ZoTreeDataController<ZoOption> {
     super.caseSensitive,
     super.matchRegexp,
     super.filter,
+    super.onPhaseChanged,
     super.onUpdateEach,
-    super.onUpdateStart,
-    super.onUpdateEnd,
-    super.onFilterCompleted,
+    super.onReloadEach,
+    super.onRefreshEach,
+    super.onFiltered,
     super.onMutation,
     super.onLoadStatusChanged,
   });

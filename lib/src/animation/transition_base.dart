@@ -33,8 +33,8 @@ class ZoTransitionBase<T> extends StatefulWidget {
     this.autoAlpha = true,
     this.child,
     this.tween,
-    this.curve = ZoTransition.defaultCurve,
-    this.duration = ZoTransition.defaultDuration,
+    this.curve,
+    this.duration,
     this.reverseDuration,
     this.builder,
     this.animationBuilder,
@@ -68,7 +68,7 @@ class ZoTransitionBase<T> extends StatefulWidget {
   final Tween<T>? tween;
 
   /// 配置动画曲线
-  final Curve curve;
+  final Curve? curve;
 
   /// 动画持续时间
   final Duration? duration;
@@ -130,13 +130,13 @@ class _ZoTransitionBaseState<T> extends State<ZoTransitionBase<T>>
         AnimationController(
           value: widget.appear ? initCloseValue : initOpenValue,
           vsync: this,
-          duration: widget.duration,
+          duration: widget.duration ?? ZoTransition.defaultDuration,
           reverseDuration: widget.reverseDuration,
         );
 
     if (widget.controller != null) {
       controller.value = widget.appear ? initCloseValue : initOpenValue;
-      controller.duration = widget.duration;
+      controller.duration = widget.duration ?? ZoTransition.defaultDuration;
       controller.reverseDuration = widget.reverseDuration;
     }
 
@@ -157,12 +157,12 @@ class _ZoTransitionBaseState<T> extends State<ZoTransitionBase<T>>
       updateController(oldWidget.controller);
     }
 
-    if (oldWidget.tween != widget.tween || widget.curve != widget.curve) {
+    if (oldWidget.tween != widget.tween || oldWidget.curve != widget.curve) {
       updateAnimation();
     }
 
     if (oldWidget.duration != widget.duration) {
-      controller.duration = widget.duration;
+      controller.duration = widget.duration ?? ZoTransition.defaultDuration;
       controller.reverseDuration = widget.duration;
     }
 
@@ -187,7 +187,10 @@ class _ZoTransitionBaseState<T> extends State<ZoTransitionBase<T>>
   void updateAnimation() {
     controller = widget.controller ?? controller;
 
-    curveAnimation = CurvedAnimation(parent: controller, curve: widget.curve);
+    curveAnimation = CurvedAnimation(
+      parent: controller,
+      curve: widget.curve ?? ZoTransition.defaultCurve,
+    );
 
     if (widget.tween == null) {
       animation = curveAnimation as Animation<T>;

@@ -295,7 +295,7 @@ class ZoTile extends StatelessWidget {
   /// 返回当前应显示的背景色
   Color? _getBgColor(ZoStyle zoStyle) {
     if (active) {
-      return activeColor ?? zoStyle.primaryColor;
+      return activeColor ?? zoStyle.selectedColor;
     }
 
     if (highlight) {
@@ -312,7 +312,7 @@ class ZoTile extends StatelessWidget {
     }
 
     if (color == null && style == ZoTileStyle.filled) {
-      return zoStyle.surfaceGrayColor;
+      return zoStyle.surfaceContainerColor;
     }
 
     return color;

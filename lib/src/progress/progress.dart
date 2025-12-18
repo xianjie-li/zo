@@ -64,7 +64,7 @@ class ZoProgress extends StatelessWidget {
     double strokeWidth = 8;
 
     if (size == ZoSize.small) {
-      final size = style.sizeSM - style.space2;
+      final size = style.sizeSM - style.space3;
 
       constraints = BoxConstraints(
         minWidth: size,
@@ -72,7 +72,7 @@ class ZoProgress extends StatelessWidget {
         maxWidth: size,
         maxHeight: size,
       );
-      strokeWidth = 5;
+      strokeWidth = 4;
     } else if (size == ZoSize.large) {
       constraints = const BoxConstraints(
         minWidth: 60,
@@ -85,11 +85,11 @@ class ZoProgress extends StatelessWidget {
 
     return CircularProgressIndicator(
       value: value,
-      backgroundColor: style.surfaceGrayColorVariant,
+      backgroundColor: style.surfaceContainerColor,
       trackGap: 0,
+      strokeCap: StrokeCap.round,
       strokeWidth: strokeWidth,
       constraints: constraints,
-      year2023: false,
     );
   }
 
@@ -103,11 +103,10 @@ class ZoProgress extends StatelessWidget {
     return LinearProgressIndicator(
       value: value,
       trackGap: 0,
-      backgroundColor: style.surfaceGrayColorVariant,
+      backgroundColor: style.surfaceContainerColor,
       stopIndicatorColor: Colors.transparent,
       minHeight: minHeight,
       borderRadius: BorderRadius.circular(12),
-      year2023: false,
     );
   }
 
@@ -155,7 +154,6 @@ class ZoProgress extends StatelessWidget {
                     ? EdgeInsets.all(style.space2)
                     : null,
                 alignment: alignment,
-
                 decoration: barrier
                     ? BoxDecoration(
                         borderRadius: borderRadius,
