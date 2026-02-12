@@ -103,4 +103,8 @@ void main() {
       [1, 1], // 与 [1, 0] 连续
     ];
   });
+
+  test("play7", () {
+    expect(#a == #a, true);
+  });
 }

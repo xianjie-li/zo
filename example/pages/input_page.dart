@@ -1,5 +1,6 @@
 import "package:flutter/material.dart";
 import "package:zo/src/input/input.dart";
+import "package:zo/src/tile/tile.dart";
 import "package:zo/zo.dart";
 
 class InputPage extends StatefulWidget {
@@ -38,416 +39,562 @@ class _InputPageState extends State<InputPage> {
       body: SingleChildScrollView(
         clipBehavior: Clip.none,
         padding: EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: ZoCells(
+          spacing: 16,
+          runSpacing: 24,
           children: [
-            Row(
-              children: [
-                SizedBox(
-                  width: 400,
-                  child: Slider(
-                    value: value,
-                    max: 100,
-                    onChanged: (value) => setState(() => this.value = value),
+            ZoCell(span: 3, child: ZoInput<String>(hintText: Text("请输入"))),
+            ZoCell(
+              span: 3,
+              child: ZoInput<String>(hintText: Text("请输入"), obscureText: true),
+            ),
+            ZoCell(span: 3, child: ZoInput<double>(hintText: Text("请输入"))),
+            ZoCell(span: 3, child: ZoInput<int>(hintText: Text("请输入"))),
+
+            ZoCell(
+              span: 3,
+              child: ZoInput(
+                leading: [Text("前置")],
+                hintText: Text("请输入"),
+                trailing: [Text("后置")],
+              ),
+            ),
+            ZoCell(
+              span: 3,
+              child: ZoInput(
+                leading: [
+                  ZoButton(
+                    icon: Icon(Icons.account_balance_wallet),
+                    plain: true,
+                    size: ZoSize.small,
+                    onTap: () => {},
                   ),
-                ),
-                ZoButton(
-                  size: ZoSize.small,
-                  child: Text("变更"),
-                  onTap: () {
-                    setState(() {
-                      value = value + 1;
-                    });
-                  },
-                ),
-                Text("当前值: $value"),
-              ],
+                ],
+                hintText: Text("请输入"),
+                trailing: [
+                  ZoButton(
+                    icon: Icon(Icons.ac_unit_rounded),
+                    plain: true,
+                    size: ZoSize.small,
+                    onTap: () => {},
+                  ),
+                ],
+              ),
             ),
-            Row(
-              children: [
-                Checkbox(
-                  value: checkValue,
-                  onChanged: (val) => setState(() => checkValue = val),
-                ),
-                ZoButton(
-                  size: ZoSize.small,
-                  child: Text("变更"),
-                  onTap: () {
-                    setState(() {
-                      checkValue = !checkValue!;
-                    });
-                  },
-                ),
-                Text("当前值: $checkValue"),
-              ],
+            ZoCell(
+              span: 3,
+              child: ZoInput(
+                leading: [
+                  ZoButton(
+                    icon: Icon(Icons.account_balance_wallet),
+                    plain: true,
+
+                    size: ZoSize.small,
+                    onTap: () => {},
+                  ),
+                ],
+                hintText: Text("请输入"),
+                maxLines: 3,
+                minLines: 1,
+              ),
             ),
-            Row(
-              children: [
-                Radio(
-                  value: "type1",
-                  groupValue: radioValue,
-                  onChanged: (val) => setState(() => radioValue = val!),
-                ),
-                Radio(
-                  value: "type2",
-                  groupValue: radioValue,
-                  onChanged: (val) => setState(() => radioValue = val!),
-                ),
-                ZoButton(
-                  size: ZoSize.small,
-                  child: Text("变更"),
-                  onTap: () {
-                    setState(() {
-                      radioValue = radioValue == "type1" ? "type2" : "type1";
-                    });
-                  },
-                ),
-                Text("当前值: $radioValue"),
-              ],
+            ZoCell(
+              span: 3,
+              child: ZoInput(hintText: Text("请输入"), maxLines: 3, minLines: 2),
             ),
-            Row(
-              children: [
-                Switch(
-                  value: switchValue,
-                  onChanged: (value) => setState(() => switchValue = value),
-                  // inactiveThumbColor: Colors.grey,
-                ),
-                ZoButton(
-                  size: ZoSize.small,
-                  child: Text("变更"),
-                  onTap: () {
-                    setState(() {
-                      switchValue = !switchValue;
-                    });
-                  },
-                ),
-                Text("当前值: $switchValue"),
-              ],
+
+            ZoCell(
+              span: 3,
+              child: ZoInput(
+                size: ZoSize.small,
+                leading: [
+                  ZoButton(
+                    icon: Icon(Icons.account_balance_wallet),
+                    plain: true,
+
+                    size: ZoSize.small,
+                    onTap: () => {},
+                  ),
+                ],
+                hintText: Text("请输入"),
+                trailing: [
+                  ZoButton(
+                    icon: Icon(Icons.ac_unit_rounded),
+                    plain: true,
+
+                    size: ZoSize.small,
+                    onTap: () => {},
+                  ),
+                ],
+              ),
             ),
-            Row(
-              children: [
-                DropdownMenu<String>(
-                  initialSelection: selectedValue,
-                  label: const Text("选择"),
-                  onSelected: (String? selected) {
-                    setState(() {
-                      selectedValue = selected!;
-                    });
-                  },
-                  dropdownMenuEntries: [
-                    DropdownMenuEntry(label: "选项1", value: "type1"),
-                    DropdownMenuEntry(label: "选项2", value: "type2"),
-                    DropdownMenuEntry(label: "选项3", value: "type3"),
-                    DropdownMenuEntry(label: "选项4", value: "type4"),
-                    DropdownMenuEntry(label: "选项5", value: "type5"),
-                    DropdownMenuEntry(label: "选项6", value: "type6"),
+            ZoCell(
+              span: 3,
+              child: ZoInput(
+                leading: [
+                  ZoButton(
+                    icon: Icon(Icons.account_balance_wallet),
+                    plain: true,
+
+                    size: ZoSize.small,
+                    onTap: () => {},
+                  ),
+                ],
+                hintText: Text("请输入"),
+                trailing: [
+                  ZoButton(
+                    icon: Icon(Icons.ac_unit_rounded),
+                    plain: true,
+
+                    size: ZoSize.small,
+                    onTap: () => {},
+                  ),
+                ],
+              ),
+            ),
+            ZoCell(
+              span: 3,
+              child: ZoInput(
+                size: ZoSize.large,
+                leading: [
+                  ZoButton(
+                    icon: Icon(Icons.account_balance_wallet),
+                    plain: true,
+
+                    size: ZoSize.small,
+                    onTap: () => {},
+                  ),
+                ],
+                hintText: Text("请输入"),
+                trailing: [
+                  ZoButton(
+                    icon: Icon(Icons.ac_unit_rounded),
+                    plain: true,
+
+                    size: ZoSize.small,
+                    onTap: () => {},
+                  ),
+                ],
+              ),
+            ),
+            ZoCell(span: 3),
+
+            ZoCell(
+              span: 3,
+              child: ZoInput(
+                borderless: true,
+                size: ZoSize.small,
+                leading: [
+                  ZoButton(
+                    icon: Icon(Icons.account_balance_wallet),
+                    plain: true,
+
+                    size: ZoSize.small,
+                    onTap: () => {},
+                  ),
+                ],
+                hintText: Text("请输入"),
+                trailing: [
+                  ZoButton(
+                    icon: Icon(Icons.ac_unit_rounded),
+                    plain: true,
+
+                    size: ZoSize.small,
+                    onTap: () => {},
+                  ),
+                ],
+              ),
+            ),
+            ZoCell(
+              span: 3,
+              child: ZoInput(
+                borderless: true,
+                leading: [
+                  ZoButton(
+                    icon: Icon(Icons.account_balance_wallet),
+                    plain: true,
+
+                    size: ZoSize.small,
+                    onTap: () => {},
+                  ),
+                ],
+                hintText: Text("请输入"),
+                trailing: [
+                  ZoButton(
+                    icon: Icon(Icons.ac_unit_rounded),
+                    plain: true,
+
+                    size: ZoSize.small,
+                    onTap: () => {},
+                  ),
+                ],
+              ),
+            ),
+            ZoCell(
+              span: 3,
+              child: ZoInput(
+                borderless: true,
+                size: ZoSize.large,
+                leading: [
+                  ZoButton(
+                    icon: Icon(Icons.account_balance_wallet),
+                    plain: true,
+
+                    size: ZoSize.small,
+                    onTap: () => {},
+                  ),
+                ],
+                hintText: Text("请输入"),
+                trailing: [
+                  ZoButton(
+                    icon: Icon(Icons.ac_unit_rounded),
+                    plain: true,
+
+                    size: ZoSize.small,
+                    onTap: () => {},
+                  ),
+                ],
+              ),
+            ),
+            ZoCell(span: 3),
+
+            ZoCell(
+              span: 3,
+              child: ZoInput(
+                enabled: false,
+                leading: [
+                  ZoButton(
+                    icon: Icon(Icons.account_balance_wallet),
+                    plain: true,
+
+                    size: ZoSize.small,
+                    onTap: () => {},
+                  ),
+                ],
+                hintText: Text("请输入"),
+                trailing: [
+                  ZoButton(
+                    icon: Icon(Icons.ac_unit_rounded),
+                    plain: true,
+
+                    size: ZoSize.small,
+                    onTap: () => {},
+                  ),
+                ],
+              ),
+            ),
+            ZoCell(
+              span: 3,
+              child: ZoInput(
+                value: "hello",
+                enabled: false,
+                borderless: true,
+                leading: [
+                  ZoButton(
+                    icon: Icon(Icons.account_balance_wallet),
+                    plain: true,
+
+                    size: ZoSize.small,
+                    onTap: () => {},
+                  ),
+                ],
+                hintText: Text("请输入"),
+                trailing: [
+                  ZoButton(
+                    icon: Icon(Icons.ac_unit_rounded),
+                    plain: true,
+
+                    size: ZoSize.small,
+                    onTap: () => {},
+                  ),
+                ],
+              ),
+            ),
+            ZoCell(
+              span: 3,
+              child: ZoInput(
+                value: "默认值默认值默认值默认值默认值默认值默认值默认值默认值默认值默认值默认值默认值默认值",
+                readOnly: true,
+                // borderless: true,
+                leading: [
+                  ZoButton(
+                    icon: Icon(Icons.account_balance_wallet),
+                    plain: true,
+
+                    size: ZoSize.small,
+                    onTap: () => {},
+                  ),
+                ],
+                hintText: Text("请输入"),
+                trailing: [
+                  ZoButton(
+                    icon: Icon(Icons.ac_unit_rounded),
+                    plain: true,
+
+                    size: ZoSize.small,
+                    onTap: () => {},
+                  ),
+                ],
+              ),
+            ),
+            ZoCell(
+              span: 3,
+              child: ZoProgress(
+                type: ZoProgressType.linear,
+                size: ZoSize.small,
+                borderRadius: BorderRadius.circular(
+                  context.zoStyle.borderRadius,
+                ),
+                child: ZoInput(
+                  value: "Hello",
+                  enabled: false,
+                  borderless: true,
+                  leading: [
+                    ZoButton(
+                      icon: Icon(Icons.account_balance_wallet),
+                      plain: true,
+
+                      size: ZoSize.small,
+                      onTap: () => {},
+                    ),
+                  ],
+                  hintText: Text("请输入"),
+                  trailing: [
+                    ZoButton(
+                      icon: Icon(Icons.ac_unit_rounded),
+                      plain: true,
+
+                      size: ZoSize.small,
+                      onTap: () => {},
+                    ),
                   ],
                 ),
-                ZoButton(
-                  size: ZoSize.small,
-                  child: Text("变更"),
-                  onTap: () {
-                    setState(() {
-                      selectedValue = "type3";
-                    });
-                  },
-                ),
-                Text("当前值: $selectedValue"),
-              ],
+              ),
             ),
-            Row(
-              children: [
-                SizedBox(
-                  width: 180,
-                  child: InputDatePickerFormField(
-                    initialDate: dateTime,
-                    firstDate: DateTime(2024),
-                    lastDate: DateTime(2026),
-                  ),
-                ),
-                ZoButton(
-                  size: ZoSize.small,
-                  child: Text("变更"),
-                  onTap: () {
-                    setState(() {
-                      dateTime = dateTime.add(Duration(days: 1));
-                    });
-                  },
-                ),
-                Text("当前值: $dateTime"),
-              ],
-            ),
-            Row(
-              children: [
-                SizedBox(
-                  width: 180,
-                  child: TextField(
-                    decoration: InputDecoration(label: Text("姓名")),
-                    buildCounter:
-                        (
-                          context, {
-                          required currentLength,
-                          required isFocused,
-                          required maxLength,
-                        }) {
-                          return Text("$currentLength/$maxLength");
-                        },
-                    onChanged: (value) {
-                      print("val: $value");
-                    },
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 24),
-            Row(
-              spacing: 12,
-              children: [
-                SizedBox(
-                  width: 180,
-                  child: InputDecorator(
-                    isHovering: true,
-                    decoration: InputDecoration(
-                      label: Text("姓名"),
-                      // errorText: "错误!!!",
-                      helperText: "帮助文本",
-                      hintText: "提示文本",
-                      counter: Text("0/10"),
-                    ),
-                    // child: Container(
-                    //   width: 120,
-                    //   height: 40,
-                    //   color: Colors.grey.shade200,
-                    // ),
-                  ),
-                ),
-                SizedBox(
-                  width: 180,
-                  child: InputDecorator(
-                    isFocused: true,
-                    decoration: InputDecoration(label: Text("姓名")),
 
-                    child: Container(
-                      width: 120,
-                      height: 40,
-                      color: Colors.grey.shade200,
-                    ),
+            ZoCell(
+              span: 3,
+              child: ZoTile(
+                header: Text("姓名"),
+                content: ZoInput<String>(hintText: Text("请输入")),
+              ),
+            ),
+            ZoCell(
+              span: 3,
+              child: ZoTile(
+                horizontal: true,
+                header: Text("姓名"),
+                content: ZoInput<String>(hintText: Text("请输入")),
+              ),
+            ),
+            ZoCell(
+              span: 5,
+              child: ZoTile(
+                horizontal: true,
+                leading: Icon(Icons.ac_unit_outlined),
+                header: Text("姓名"),
+                content: ZoInput<String>(hintText: Text("请输入")),
+                trailing: Icon(Icons.ac_unit_outlined),
+              ),
+            ),
+            ZoCell(span: 1),
+
+            ZoCell(
+              span: 3,
+              child: ZoTile(
+                header: Text("姓名"),
+                content: ZoInput<String>(hintText: Text("请输入")),
+              ),
+            ),
+            ZoCell(
+              span: 3,
+              child: ZoTile(
+                horizontal: true,
+                header: Text("姓名"),
+                content: ZoInput<String>(hintText: Text("请输入")),
+              ),
+            ),
+            ZoCell(
+              span: 5,
+              child: ZoTile(
+                horizontal: true,
+
+                leading: Icon(Icons.ac_unit_outlined),
+                header: Text("姓名"),
+                content: ZoInput<String>(hintText: Text("请输入")),
+                trailing: Icon(Icons.ac_unit_outlined),
+              ),
+            ),
+            ZoCell(span: 1),
+
+            ZoCell(
+              span: 3,
+              child: ZoTile(
+                header: Text("姓名"),
+                content: ZoInput<String>(hintText: Text("请输入")),
+              ),
+            ),
+            ZoCell(
+              span: 3,
+              child: ZoTile(
+                horizontal: true,
+                header: Text("姓名"),
+                content: ZoInput<String>(hintText: Text("请输入"), enabled: false),
+              ),
+            ),
+            ZoCell(
+              span: 5,
+              child: ZoTile(
+                horizontal: true,
+                leading: Icon(Icons.ac_unit_outlined),
+                header: Text("姓名"),
+                content: ZoInput<String>(hintText: Text("请输入")),
+                trailing: Icon(Icons.ac_unit_outlined),
+              ),
+            ),
+            ZoCell(span: 1),
+            ZoCell(
+              span: 12,
+              child: ZoTile(
+                leading: Icon(Icons.ac_unit_outlined),
+                header: Text("自动更新"),
+                content: Text(
+                  "开启后, 系统会自动更新相关数据系统会自动更新相关数据",
+                  style: TextStyle(color: context.zoStyle.hintTextColor),
+                ),
+                trailing: SizedBox(
+                  width: 240,
+                  child: ZoInput<String>(hintText: Text("请输入")),
+                ),
+              ),
+            ),
+            ZoCell(
+              span: 12,
+              child: ZoTile(
+                leading: Icon(Icons.ac_unit_outlined),
+                header: Text("自动更新"),
+                content: Text(
+                  "开启后, 系统会自动更新相关数据系统会自动更新相关数据",
+                  style: TextStyle(color: context.zoStyle.hintTextColor),
+                ),
+                trailing: SizedBox(
+                  width: 240,
+                  child: ZoInput<String>(hintText: Text("请输入")),
+                ),
+              ),
+            ),
+            ZoCell(
+              span: 12,
+              child: ZoTile(
+                leading: Icon(Icons.ac_unit_outlined),
+                header: Text("姓名"),
+                content: Text(
+                  "开启后, 系统会自动更新相关数据",
+                  style: TextStyle(color: context.zoStyle.hintTextColor),
+                ),
+                trailing: Switch(value: false, onChanged: (val) {}),
+              ),
+            ),
+            ZoCell(
+              span: 12,
+              child: ZoTile(
+                leading: Icon(Icons.ac_unit_outlined),
+                header: Text("自动更新"),
+                content: Text(
+                  "开启后, 系统会自动更新相关数据系统会自动更新相关数据",
+                  style: TextStyle(color: context.zoStyle.hintTextColor),
+                ),
+                trailing: SizedBox(
+                  width: 240,
+                  child: ZoInput<String>(hintText: Text("请输入")),
+                ),
+              ),
+            ),
+            ZoCell(
+              span: 5,
+              child: Column(
+                spacing: 8,
+                children: [
+                  ZoTile(
+                    header: Text("姓名"),
+                    content: ZoInput<String>(hintText: Text("请输入")),
                   ),
-                ),
-                SizedBox(
-                  width: 180,
-                  child: InputDecorator(
-                    // isHovering: true,
-                    // isFocused: true,
-                    // isEmpty: true,
-                    decoration: InputDecoration(
-                      label: Text("姓名"),
-                      border: OutlineInputBorder(
-                        borderSide: BorderSide(color: Colors.red),
-                      ),
-                      isCollapsed: true,
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                    ),
-                    child: Container(
-                      width: 120,
-                      height: 32,
-                      color: Colors.black.withAlpha(10),
-                    ),
+                  ZoTile(
+                    header: Text("手机号"),
+                    content: ZoInput<String>(hintText: Text("请输入")),
                   ),
-                ),
-                Container(
-                  width: 180,
-                  // decoration: BoxDecoration(border: Border.all()),
-                  child: InputDecorator(
-                    // isHovering: true,
-                    // isEmpty: true,
-                    // isFocused: ,
-                    decoration: InputDecoration(
-                      label: Text("姓名"),
-                      enabledBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: Colors.transparent),
-                      ),
-                      border: OutlineInputBorder(
-                        borderSide: BorderSide(color: Colors.transparent),
-                      ),
-                      // filled: true,
-                      // isDense: true,
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      isCollapsed: true,
-                      // contentPadding: EdgeInsets.symmetric(
-                      //   horizontal: 8,
-                      //   vertical: 8,
-                      // ),
-                    ),
-                    child: Container(
-                      width: 120,
-                      height: 32,
-                      color: Colors.grey.withAlpha(40),
-                    ),
+                  ZoTile(
+                    header: Text("爱好"),
+                    content: ZoInput<String>(hintText: Text("请输入")),
                   ),
-                ),
-              ],
-            ),
-            SizedBox(height: 32),
-            Container(
-              width: 180,
-              decoration: BoxDecoration(
-                border: Border.all(color: context.zoStyle.outlineColor),
-              ),
-              child: ZoInput(
-                // value: inpVal1,
-                onChanged: (newValue) {
-                  print("ZoInputBase.onChanged: $newValue");
-                },
+                ],
               ),
             ),
-            SizedBox(height: 32),
-            Container(
-              width: 180,
-              decoration: BoxDecoration(
-                border: Border.all(color: context.zoStyle.outlineColor),
-              ),
-              child: ZoInput(
-                value: inpVal1,
-                onChanged: (newValue) {
-                  setState(() {
-                    inpVal1 = newValue;
-                  });
-                  print("ZoInputBase.onChanged: $newValue");
-                },
-              ),
-            ),
-            SizedBox(height: 32),
-            ZoButton(
-              child: Text("change $inpVal1"),
-              onTap: () {
-                setState(() {
-                  inpVal1 = "lixianjie";
-                });
-              },
-            ),
-            SizedBox(height: 32),
-            Container(
-              width: 180,
-              decoration: BoxDecoration(
-                border: Border.all(color: context.zoStyle.outlineColor),
-              ),
-              child: ZoInput(
-                value: inpVal2,
-                onChanged: (newValue) {
-                  setState(() {
-                    inpVal2 = newValue;
-                  });
-                  print(
-                    "ZoInputBase.onChanged: $newValue ${newValue.runtimeType}",
-                  );
-                },
+            ZoCell(
+              span: 5,
+              child: Column(
+                spacing: 8,
+                children: [
+                  ZoTile(
+                    header: Text("姓名"),
+                    content: ZoInput<String>(hintText: Text("请输入")),
+                  ),
+                  ZoTile(
+                    header: Text("手机号"),
+                    content: ZoInput<String>(hintText: Text("请输入")),
+                  ),
+                  ZoTile(
+                    header: Text("爱好"),
+                    content: ZoInput<String>(hintText: Text("请输入")),
+                  ),
+                ],
               ),
             ),
-            SizedBox(height: 32),
-            ZoButton(
-              child: Text("change $inpVal2"),
-              onTap: () {
-                setState(() {
-                  inpVal2 = 10000;
-                });
-              },
-            ),
-            SizedBox(height: 32),
-            Container(
-              width: 180,
-              decoration: BoxDecoration(
-                border: Border.all(color: context.zoStyle.outlineColor),
-              ),
-              child: ZoProgress(
-                open: loading,
-                size: ZoSize.small,
-                type: ZoProgressType.linear,
-                child: ZoInput(
-                  value: inpVal3,
-                  hintText: Text("请输入"),
-                  max: 1000,
-                  min: 0,
-                  onChanged: (newValue) {
-                    setState(() {
-                      inpVal3 = newValue;
-                    });
-                    print(
-                      "ZoInputBase.onChanged: $newValue ${newValue.runtimeType}",
-                    );
-                  },
-                ),
-              ),
-            ),
-            SizedBox(height: 32),
-            ZoButton(
-              child: Text("change $inpVal3"),
-              onTap: () {
-                setState(() {
-                  inpVal3 = 10000;
-                });
-              },
-            ),
-            ZoButton(
-              child: Text("loading: $loading"),
-              onTap: () {
-                setState(() {
-                  loading = !loading;
-                });
-              },
-            ),
-            SizedBox(height: 32),
-            Container(
-              width: 180,
-              decoration: BoxDecoration(
-                // border: Border.all(color: context.zoStyle.outlineColor),
-              ),
-              child: ZoProgress(
-                open: loading,
-                size: ZoSize.small,
-                type: ZoProgressType.linear,
-                child: ZoInput<double>(
-                  obscureText: true,
-                  min: 0,
-                  onChanged: (newValue) {
-                    print(
-                      "ZoInputBase.onChanged: $newValue ${newValue.runtimeType}",
-                    );
-                  },
-                ),
-              ),
-            ),
-            SizedBox(height: 32),
-            Container(
-              width: 180,
-              decoration: BoxDecoration(
-                // border: Border.all(color: context.zoStyle.outlineColor),
-              ),
-              child: ZoProgress(
-                open: loading,
-                size: ZoSize.small,
-                type: ZoProgressType.linear,
-                child: ZoInput(
-                  clear: true,
-                  min: 0,
-                  hintText: Text("请输入"),
-                  onChanged: (newValue) {
-                    print(
-                      "ZoInputBase.onChanged: $newValue ${newValue.runtimeType}",
-                    );
-                  },
-                ),
+            ZoCell(
+              span: 5,
+              child: Column(
+                children: [
+                  ZoTile(
+                    horizontal: true,
+                    header: SizedBox(
+                      width: 80,
+                      child: Text("姓名", textAlign: TextAlign.end),
+                    ),
+                    content: ZoInput<String>(hintText: Text("请输入")),
+                  ),
+                  ZoTile(
+                    horizontal: true,
+                    header: SizedBox(
+                      width: 80,
+                      child: Text("手机号", textAlign: TextAlign.end),
+                    ),
+                    content: ZoInput<String>(hintText: Text("请输入")),
+                  ),
+                  ZoTile(
+                    horizontal: true,
+                    header: SizedBox(
+                      width: 80,
+                      child: Text("爱好", textAlign: TextAlign.end),
+                    ),
+                    content: ZoInput<String>(hintText: Text("请输入")),
+                  ),
+                ],
               ),
             ),
           ],
         ),
       ),
     );
+  }
+}
+
+class BgWrap extends StatelessWidget {
+  const BgWrap({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(color: Colors.black.withAlpha(10), child: child);
   }
 }

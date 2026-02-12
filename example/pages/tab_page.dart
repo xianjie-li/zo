@@ -13,56 +13,56 @@ class TabsPage extends StatefulWidget {
 
 class _TabsPageState extends State<TabsPage> {
   List<ZoTabsEntry> list = [
-    ZoTabsEntry(label: "标签一", value: "1", icon: Icon(Icons.home)),
-    ZoTabsEntry(label: "标签二", value: "2", icon: Icon(Icons.ac_unit)),
+    ZoTabsEntry(label: "标签a一", value: "a1", icon: Icon(Icons.home)),
+    ZoTabsEntry(label: "标签a二", value: "a2", icon: Icon(Icons.ac_unit)),
     ZoTabsEntry(
-      label: "标签三标签三标签三",
-      value: "3",
+      label: "标签a三标签三标签三",
+      value: "a3",
       icon: Icon(Icons.ac_unit),
     ),
     for (int i = 0; i < 3; i++)
       ZoTabsEntry(
-        label: "标签${i + 4}",
-        value: "${i + 4}",
+        label: "标签a${i + 4}",
+        value: "a${i + 4}",
         icon: Icon(Icons.settings),
       ),
   ];
 
   List<ZoTabsEntry> list2 = [
-    ZoTabsEntry(label: "标签一", value: "1", icon: Icon(Icons.home)),
-    ZoTabsEntry(label: "标签二", value: "2", icon: Icon(Icons.ac_unit)),
+    ZoTabsEntry(label: "标签b一", value: "b1", icon: Icon(Icons.home)),
+    ZoTabsEntry(label: "标签b二", value: "b2", icon: Icon(Icons.ac_unit)),
     ZoTabsEntry(
-      label: "标签二",
-      value: "3",
+      label: "标签b二",
+      value: "b3",
       icon: Icon(Icons.ac_unit),
     ),
     for (int i = 0; i < 10; i++)
       ZoTabsEntry(
-        label: "标签${i + 4}",
-        value: "${i + 4}",
+        label: "标签b${i + 4}",
+        value: "b${i + 4}",
         icon: Icon(Icons.settings),
       ),
   ];
 
   List<ZoTabsEntry> list3 = [
-    ZoTabsEntry(label: "标签一", value: "1", icon: Icon(Icons.home)),
-    ZoTabsEntry(label: "标签二", value: "2", icon: Icon(Icons.ac_unit)),
+    ZoTabsEntry(label: "标签c一", value: "c1", icon: Icon(Icons.home)),
+    ZoTabsEntry(label: "标签c二", value: "c2", icon: Icon(Icons.ac_unit)),
     ZoTabsEntry(
-      label: "标签三标签三标签三",
-      value: "3",
+      label: "标签c三标签三标签三",
+      value: "c3",
       icon: Icon(Icons.ac_unit),
     ),
     for (int i = 0; i < 30; i++)
       ZoTabsEntry(
-        label: "标签${i + 4}",
-        value: "${i + 4}",
+        label: "标签c${i + 4}",
+        value: "c${i + 4}",
         icon: Icon(Icons.settings),
       ),
   ];
 
   final value = ["2"];
 
-  List<Object> pinedTabs = ["4", "5"];
+  List<Object> pinedTabs = ["a4", "a5"];
 
   @override
   Widget build(BuildContext context) {
@@ -72,20 +72,12 @@ class _TabsPageState extends State<TabsPage> {
         mainAxisSize: MainAxisSize.max,
         children: [
           Container(
-            width: 510,
+            width: 170,
             decoration: BoxDecoration(border: Border.all()),
             child: Row(
               mainAxisSize: MainAxisSize.max,
               spacing: 8,
               children: [
-                SizedBox(
-                  width: 164,
-                  child: ZoTabs(
-                    tabs: list3,
-                    value: value,
-                    direction: Axis.vertical,
-                  ),
-                ),
                 SizedBox(
                   width: 164,
                   child: ZoTabs(
@@ -104,15 +96,6 @@ class _TabsPageState extends State<TabsPage> {
                     markers: const {"1"},
                   ),
                 ),
-                SizedBox(
-                  width: 164,
-                  child: ZoTabs(
-                    tabs: list3,
-                    value: value,
-                    direction: Axis.vertical,
-                    type: ZoTabsType.flat,
-                  ),
-                ),
               ],
             ),
           ),
@@ -128,14 +111,25 @@ class _TabsPageState extends State<TabsPage> {
                       tabs: list,
                       size: ZoSize.small,
                       value: value,
+                      customContextMenu: (internalActions) {
+                        return [
+                          ZoOption(value: "123", title: Text("Do Nothing")),
+                        ];
+                      },
+                      onContextMenuTrigger: (action) {
+                        print("${action.option.value}");
+                        return true;
+                      },
+                      enableContextMenu: true,
                     ),
                     ZoTabs(
                       tabs: list,
                       value: value,
                       pinedTabs: pinedTabs,
+                      pinedTabsOnlyShowIcon: true,
                       size: ZoSize.small,
-
-                      markers: const {"4"},
+                      enableContextMenu: true,
+                      markers: const {"a4"},
                       onPinedTabsChanged: (value) {
                         setState(() {
                           pinedTabs = value;
@@ -180,19 +174,28 @@ class _TabsPageState extends State<TabsPage> {
                       value: value,
                       tabMinWidth: 150,
                       alwaysShowCloseButton: false,
-                      markers: const {"1"},
+                      markers: const {"a1"},
+                      pinedTabs: pinedTabs,
+                      pinedTabsOnlyShowIcon: true,
                     ),
                     ZoTabs(
                       tabs: list,
                       size: ZoSize.large,
                       value: value,
-                      markers: const {"1"},
+                      markers: const {"a1"},
+                      labelMaxWidth: 100,
+                      autoTooltip: true,
                     ),
                     ZoTabs(
                       tabs: list,
                       size: ZoSize.large,
                       value: value,
                       showBorder: true,
+                      pinedTabs: pinedTabs,
+                      markers: const {"a1"},
+                      pinedTabsOnlyShowIcon: true,
+                      labelMaxWidth: 100,
+                      autoTooltip: true,
                     ),
                     Text("背景覆盖"),
                     Container(
@@ -202,8 +205,8 @@ class _TabsPageState extends State<TabsPage> {
                         tabs: list,
                         value: value,
                         // color: Colors.white,
-                        activeColor: Colors.white.withAlpha(230),
-                        hoverColor: Colors.white.withAlpha(200),
+                        selectedColor: Colors.white.withAlpha(230),
+                        activeColor: Colors.white.withAlpha(200),
                         tapEffectColor: Colors.black.withAlpha(5),
                       ),
                     ),
@@ -232,15 +235,20 @@ class _TabsPageState extends State<TabsPage> {
                       fixedTrailing: ZoButton(
                         icon: Icon(Icons.settings),
                       ),
+                      selectionType: ZoSelectionType.multiple,
                     ),
                     ZoTabs(
-                      tabs: list2,
+                      tabs: list3,
                       value: value,
                       wrapTabs: true,
                       showBorder: true,
+                      onChanged: (newValue) {
+                        print("newValue ${newValue}");
+                      },
+                      transitionActiveStatus: true,
                     ),
                     ZoTabs(
-                      tabs: list2,
+                      tabs: list,
                       value: value,
                       wrapTabs: true,
                       showBorder: true,

@@ -94,7 +94,6 @@ class _MenusPageState extends State<MenusPage> {
       leading: SizedBox(
         width: 32,
       ),
-      optionsWidth: 160,
       children: [
         ZoOption(
           value: "value51",
@@ -198,7 +197,6 @@ class _MenusPageState extends State<MenusPage> {
     ZoOption(
       value: "value 5",
       title: Text("选项内容AAA"),
-      optionsWidth: 160,
       children: [
         ZoOption(
           value: "value 5-11",

@@ -23,4 +23,22 @@ class ZoLocalizationsZh extends ZoLocalizations
 
   @override
   final confirm = "确定";
+
+  @override
+  final close = "关闭";
+
+  @override
+  final closeOther = "关闭其他";
+
+  @override
+  final closeAllAfter = "关闭右侧";
+
+  @override
+  final closeAll = "关闭全部";
+
+  @override
+  final pin = "钉住";
+
+  @override
+  final unpin = "取消钉住";
 }

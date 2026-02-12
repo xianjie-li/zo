@@ -23,3 +23,5 @@ export "src/tree/tree.dart";
 export "src/dnd/dnd.dart";
 export "src/form/form.dart";
 export "src/tabs/tabs.dart";
+export "src/expander/expander.dart";
+export "src/toggle/toggle.dart";

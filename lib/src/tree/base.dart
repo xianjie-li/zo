@@ -45,12 +45,6 @@ mixin _TreeBaseMixin on ZoCustomFormState<Iterable<Object>, ZoTree> {
   /// 按选项上下顺序排序的 _offsetCache 值列表，用于从上往下获取选项
   final List<Object> _offsetCacheValueList = [];
 
-  /// 是否应强制使用亮色文本、icon
-  bool? _useLightText;
-
-  /// 控制active状态应该使用的文本色
-  Color? _activeTextColor;
-
   /// 样式
   ZoStyle? _style;
 
@@ -108,7 +102,11 @@ mixin _TreeBaseMixin on ZoCustomFormState<Iterable<Object>, ZoTree> {
   }
 
   /// 获取指定选项父级及其占用的顶部固定高度
-  ({List<Object> parents, double fixedHeight, ZoTreeDataNode<ZoOption>? node})
+  ({
+    List<Object> parents,
+    double fixedHeight,
+    ZoTreeDataNode<ZoOption>? node,
+  })
   _getOptionFixedOptions(
     Object optionValue,
   ) {

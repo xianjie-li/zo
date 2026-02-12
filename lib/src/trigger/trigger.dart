@@ -30,6 +30,7 @@ class ZoTriggerEvent extends Notification {
     this.data,
     this.deviceKind,
     this.keyEventDeviceType,
+    required this.context,
   });
 
   /// 触发的事件类型
@@ -56,6 +57,9 @@ class ZoTriggerEvent extends Notification {
   /// 触发事件的按键设备类型, 仅部分事件包含
   final KeyEventDeviceType? keyEventDeviceType;
 
+  /// 组件所在上下文
+  final BuildContext context;
+
   @override
   String toString() {
     return "ZoTriggerEvent(type: $type, time: $time, trigger: $trigger, position: $position, offset: $offset)";
@@ -73,6 +77,7 @@ class ZoTriggerToggleEvent extends ZoTriggerEvent {
     super.offset,
     super.data,
     super.deviceKind,
+    required super.context,
   });
 
   /// 当前开关状态
@@ -96,6 +101,7 @@ class ZoTriggerMoveEvent extends ZoTriggerEvent {
     super.offset,
     super.data,
     super.deviceKind,
+    required super.context,
   });
 
   /// 是否是拖动开始
@@ -126,6 +132,7 @@ class ZoTriggerDragEvent extends ZoTriggerEvent {
     super.offset,
     super.data,
     super.deviceKind,
+    required super.context,
   });
 
   /// 是否是拖动开始
@@ -371,6 +378,8 @@ class _ZoTriggerState extends State<ZoTrigger> {
     }
 
     clearPendingEvent();
+    clearTouchContextMenuTimer();
+    _mouseActiveTimer?.cancel();
 
     super.dispose();
   }
@@ -451,6 +460,7 @@ class _ZoTriggerState extends State<ZoTrigger> {
           toggle: true,
           data: widget.data,
           deviceKind: details.kind,
+          context: context,
         );
         lastActiveEvent = event;
         isTapActive = true;
@@ -474,6 +484,7 @@ class _ZoTriggerState extends State<ZoTrigger> {
         offset: Offset.zero,
         data: widget.data,
         deviceKind: lastTapDownDetails?.kind,
+        context: context,
       );
       widget.onTapCancel?.call(downEvent);
       if (widget.notification) downEvent.dispatch(context);
@@ -503,6 +514,7 @@ class _ZoTriggerState extends State<ZoTrigger> {
         offset: details.localPosition,
         data: widget.data,
         deviceKind: details.kind,
+        context: context,
       );
       widget.onContextAction!(event);
       if (widget.notification) event.dispatch(context);
@@ -538,6 +550,7 @@ class _ZoTriggerState extends State<ZoTrigger> {
         last: true,
         data: widget.data,
         deviceKind: event?.kind ?? PointerDeviceKind.mouse,
+        context: context,
       );
 
       lastMoveEvent = null;
@@ -579,6 +592,7 @@ class _ZoTriggerState extends State<ZoTrigger> {
         first: lastMoveEvent == null,
         data: widget.data,
         deviceKind: kind,
+        context: context,
       );
 
       lastMoveEvent = e;
@@ -600,6 +614,7 @@ class _ZoTriggerState extends State<ZoTrigger> {
           toggle: true,
           data: widget.data,
           deviceKind: kind,
+          context: context,
         );
         lastActiveEvent = e;
         isTapActive = false;
@@ -655,6 +670,7 @@ class _ZoTriggerState extends State<ZoTrigger> {
         trigger: widget,
         toggle: value,
         data: widget.data,
+        context: context,
       );
 
       widget.onFocusChanged!(e);
@@ -692,6 +708,7 @@ class _ZoTriggerState extends State<ZoTrigger> {
       cancel: cancelDrag,
       data: widget.data,
       deviceKind: kind,
+      context: context,
     );
 
     lastDragEvent = e;
@@ -720,6 +737,7 @@ class _ZoTriggerState extends State<ZoTrigger> {
       velocity: velocity,
       data: widget.data,
       deviceKind: lastDragEvent?.deviceKind,
+      context: context,
     );
 
     lastDragEvent = null;
@@ -747,6 +765,7 @@ class _ZoTriggerState extends State<ZoTrigger> {
       cancel: cancelDrag,
       data: widget.data,
       deviceKind: lastDragEvent?.deviceKind,
+      context: context,
     );
 
     lastDragEvent = e;
@@ -773,6 +792,7 @@ class _ZoTriggerState extends State<ZoTrigger> {
       cancel: cancelDrag,
       data: widget.data,
       deviceKind: lastDragEvent?.deviceKind,
+      context: context,
     );
 
     lastDragEvent = null;
@@ -837,6 +857,7 @@ class _ZoTriggerState extends State<ZoTrigger> {
         offset: details.localPosition,
         data: widget.data,
         deviceKind: kind,
+        context: context,
       );
       widget.onContextAction!(event);
       if (widget.notification) event.dispatch(context);
@@ -911,6 +932,7 @@ class _ZoTriggerState extends State<ZoTrigger> {
           offset: details.localPosition,
           data: widget.data,
           deviceKind: details.kind,
+          context: context,
         );
         widget.onContextAction!(event);
         if (widget.notification) event.dispatch(context);
@@ -974,6 +996,7 @@ class _ZoTriggerState extends State<ZoTrigger> {
       data: widget.data,
       deviceKind: kind,
       keyEventDeviceType: keyEventDeviceType,
+      context: context,
     );
   }
 
@@ -990,6 +1013,7 @@ class _ZoTriggerState extends State<ZoTrigger> {
       toggle: false,
       data: widget.data,
       deviceKind: lastActiveEvent!.deviceKind,
+      context: context,
     );
 
     lastActiveEvent = null;

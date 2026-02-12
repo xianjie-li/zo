@@ -100,7 +100,7 @@ extension TreeDataExpandsExtension<D> on ZoTreeDataController<D> {
 
   /// 获取所有选择的选项，可用于持久化存储, 仅记录手动展开的项，如果通过 [isAllExpanded] 展开了全部，
   /// 可能需要单独记录该状态
-  HashSet<Object> getExpands() {
+  Set<Object> getExpands() {
     return expander.getSelected();
   }
 }

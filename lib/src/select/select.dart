@@ -139,6 +139,11 @@ class ZoSelectState extends ZoCustomFormState<Iterable<Object>, ZoSelect> {
   /// 选项控制器
   ZoOptionController get optionController => menuEntry.controller;
 
+  /// 该组件在更新时不会传入新对象，而是更改了内部值的 Iterable<Object>，需要主动跳过检测
+  @override
+  @protected
+  bool get skipValueEqualCheck => true;
+
   /// input 最后绘制的位置信息
   Rect? _lastRect;
 
@@ -193,6 +198,7 @@ class ZoSelectState extends ZoCustomFormState<Iterable<Object>, ZoSelect> {
   @protected
   void didUpdateWidget(ZoSelect oldWidget) {
     super.didUpdateWidget(oldWidget);
+
     menuEntry.actions(() {
       if (oldWidget.options != widget.options) {
         menuEntry.options = widget.options;
@@ -345,7 +351,7 @@ class ZoSelectState extends ZoCustomFormState<Iterable<Object>, ZoSelect> {
     _tapRegionOpenTimer = null;
   }
 
-  /// 输入框区域点击,
+  /// 输入框区域点击
   void _onTap(PointerUpEvent event) {
     if (!menuEntry.currentOpen) {
       _stopTapRegionOpenTimer();
@@ -399,7 +405,15 @@ class ZoSelectState extends ZoCustomFormState<Iterable<Object>, ZoSelect> {
   @override
   @protected
   void onPropValueChanged() {
-    selector.setSelected(widget.value ?? []);
+    // 立即更新，但避免进行通知
+    selector.batch(() {
+      selector.setSelected(widget.value ?? []);
+    }, false);
+
+    // 但仍要通知层进行更新
+    WidgetsBinding.instance.addPostFrameCallback((d) {
+      menuEntry.changed();
+    });
   }
 
   @protected
@@ -505,12 +519,13 @@ class ZoSelectState extends ZoCustomFormState<Iterable<Object>, ZoSelect> {
           : BoxDecoration(
               border: Border.all(color: style.outlineColor),
               borderRadius: BorderRadius.circular(style.borderRadius),
+              color: style.surfaceColor,
             );
 
       Color? textColor;
 
       if (decoration.color != null) {
-        final useLightText = isDarkColor(decoration.color!);
+        final useLightText = isDarkColor(decoration.color!, style.surfaceColor);
         if (useLightText && !isDarkMode) {
           textColor = Colors.white;
         }

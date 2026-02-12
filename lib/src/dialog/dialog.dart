@@ -328,7 +328,7 @@ class ZoDialog extends ZoOverlayEntry {
       height: h,
       decoration: BoxDecoration(
         border: Border.all(color: style.outlineColor),
-        color: style.surfaceContainerColor,
+        color: style.surfaceColor,
         borderRadius: borderRadius,
         boxShadow: style.brightness == Brightness.dark
             ? null

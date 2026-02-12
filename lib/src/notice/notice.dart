@@ -491,7 +491,9 @@ class _ZoNoticeCardState extends State<ZoNoticeCard> {
       child: Container(
         height: 2,
         decoration: BoxDecoration(
-          color: style.primaryColor.withAlpha(50),
+          color: style.isLight
+              ? Colors.black.withAlpha(30)
+              : Colors.white.withAlpha(60),
           borderRadius: BorderRadius.circular(24),
         ),
       ),

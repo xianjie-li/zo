@@ -1,6 +1,6 @@
 part of "dnd.dart";
 
-/// 可用的放置位置
+/// 可用的放置
 class ZoDNDPosition {
   const ZoDNDPosition({
     this.top = false,
@@ -77,6 +77,8 @@ class ZoDNDBuildContext {
     this.draggable = false,
     required this.droppablePosition,
     required this.activePosition,
+    required this.activeRegions,
+    required this.node,
   });
 
   /// 当前节点是否正在被拖动
@@ -93,6 +95,12 @@ class ZoDNDBuildContext {
 
   /// 当前被激活的放置位置
   ZoDNDPosition activePosition;
+
+  /// 当前激活的放置位置对应的区域信息
+  ZoDNDPositionRegions activeRegions;
+
+  /// 当前组件对应的dnd节点
+  ZoDNDNode node;
 }
 
 /// dnd事件类型, 详细说明见 [ZoDND] 组件对应事件
@@ -152,4 +160,25 @@ class ZoDNDEventNotification extends Notification {
 /// 仅接受 accept 事件的 [ZoDNDEventNotification]
 class ZoDNDAcceptNotification extends ZoDNDEventNotification {
   ZoDNDAcceptNotification(super.dndEvent);
+}
+
+/// 表示可放置位置实际区域的各种位置信息
+class ZoDNDPositionRegions {
+  const ZoDNDPositionRegions({
+    this.left,
+    this.right,
+    this.top,
+    this.bottom,
+    this.center,
+  });
+
+  final Rect? left;
+
+  final Rect? right;
+
+  final Rect? top;
+
+  final Rect? bottom;
+
+  final Rect? center;
 }

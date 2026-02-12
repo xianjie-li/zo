@@ -237,28 +237,6 @@ class _ButtonPageState extends State<ButtonPage> {
                   color: const Color.fromARGB(255, 234, 234, 234),
                   child: Text("颜色扩展"),
                 ),
-
-                ZoInteractiveBox(
-                  border: Border.all(color: Colors.red),
-                  activeBorder: Border.all(color: Colors.blue),
-                  // color: Colors.red,
-                  // plain: true,
-                  // enabled: false,
-                  interactive: false,
-                  onTap: (e) {
-                    print(123);
-                  },
-                  child: Container(
-                    width: 200,
-                    height: 100,
-                    child: Row(
-                      children: [
-                        Icon(Icons.cabin_outlined),
-                        Text("hello world"),
-                      ],
-                    ),
-                  ),
-                ),
               ],
             ),
           ],

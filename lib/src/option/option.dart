@@ -201,12 +201,12 @@ class ZoOptionSection extends ZoOption {
           final style = context.zoStyle;
 
           return Container(
-            height: 32,
-            alignment: const Alignment(-1, 0.4),
-            padding: EdgeInsets.symmetric(horizontal: style.space2),
+            height: 30,
+            alignment: const Alignment(-1, 0.3),
             child: Text(
               title,
               style: TextStyle(
+                fontWeight: FontWeight.bold,
                 fontSize: style.fontSizeSM,
                 color: style.hintTextColor,
               ),

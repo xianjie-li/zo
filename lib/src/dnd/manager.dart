@@ -13,7 +13,7 @@ class ZoDNDManager with _ZoDNDAutoScrollMixin {
   }
 
   /// 视为边缘位置的尺寸比例
-  final _edgeRatio = 0.24;
+  final _edgeRatio = 0.25;
 
   /// 以id 为 key 存储的 dnd 节点信息，对于已经卸载的 dnd 应该将其移除，防止 map 过于庞大
   final HashMap<String, ZoDNDNode> _dndNodes = HashMap();
@@ -30,6 +30,9 @@ class ZoDNDManager with _ZoDNDAutoScrollMixin {
 
   /// 当前 activeNode 的激活位置
   ZoDNDPosition activePosition = const ZoDNDPosition();
+
+  /// 存在 activePosition 时，存放当前可放置区域的尺寸位置信息
+  ZoDNDPositionRegions? activeRegions;
 
   /// 移除指定DND
   void _remove(String id) {
@@ -64,8 +67,15 @@ class ZoDNDManager with _ZoDNDAutoScrollMixin {
     return list;
   }
 
-  /// 获取指定位置命中的dnd以及该组所有dnd节点，filter 可排除特定节点，但仍会包含在返回的第二项列表中
-  (ZoDNDNode?, List<ZoDNDNode>) findHitDNDs(
+  /// 获取指定位置命中的dnd以及该组所有dnd节点，filter 可排除特定节点，排除的节点仍会包含在返回的第二项列表中
+  ///
+  /// 如果命中了 proxy dnd，会将命中点通过 proxyPosition 返回
+  ({
+    ZoDNDNode? hitNode,
+    List<ZoDNDNode> groupNodes,
+    Offset? proxyPosition,
+  })
+  findHitDNDs(
     Offset position, {
     Object? groupId,
     bool Function(ZoDNDNode node)? filter,
@@ -88,88 +98,252 @@ class ZoDNDManager with _ZoDNDAutoScrollMixin {
       }
     }
 
+    // 确定命中的节点
+    ZoDNDNode? hitNode;
+
     if (matchList.length <= 1) {
-      return (matchList.firstOrNull, list);
-    }
+      hitNode = matchList.firstOrNull;
+    } else {
+      // 有多个时，按命中顺序确定谁在上方
+      final HitTestResult result = HitTestResult();
 
-    // 有多个时，按命中顺序确定谁在上方
-    final HitTestResult result = HitTestResult();
+      WidgetsBinding.instance.hitTestInView(
+        result,
+        position,
+        currentViewId!,
+      );
 
-    WidgetsBinding.instance.hitTestInView(
-      result,
-      position,
-      currentViewId!,
-    );
+      final renderBoxMap = HashMap<RenderBox, ZoDNDNode>();
 
-    final renderBoxMap = HashMap<RenderBox, ZoDNDNode>();
+      for (final node in matchList) {
+        renderBoxMap[node.renderBox!] = node;
+      }
 
-    for (final node in matchList) {
-      renderBoxMap[node.renderBox!] = node;
-    }
+      // 获取第一个匹配项
+      for (final entry in result.path) {
+        final match = renderBoxMap[entry.target];
 
-    // 获取第一个匹配项
-    for (final entry in result.path) {
-      final match = renderBoxMap[entry.target];
-
-      if (match != null) {
-        return (match, list);
+        if (match != null) {
+          hitNode = match;
+          break;
+        }
       }
     }
 
-    return (null, list);
+    // 命中节点是 proxy 节点时，进行处理
+    if (hitNode?.dnd.proxy == true) {
+      final (proxyHitNode, proxyPosition) = _processProxyNode(
+        node: hitNode!,
+        groupList: list,
+        position: position,
+      );
+      return (
+        hitNode: proxyHitNode,
+        proxyPosition: proxyPosition,
+        groupNodes: list,
+      );
+    }
+
+    return (hitNode: hitNode, groupNodes: list, proxyPosition: null);
   }
 
-  /// 判定当前命中的位置, 调用者需要确保节点处于可见状态
+  /// 传入启用了 proxy dnd节点，以及当前的节点组，查找出代理命中的节点，以及修正后的位置信息,
+  /// 该位置刚好位于命中节点的边缘
+  ///
+  /// 用户需进行前置校验，确保 groupList 中的节点均为被 position 命中，否则可能会有未定义行为
+  (ZoDNDNode?, Offset?) _processProxyNode({
+    required ZoDNDNode node,
+    required List<ZoDNDNode> groupList,
+    required Offset position,
+  }) {
+    final rect = node.rect;
+
+    if (!node.dnd.proxy || rect == null || !rect.contains(position)) {
+      return (null, null);
+    }
+
+    // 上次匹配的距离，取最接近 position 的
+    double? lastDistance;
+
+    ZoDNDNode? lastNode;
+
+    // 修正后的位置，该位置刚好位于命中节点边缘
+    Offset? proxyPosition;
+
+    // adjustPosition 会额外向内移动该距离，确保更准确的名字
+    const double extraEdgeSpace = 1;
+
+    // 目前的方案是始终匹配最近的，可能会出现dnd边重叠的情况，但属于极端场景，暂时不做处理
+    for (final item in groupList) {
+      final itemRect = item.visibleRect;
+      final dropPosition = item.droppablePosition;
+
+      if (itemRect != null && rect.overlaps(itemRect)) {
+        if (!dropPosition.any) continue;
+
+        final withinXAxis =
+            position.dx >= itemRect.left && position.dx <= itemRect.right;
+        final withinYAxis =
+            position.dy >= itemRect.top && position.dy <= itemRect.bottom;
+
+        if (dropPosition.left && withinYAxis && itemRect.left > position.dx) {
+          final diff = itemRect.left - position.dx;
+          if (lastDistance == null || lastDistance >= diff) {
+            lastDistance = diff;
+            lastNode = item;
+            proxyPosition = Offset(
+              itemRect.left + extraEdgeSpace,
+              itemRect.top,
+            );
+          }
+        }
+
+        if (dropPosition.right && withinYAxis && itemRect.right < position.dx) {
+          final diff = position.dx - itemRect.right;
+          if (lastDistance == null || lastDistance >= diff) {
+            lastDistance = diff;
+            lastNode = item;
+            proxyPosition = Offset(
+              itemRect.right - extraEdgeSpace,
+              itemRect.top,
+            );
+          }
+        }
+
+        if (dropPosition.top && withinXAxis && itemRect.top > position.dy) {
+          final diff = itemRect.top - position.dy;
+          if (lastDistance == null || lastDistance >= diff) {
+            lastDistance = diff;
+            lastNode = item;
+            proxyPosition = Offset(
+              itemRect.left,
+              itemRect.top + extraEdgeSpace,
+            );
+          }
+        }
+
+        if (dropPosition.bottom &&
+            withinXAxis &&
+            itemRect.bottom < position.dy) {
+          final diff = position.dy - itemRect.bottom;
+          if (lastDistance == null || lastDistance >= diff) {
+            lastDistance = diff;
+            lastNode = item;
+            proxyPosition = Offset(
+              itemRect.left,
+              itemRect.bottom - extraEdgeSpace,
+            );
+          }
+        }
+      }
+    }
+
+    return (lastNode, proxyPosition);
+  }
+
+  /// 判定当前命中的位置
   ZoDNDPosition detectHitPosition({
     required ZoDNDNode node,
+    required ZoDNDPositionRegions regions,
     required Offset position,
   }) {
     final droppablePosition = node.droppablePosition;
     final rect = node.rect;
 
+    // 如果没有位置启用，或节点没有尺寸信息，直接返回空
     if (!droppablePosition.any || rect == null) {
       return const ZoDNDPosition();
     }
 
-    if (droppablePosition.left) {
-      final start = rect.left;
-      final end = rect.left + rect.width * _edgeRatio;
+    // 点击位置相对于 Rect 的距离
+    final double dx = position.dx - rect.left;
+    final double dy = position.dy - rect.top;
 
-      if (position.dx >= start && position.dx < end) {
-        return const ZoDNDPosition(left: true);
-      }
+    final relativeOffset = Offset(dx, dy);
+
+    // print("${regions.top} ${regions.right}");
+
+    if (regions.top != null && regions.top!.contains(relativeOffset)) {
+      return const ZoDNDPosition(top: true);
     }
 
-    if (droppablePosition.right) {
-      final start = rect.right - rect.width * _edgeRatio;
-      final end = rect.right;
-
-      if (position.dx >= start && position.dx < end) {
-        return const ZoDNDPosition(right: true);
-      }
+    if (regions.bottom != null && regions.bottom!.contains(relativeOffset)) {
+      return const ZoDNDPosition(bottom: true);
     }
 
-    if (droppablePosition.top) {
-      final start = rect.top;
-      final end = rect.top + rect.height * _edgeRatio;
-
-      if (position.dy >= start && position.dy < end) {
-        return const ZoDNDPosition(top: true);
-      }
+    if (regions.left != null && regions.left!.contains(relativeOffset)) {
+      return const ZoDNDPosition(left: true);
     }
 
-    if (droppablePosition.bottom) {
-      final start = rect.bottom - rect.height * _edgeRatio;
-      final end = rect.bottom;
-
-      if (position.dy >= start && position.dy < end) {
-        return const ZoDNDPosition(bottom: true);
-      }
+    if (regions.right != null && regions.right!.contains(relativeOffset)) {
+      return const ZoDNDPosition(right: true);
     }
 
     return droppablePosition.center
         ? const ZoDNDPosition(center: true)
         : const ZoDNDPosition();
+  }
+
+  /// 根据放置启用信息和尺寸获取放置位置区域
+  ///
+  /// 规则：
+  /// - 如果中间未启用，四周的位置会扩展到终点位置
+  /// - 如果中间启用，会占用四周未启用侧的位置
+  /// - 匹配优先级：左 > 右 > 上 > 下 > 中
+  ZoDNDPositionRegions getPositionRegions({
+    required ZoDNDPosition droppablePosition,
+    required Size size,
+  }) {
+    final horizontalEdgeExtent = size.width * _edgeRatio;
+    final verticalEdgeExtent = size.height * _edgeRatio;
+
+    Rect? center = droppablePosition.center
+        ? Rect.fromLTRB(
+            droppablePosition.left ? horizontalEdgeExtent : 0,
+            droppablePosition.top ? verticalEdgeExtent : 0,
+            droppablePosition.right ? size.width - horizontalEdgeExtent : 0,
+            droppablePosition.bottom ? size.height - verticalEdgeExtent : 0,
+          ).deflate(1)
+        : Rect.fromLTWH(size.width / 2, size.height / 2, 0, 0);
+
+    final left = droppablePosition.left
+        ? Rect.fromLTRB(0, 0, center.left, size.height)
+        : Rect.zero;
+
+    final right = droppablePosition.right
+        ? Rect.fromLTRB(center.right, 0, size.width, size.height)
+        : Rect.zero;
+
+    // 纵向方向左右侧位置，不能直接使用 left.right，否则会导致没有可用位置
+    final leftSideStart = droppablePosition.left ? horizontalEdgeExtent : 0.0;
+    final rightSideStart = droppablePosition.right
+        ? size.width - horizontalEdgeExtent
+        : size.width;
+
+    final top = droppablePosition.top
+        ? Rect.fromLTRB(leftSideStart, 0, rightSideStart, center.top)
+        : Rect.zero;
+
+    final bottom = droppablePosition.bottom
+        ? Rect.fromLTRB(
+            leftSideStart,
+            center.bottom,
+            rightSideStart,
+            size.height,
+          )
+        : Rect.zero;
+
+    if (!droppablePosition.center) {
+      center = null;
+    }
+
+    return ZoDNDPositionRegions(
+      left: left,
+      right: right,
+      top: top,
+      bottom: bottom,
+      center: center,
+    );
   }
 
   /// 通知给定node的widget更新
@@ -188,6 +362,7 @@ class ZoDNDManager with _ZoDNDAutoScrollMixin {
   /// feedback偏移
   Offset? _feedbackOffset;
 
+  /// 主动更新当前 feedback 显示
   void updateFeedback(Widget feedback) {
     _tempFeedback = feedback;
   }
@@ -230,6 +405,8 @@ class ZoDNDManager with _ZoDNDAutoScrollMixin {
             dragging: false,
             droppablePosition: const ZoDNDPosition(),
             activePosition: const ZoDNDPosition(),
+            activeRegions: const ZoDNDPositionRegions(),
+            node: dragNode,
           ),
         );
       } else {
@@ -408,6 +585,7 @@ class ZoDNDManager with _ZoDNDAutoScrollMixin {
             child: child,
           );
         },
+        constrainsToView: false,
         builder: builder,
       );
 
@@ -557,7 +735,7 @@ class ZoDNDManager with _ZoDNDAutoScrollMixin {
     }
 
     if (ZoGlobalCursor.currentCursor != MouseCursor.defer) {
-      ZoGlobalCursor.show(MouseCursor.defer, true);
+      ZoGlobalCursor.show(MouseCursor.defer);
     }
   }
 
@@ -581,7 +759,7 @@ class ZoDNDManager with _ZoDNDAutoScrollMixin {
       element.value.updateRect();
     }
 
-    final (hitNode, groupNodes) = findHitDNDs(
+    final (:hitNode, :groupNodes, :proxyPosition) = findHitDNDs(
       event.position,
       groupId: dragNode!.dnd.groupId,
       // 需要处理命中自身的情况，改为不过滤
@@ -661,6 +839,7 @@ class ZoDNDManager with _ZoDNDAutoScrollMixin {
     }
 
     activePosition = const ZoDNDPosition();
+    activeRegions = const ZoDNDPositionRegions();
 
     // 检测命中节点的位置
     if (hitNode != null) {
@@ -668,9 +847,15 @@ class ZoDNDManager with _ZoDNDAutoScrollMixin {
 
       // 需要检测命中位置
       if (hitNode != dragNode) {
+        activeRegions = getPositionRegions(
+          droppablePosition: hitNode.droppablePosition,
+          size: hitNode.rect?.size ?? Size.zero,
+        );
+
         activePosition = detectHitPosition(
           node: hitNode,
-          position: event.position,
+          position: proxyPosition ?? event.position,
+          regions: activeRegions!,
         );
       }
     } else {
@@ -803,7 +988,7 @@ class ZoDNDNode {
   /// 节点可见区域的位置, 为null时表示不可见
   Rect? visibleRect;
 
-  /// 所属视图的id，用于父子级命中查询
+  /// 所属视图的id
   int? viewId;
 
   /// dnd 节点的 renderBox，用于尺寸测量和定位

@@ -524,6 +524,7 @@ class ZoOverlay {
 
   /// 将当前 overlays 同步到 overlay
   void _syncOverlays() {
+    // 将同步操作放到帧后，防止出现组件消耗调用 dispose 导致： This Overlay widget cannot be marked as needing to build because the framework is locked.
     WidgetsBinding.instance.addPostFrameCallback((i) {
       overlay.insert(_emptyEntry);
 
@@ -535,6 +536,9 @@ class ZoOverlay {
 
       _emptyEntry.remove();
     });
+
+    // 确保有下一个绘制帧
+    WidgetsBinding.instance.ensureVisualUpdate();
   }
 
   /// 停止并销毁指定 entry 的延迟关闭计时器
@@ -776,7 +780,7 @@ class _ZoOverlayViewState extends State<ZoOverlayView> {
 
     // 只在当前项是最上方的项时触发
     final lastClosable = overlay.overlays.lastWhereOrNull(
-      (i) => overlay.isActive(i) && i.tapAwayClosable,
+      (i) => overlay.isActive(i) && i.tapAwayClosable && !i.alwaysOnTop,
     );
 
     if (lastClosable != entry) return;

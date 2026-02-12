@@ -18,6 +18,8 @@ class PlayPage extends StatefulWidget {
 class _PlayPageState extends State<PlayPage> {
   int acceptedData = 0;
 
+  ExpansibleController controller = ExpansibleController();
+
   @override
   void initState() {
     super.initState();
@@ -29,41 +31,31 @@ class _PlayPageState extends State<PlayPage> {
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(24),
-          child: NotificationListener<ZoDNDEventNotification>(
-            onNotification: (notification) {
-              final type = notification.dndEvent.type;
-
-              if (type != ZoDNDEventType.accept &&
-                  type != ZoDNDEventType.expand) {
-                return false;
-              }
-
-              print(
-                "${notification.dndEvent.type} ${notification.dndEvent.activePosition}",
-              );
-              return true;
-            },
-            child: Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: [
-                ZoTrigger(
-                  onTap: (event) {
-                    print("onTap");
-                  },
-                  onDrag: (event) {
-                    print("drag");
-                  },
-                  enabled: false,
-                  child: Container(
-                    width: 200,
-                    height: 200,
-                    color: Colors.blue,
-                    child: Text("12321321"),
-                  ),
+          child: Wrap(
+            children: [
+              Expansible(
+                controller: controller,
+                headerBuilder: (context, animation) => GestureDetector(
+                  onTap: () => controller.isExpanded
+                      ? controller.collapse()
+                      : controller.expand(),
+                  child: Text('Tap to Expand'),
                 ),
-              ],
-            ),
+                bodyBuilder: (context, animation) => SizeTransition(
+                  sizeFactor: animation,
+                  child: Text('Hidden content revealed!'),
+                ),
+                expansibleBuilder: (context, header, body, animation) => Column(
+                  // mainAxisAlignment: MainAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [header, body],
+                ),
+              ),
+              Container(
+                height: 100,
+                decoration: BoxDecoration(border: Border.all()),
+              ),
+            ],
           ),
         ),
       ),

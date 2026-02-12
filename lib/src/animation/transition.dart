@@ -32,9 +32,27 @@ class ZoTransition extends StatelessWidget {
     this.onStatusChange,
   });
 
+  /// 用于构造持续存在的组件, 它们不会在关闭时隐藏或销毁
+  const ZoTransition.persistence({
+    super.key,
+    required this.child,
+    this.type = ZoTransitionType.fade,
+    this.open = true,
+    this.curve,
+    this.duration,
+    this.reverseDuration,
+    this.controller,
+    this.controllerRef,
+    this.onStatusChange,
+  }) : appear = false,
+       mountOnEnter = false,
+       unmountOnExit = false,
+       changeVisible = false,
+       autoAlpha = false;
+
   static Duration defaultDuration = Durations.medium1;
 
-  static Curve defaultCurve = Curves.ease;
+  static Curve defaultCurve = Curves.easeInOut;
 
   /// 动画类型
   final ZoTransitionType type;

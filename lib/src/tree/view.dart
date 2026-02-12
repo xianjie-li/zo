@@ -36,23 +36,6 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
     }
   }
 
-  /// 根据当前配置获取选项应该使用的文本和图标颜色
-  Color _getActiveTextColor() {
-    final darkStyle = _style!.darkStyle;
-    final lightStyle = _style!.lightStyle;
-
-    // 传入 activeColors 时
-    if (_useLightText != null) {
-      // 主题和其文本色在语言上是相反的，黑色主题使用亮色文本
-      return _useLightText!
-          ? darkStyle.titleTextColor
-          : lightStyle.titleTextColor;
-    }
-
-    // 未传入时，使用的是 primaryColor，固定使用亮色文本
-    return darkStyle.titleTextColor;
-  }
-
   /// 构造行节点
   Widget _treeNodeBuilderWithIndex(BuildContext context, int index) {
     final option = controller.filteredFlatList.elementAtOrNull(index);
@@ -127,26 +110,15 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
     }
 
     Widget renderChild(ZoDNDBuildContext? dndContext) {
-      return ZoTile(
-        key: ValueKey(value),
-        header: header,
-        leading: Row(
-          spacing: horizontalSpace,
-          children: [
-            // 有子级并且未按行展开，渲染交互按钮
-            leadNode,
-            ?option.leading,
-            ?widget.leadingBuilder?.call(tEvent),
-          ],
-        ),
-        trailing: widget.trailingBuilder?.call(tEvent),
+      return ZoInteractiveBox(
         enabled: option.enabled,
-        arrow: false,
-        active: isSelected,
+        selected: isSelected,
         loading: controller.isAsyncLoading(value),
-        crossAxisAlignment: CrossAxisAlignment.center,
+        style: isSelected
+            ? ZoInteractiveBoxStyle.border
+            : ZoInteractiveBoxStyle.normal,
+        focusBorderType: ZoInteractiveBoxFocusBorderType.origin,
         padding: optionPadding,
-        horizontalSpacing: horizontalSpace,
         decorationPadding: const EdgeInsets.symmetric(vertical: 1),
         disabledColor: Colors.transparent,
         activeColor: widget.activeColor,
@@ -174,6 +146,23 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
             : _onContextAction,
         onFocusChanged: _onFocusChanged,
         onActiveChanged: widget.onActiveChanged,
+        child: ZoTile(
+          key: ValueKey(value),
+          header: header,
+          leading: Row(
+            spacing: horizontalSpace,
+            children: [
+              // 有子级并且未按行展开，渲染交互按钮
+              leadNode,
+              ?option.leading,
+              ?widget.leadingBuilder?.call(tEvent),
+            ],
+          ),
+          trailing: widget.trailingBuilder?.call(tEvent),
+          arrow: false,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          horizontalSpacing: horizontalSpace,
+        ),
       );
     }
 
@@ -209,11 +198,9 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
 
     Color? togglerColor = _style!.textColor;
 
-    // 包含选中子级时高亮显示展开图标
-    if (isSelected) {
-      togglerColor = _activeTextColor;
-    } else if (!isFixedBuilder && controller.hasSelectedChild(optNode.value)) {
-      togglerColor = _style!.selectedColor;
+    // 高亮包含选中子级选项的图标
+    if (controller.hasSelectedChild(optNode.value)) {
+      togglerColor = _style!.primaryColor;
     }
 
     final leadingNode = GestureDetector(
@@ -245,7 +232,7 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
                   turns: controller.isExpanded(optNode.value) ? 0.25 : 0.0,
                   duration: const Duration(milliseconds: 150),
                   child: Transform.scale(
-                    // 适当放大，让展开图标更明细一些
+                    // 适当放大，让展开图标更明显一些
                     scale: 1.2,
                     child: IconTheme.merge(
                       data: IconThemeData(
@@ -269,6 +256,7 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
       return (
         ZoInteractiveBox(
           plain: true,
+          padding: const EdgeInsets.all(0),
           child: leadingNode,
         ),
         identWidth,
@@ -594,16 +582,6 @@ mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
 
   ZoOption _getOptionByEvent(ZoTriggerEvent event) {
     return (event.data as ZoOptionEventData).option;
-  }
-
-  /// 更新 _useLightText 的值
-  void _calcUseLightText() {
-    if (widget.activeColor == null) {
-      _useLightText = null;
-      return;
-    }
-
-    _useLightText = isDarkColor(widget.activeColor!);
   }
 }
 

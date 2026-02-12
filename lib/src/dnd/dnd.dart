@@ -20,11 +20,17 @@ part "manager.dart";
 /// - 内置：可通过 [ZoDND.dropIndicator] 显示不同方向的可放置反馈，
 /// [ZoDND.disabledOpacity] 可以控制被拖动时显示半透明禁用效果
 /// - 自定义：通过 [ZoDND.builder] 根据状态渲染拖动或可放置反馈反馈
+/// - 在一些自定义场景中，可能还会使用 [ZoDNDDropRegionBuilder] 和 [ZoDNDFeedbackBadge]
+/// 来引用一些预设组件
 ///
 /// 拖动事件：每个 dnd 组件均支持 拖动和放置事件，也可以通过 [ZoDNDEventNotification] 和 [ZoDNDAcceptNotification]
 /// 在组件树上层统一接收事件通知
 ///
-/// 分组：使用 [groupId] 将dnd简单分组，不同组之间的dnd互不干扰。
+/// 分组：使用 [groupId] 将dnd简单分组，不同组之间的dnd互不干扰，分组对于在同样通过 [ZoDND]
+/// 实现拖动行为的不同组件之间实现互拖动操作也非常有用
+///
+/// 热区扩张：可以将某个dnd设置为 proxy, 其上方的放置操作会被代理到下方的 dnd 组件，
+/// 可以使用此功能来实现热区扩张，比如在容器末尾或padding区域触发内部dnd的放置
 class ZoDND extends StatefulWidget {
   const ZoDND({
     super.key,
@@ -46,12 +52,18 @@ class ZoDND extends StatefulWidget {
     this.dropIndicatorRadius = 6,
     this.disabledOpacity,
     this.longPressDragOnTouch = true,
+    this.proxy = false,
+    this.autoIgnorePointer = true,
     this.onDragStart,
     this.onDragMove,
     this.onDragEnd,
     this.onAccept,
     this.onExpand,
-  }) : assert(child != null || builder != null);
+  }) : assert(child != null || builder != null),
+       assert(
+         !proxy ||
+             (droppablePosition == null && droppablePositionDetector == null),
+       );
 
   /// 子级，如果需要根据拖动状态动态构造内容，请使用 [builder]
   final Widget? child;
@@ -82,7 +94,10 @@ class ZoDND extends StatefulWidget {
   /// 自定义可拖动位置，默认为整个dnd节点，可以设置为true禁用默认行为，然后在内部放置 [ZoDNDHandler] 组件绑定可拖动位置
   final bool customHandler;
 
-  /// 自定义反馈节点，默认会以当前子级作为反馈节点
+  /// 自定义反馈节点，默认会以当前子级作为反馈节点，默认会将 [child] / [builder] 的构造内容单独渲染一份在 overlay 下，
+  /// 若包含特殊的上下文状态，可使用 [feedbackWrap] 添加
+  ///
+  ///
   final Widget? feedback;
 
   /// 默认反馈节点的透明度
@@ -92,7 +107,7 @@ class ZoDND extends StatefulWidget {
   final Offset? feedbackOffset;
 
   /// 为 feedback 节点自定义包装组件，默认会将 [child] / [builder] 的构造内容单独渲染一份在 overlay 下，
-  /// 可能存在上下文状态丢失(比如主题、文本样式等)，可以通过此方法手动添加
+  /// 此时可能存在上下文状态丢失(比如主题、文本样式等)，可以通过此方法手动添加
   final WidgetChildBuilder? feedbackWrap;
 
   /// 当一个节点被拖动到可放置组件上位置时，显示放置指示器
@@ -102,7 +117,7 @@ class ZoDND extends StatefulWidget {
   /// 在列表项间存在间距时，需要调整上下间距来使两个项之间的指示器位置一直
   final EdgeInsets? dropIndicatorPadding;
 
-  /// 控制 [dropIndicator] 防止到中间时，矩形框的圆角
+  /// 控制 [dropIndicator] 放置到中间时，矩形框的圆角
   final double dropIndicatorRadius;
 
   /// 节点不可用时添加的透明度，在拖动节点、不可放置节点添加
@@ -110,6 +125,19 @@ class ZoDND extends StatefulWidget {
 
   /// 在触控类操作中使用 longPress 触发拖动事件, 防止干扰后方的滚动组件
   final bool longPressDragOnTouch;
+
+  /// 是否将 dnd 作为代理容器，它会将上方触发的放置操作代理到下方最接近的 dnd，
+  /// 这能在通过 Wrap 等组件堆叠 dnd 时实现热区扩张，将放置操作能命中接近的 dnd，
+  /// 从而获得更好的体验
+  ///
+  /// 只会代理到相同组并且物理位置在其内部的 dnd
+  ///
+  /// 设置为代理后，该节点不可再作为普通放置节点使用，相关配置会自动失效
+  final bool proxy;
+
+  /// 任意节点开始拖动时，是否应该禁用子级的交互行为，这是默认行为，但是对于包含嵌套 dnd 的父 dnd，
+  /// 应将其设置为 false 来防止子级 dnd 的放置交互被禁用
+  final bool autoIgnorePointer;
 
   /// 任意节点开始拖动触发
   final void Function(ZoDNDEvent event)? onDragStart;
@@ -121,11 +149,11 @@ class ZoDND extends StatefulWidget {
   final void Function(ZoDNDEvent event)? onDragEnd;
 
   /// 某个节点在当前节点区域成功放置时触发
-  final void Function(ZoDNDEvent event)? onAccept;
+  final void Function(ZoDNDDropEvent event)? onAccept;
 
   /// 当前节点启用 [ZoDNDPosition.center] 位置的放置时，如果将一个节点拖动带当前节点对应位置一段时间后，
   /// 会触发C此事件，用来对树形结构等进行展开
-  final void Function(ZoDNDEvent event)? onExpand;
+  final void Function(ZoDNDDropEvent event)? onExpand;
 
   @override
   State<ZoDND> createState() => _ZoDNDState();
@@ -323,10 +351,14 @@ class _ZoDNDState extends State<ZoDND> {
       dragDND: dragDND,
       draggable: node.draggable,
       droppablePosition: node.droppablePosition,
-      // 如果当前节点时 active 节点，需要写入命中位置信息
+      // 如果当前节点是 active 节点，需要写入命中位置信息
       activePosition: selfActive
           ? manager.activePosition
           : const ZoDNDPosition(),
+      activeRegions: selfActive
+          ? manager.activeRegions ?? const ZoDNDPositionRegions()
+          : const ZoDNDPositionRegions(),
+      node: node,
     );
 
     return widget.builder!(context, dndContext);
@@ -342,7 +374,13 @@ class _ZoDNDState extends State<ZoDND> {
       onDrag: onDrag,
       canRequestFocus: false,
       longPressDragOnTouch: widget.longPressDragOnTouch,
-      child: buildChild(context),
+      child: IgnorePointer(
+        ignoring:
+            widget.autoIgnorePointer &&
+            !widget.proxy &&
+            ZoDNDManager.instance.dragNode != null,
+        child: buildChild(context),
+      ),
     );
   }
 
@@ -355,6 +393,7 @@ class _ZoDNDState extends State<ZoDND> {
     // 拖动中为拖动中和不可放置节点添加透明度
     final showOpacity =
         dragNode != null &&
+        !widget.proxy &&
         (ZoDNDManager.instance.dragNode == node || !node.droppablePosition.any);
 
     return RenderTrigger(
@@ -541,6 +580,135 @@ class _DirectionIndicator extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+/// 接收 [ZoDNDBuildContext]，根据命中位置显示对应的指示区，
+/// 指示区与实际可放置区域不一样，比如顶部的可放置区可能只有边缘，但指示区表示整个上半区
+///
+/// 通过 [getActiveRect] 方法可以方便的计算知识区的位置
+class ZoDNDDropRegionBuilder extends StatelessWidget {
+  const ZoDNDDropRegionBuilder({
+    super.key,
+    required this.dndContext,
+    required this.child,
+  });
+
+  /// 当前拖动上下文信息
+  final ZoDNDBuildContext dndContext;
+
+  /// 显示在下方的内容
+  final Widget child;
+
+  /// 根据传入的活动位置信息和区域尺寸，获取当前活动位置的区域信息，区域信息为本地坐标
+  static Rect? getActiveRect({
+    required ZoDNDPosition activePosition,
+    required Rect rect,
+  }) {
+    if (!activePosition.any) {
+      return null;
+    }
+
+    if (activePosition.center) {
+      return Rect.fromLTWH(0, 0, rect.width, rect.height);
+    }
+
+    if (activePosition.top) {
+      return Rect.fromLTWH(0, 0, rect.width, rect.height / 2);
+    }
+
+    if (activePosition.bottom) {
+      return Rect.fromLTWH(
+        0,
+        rect.height / 2,
+        rect.width,
+        rect.height / 2,
+      );
+    }
+
+    if (activePosition.left) {
+      return Rect.fromLTWH(0, 0, rect.width / 2, rect.height);
+    }
+
+    if (activePosition.right) {
+      return Rect.fromLTWH(
+        rect.width / 2,
+        0,
+        rect.width / 2,
+        rect.height,
+      );
+    }
+
+    return null;
+  }
+
+  Rect? _getFeedbackRect() {
+    final activePosition = dndContext.activePosition;
+
+    final rect = dndContext.node.rect;
+
+    if (rect == null) return null;
+
+    final activeRect = getActiveRect(
+      activePosition: activePosition,
+      rect: rect,
+    );
+
+    return activeRect?.deflate(4);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final feedbackRect = _getFeedbackRect();
+    final style = context.zoStyle;
+
+    return Stack(
+      children: [
+        if (feedbackRect != null)
+          Positioned.fromRect(
+            rect: feedbackRect,
+            child: IgnorePointer(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: style.hoverColor,
+                  border: Border.all(color: style.primaryColor, width: 2),
+                  borderRadius: BorderRadius.circular(style.borderRadius),
+                ),
+                // color: Colors.pink,
+              ),
+            ),
+          ),
+        child,
+      ],
+    );
+  }
+}
+
+/// 用于作为 [ZoDND.feedback] 构造徽章型拖动提示
+class ZoDNDFeedbackBadge extends StatelessWidget {
+  const ZoDNDFeedbackBadge({
+    super.key,
+    required this.child,
+  });
+
+  final Widget? child;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = context.zoStyle;
+
+    return Container(
+      padding: EdgeInsets.symmetric(
+        vertical: 2,
+        horizontal: style.space2,
+      ),
+      decoration: BoxDecoration(
+        border: Border.all(color: style.primaryColor),
+        borderRadius: BorderRadius.circular(style.borderRadiusLG),
+        color: style.primaryColor.withAlpha(50),
+      ),
+      child: child,
     );
   }
 }

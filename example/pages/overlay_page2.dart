@@ -538,6 +538,7 @@ class _OverlayPage2State extends State<OverlayPage2> {
                   },
                 ),
                 ZoPopper(
+                  waitDuration: ZoPopper.defaultWaitDuration,
                   title: Text("气泡标题"),
                   // requestFocus: false,
                   // direction: ZoPopperDirection.bottomLeft,
@@ -548,8 +549,22 @@ class _OverlayPage2State extends State<OverlayPage2> {
                   //   print("open: $open");
                   // },
                   child: ZoButton(
-                    child: Text("click"),
+                    child: Text("popper1"),
                   ),
+                ),
+                ZoPopper(
+                  waitDuration: ZoPopper.defaultWaitDuration,
+                  arrow: false,
+                  title: Text("气泡标题"),
+                  // requestFocus: false,
+                  // direction: ZoPopperDirection.bottomLeft,
+                  type: ZoTriggerType.tap,
+                  status: ZoStatus.success,
+                  content: Text("这是气泡内容这是气泡内容这是气"),
+                  // onOpenChanged: (open) {
+                  //   print("open: $open");
+                  // },
+                  child: Text("popper2"),
                 ),
               ],
             ),

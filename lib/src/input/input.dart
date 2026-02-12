@@ -502,7 +502,9 @@ class _ZoInputState<T> extends ZoCustomFormState<T, ZoInput<T>> {
 
     if (widget.border != null) return widget.border;
 
-    if (focused) return Border.all(color: style.primaryColor);
+    if (focused) {
+      return Border.all(color: style.primaryColor, strokeAlign: 0, width: 2);
+    }
 
     if (hovered) return Border.all(color: style.outlineColorVariant);
 
@@ -517,16 +519,11 @@ class _ZoInputState<T> extends ZoCustomFormState<T, ZoInput<T>> {
 
     final style = context.zoStyle;
 
-    if (!widget.enabled) {
+    if (!widget.enabled || widget.readOnly) {
       return style.disabledColor;
     }
 
-    // 亮色背景显示白底, 用来使其在 ZoTile filled 等内部更自然
-    if (style.brightness == Brightness.light) {
-      return style.surfaceContainerColor;
-    }
-
-    return null;
+    return style.surfaceContainerColor;
   }
 
   /// 添加分割线

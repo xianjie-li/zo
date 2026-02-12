@@ -43,6 +43,26 @@ class ZoTransitionBase<T> extends StatefulWidget {
     this.onStatusChange,
   });
 
+  /// 用于构造持续存在的组件, 它们不会在关闭时隐藏或销毁
+  const ZoTransitionBase.persistence({
+    super.key,
+    this.open = true,
+    this.child,
+    this.tween,
+    this.curve,
+    this.duration,
+    this.reverseDuration,
+    this.builder,
+    this.animationBuilder,
+    this.controller,
+    this.controllerRef,
+    this.onStatusChange,
+  }) : appear = false,
+       mountOnEnter = false,
+       unmountOnExit = false,
+       changeVisible = false,
+       autoAlpha = false;
+
   /// 控制动画切换
   final bool open;
 
@@ -52,7 +72,7 @@ class ZoTransitionBase<T> extends StatefulWidget {
   /// 如果初始 open 不是 true, 是否需要挂载组件
   final bool mountOnEnter;
 
-  /// 动画结束后是否自动销毁组件
+  /// 关闭后是否销毁组件, 需要同时启用 [changeVisible] 才会生效
   final bool unmountOnExit;
 
   /// 关闭状态下是否自动隐藏组件
@@ -76,10 +96,12 @@ class ZoTransitionBase<T> extends StatefulWidget {
   /// 反向动画的持续时间
   final Duration? reverseDuration;
 
-  /// 根据现有显式动画组件(比如 [SlideTransition]) 实现动画时使用
+  /// 根据现有显式动画组件(比如 [SlideTransition]) 实现动画时使用,
+  /// 需要自行处理 [Animation] 更新, 类似于显式动画
   final ZoTransitionBuilder<T>? builder;
 
-  /// 需要根据动画值绑定到常规组件实现动画时使用
+  /// 需要根据动画值绑定到常规组件实现动画时使用, 它会自动处理 [Animation] 更新,
+  /// 直接取值即可使用, 类似于隐式动画
   final ZoTransitionBuilder<T>? animationBuilder;
 
   /// 自行传入控制器, 仅在需要进一步手动控制动画或监听相关行为时使用, 使用 [controllerRef]
@@ -110,7 +132,7 @@ class _ZoTransitionBaseState<T> extends State<ZoTransitionBase<T>>
   /// 当前动画状态
   late AnimationStatus status;
 
-  /// 用于实现 mountOnEnter, 强制在build内终端build
+  /// 用于实现 mountOnEnter, 强制在build内中断build
   bool breakBuild = false;
 
   @override
@@ -263,6 +285,10 @@ class _ZoTransitionBaseState<T> extends State<ZoTransitionBase<T>>
           ? status != AnimationStatus.dismissed
           : true,
       maintainState: !widget.unmountOnExit,
+      maintainFocusability: false,
+      maintainInteractivity: false,
+      maintainSemantics: false,
+      maintainAnimation: false,
       child: node!,
     );
   }

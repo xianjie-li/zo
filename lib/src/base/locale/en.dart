@@ -16,4 +16,16 @@ class ZoLocalizationsDefault extends ZoLocalizations {
   final cancel = "Cancel";
 
   final confirm = "Confirm";
+
+  final close = "Close";
+
+  final closeOther = "Close other";
+
+  final closeAllAfter = "Close all after";
+
+  final closeAll = "Close all";
+
+  final pin = "Pin";
+
+  final unpin = "Unpin";
 }

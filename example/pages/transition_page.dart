@@ -63,20 +63,6 @@ class _TransitionPageState extends State<TransitionPage> {
                   Wrap(
                     spacing: 32,
                     children: [
-                      ZoTransitionBase<double>(
-                        open: open,
-                        child: Counter(),
-                        changeVisible: false,
-                        autoAlpha: false,
-                        tween: Tween(begin: 0, end: 10000000),
-                        animationBuilder: (args) {
-                          return Container(
-                            width: 100,
-                            height: 60,
-                            child: Text("${args.animation.value.toInt()}"),
-                          );
-                        },
-                      ),
                       ZoTransitionBase<Offset>(
                         open: open,
                         child: Counter(),
@@ -100,6 +86,20 @@ class _TransitionPageState extends State<TransitionPage> {
                           return FadeTransition(
                             opacity: args.animation,
                             child: args.child,
+                          );
+                        },
+                      ),
+                      ZoTransitionBase<double>(
+                        open: open,
+                        child: Counter(),
+                        changeVisible: false,
+                        autoAlpha: false,
+                        tween: Tween(begin: 0, end: 10000000),
+                        animationBuilder: (args) {
+                          return Container(
+                            width: 100,
+                            height: 60,
+                            child: Text("${args.animation.value.toInt()}"),
                           );
                         },
                       ),

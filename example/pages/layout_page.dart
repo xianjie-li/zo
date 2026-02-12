@@ -1,4 +1,6 @@
 import "package:flutter/material.dart";
+import "package:zo/src/interactive_box/interactive_box.dart";
+import "package:zo/src/tile/tile.dart";
 import "package:zo/zo.dart";
 
 import "widgets/title.dart";
@@ -208,39 +210,175 @@ class _LayoutPageState extends State<LayoutPage> {
                 }),
               ),
             ),
-            PageTitle("ZoTile"),
+            PageTitle("ZoInteractiveBox"),
             SizedBox(height: 12),
             SizedBox(
               width: 500,
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 spacing: 4,
                 children: [
-                  ZoTile(header: Text("这是一段标题")),
-                  ZoTile(
-                    header: Text("这是一段标题"),
-                    content: Text(
-                      "这是内容区域, 显示一些内容显示一些内容显示一些内容显示一些内容显示一些内容, 显示一些内容显示一些内容",
-                      style: TextStyle(color: context.zoStyle.hintTextColor),
-                    ),
-                    style: ZoTileStyle.border,
-                    onTap: (e) {},
+                  ZoInteractiveBox(child: Text("这是一段标题")),
+                  ZoInteractiveBox(
+                    style: ZoInteractiveBoxStyle.border,
+                    child: Text("这是一段标题"),
                   ),
-                  ZoTile(
-                    header: Text("这是一段标题"),
-                    content: Text(
-                      "这是内容区域, 显示一些内容显示一些内容显示一些内容显示一些内容显示一些内容, 显示一些内容显示一些内容",
-                      style: TextStyle(color: context.zoStyle.hintTextColor),
-                    ),
-                    onTap: (e) {},
+                  ZoInteractiveBox(
+                    style: ZoInteractiveBoxStyle.filled,
+                    child: Text("这是一段标题"),
                   ),
-                  ZoTile(
-                    header: Text("这是一段标题"),
-                    content: Text(
-                      "这是内容区域, 显示一些内容显示一些内容显示一些内容显示一些内容显示一些内容, 显示一些内容显示一些内容",
-                      style: TextStyle(color: context.zoStyle.hintTextColor),
-                    ),
-                    onTap: (e) {},
+                  ZoInteractiveBox(
+                    enabled: false,
+                    child: Text("这是一段标题 disabled"),
                   ),
+                  ZoInteractiveBox(
+                    enabled: false,
+                    style: ZoInteractiveBoxStyle.border,
+                    child: Text("这是一段标题 disabled + border"),
+                  ),
+                  ZoInteractiveBox(
+                    enabled: false,
+                    style: ZoInteractiveBoxStyle.filled,
+                    child: Text("这是一段标题 disabled + filled"),
+                  ),
+                  ZoInteractiveBox(
+                    highlight: true,
+                    child: Text("这是一段标题 highlight"),
+                  ),
+                  ZoInteractiveBox(
+                    highlight: true,
+                    style: ZoInteractiveBoxStyle.border,
+                    child: Text("这是一段标题 highlight + border"),
+                  ),
+                  ZoInteractiveBox(
+                    highlight: true,
+                    style: ZoInteractiveBoxStyle.filled,
+                    child: Text("这是一段标题 highlight + filled"),
+                  ),
+                  ZoInteractiveBox(
+                    selected: true,
+                    child: Text("这是一段标题 selected"),
+                  ),
+                  ZoInteractiveBox(
+                    selected: true,
+                    style: ZoInteractiveBoxStyle.border,
+                    child: Text("这是一段标题 selected + border"),
+                  ),
+                  ZoInteractiveBox(
+                    selected: true,
+                    style: ZoInteractiveBoxStyle.filled,
+                    child: Text("这是一段标题 selected + filled"),
+                  ),
+                  ZoInteractiveBox(
+                    style: ZoInteractiveBoxStyle.normal,
+                    status: ZoStatus.info,
+                    child: Text("这是一段标题 info"),
+                  ),
+                  ZoInteractiveBox(
+                    style: ZoInteractiveBoxStyle.filled,
+                    status: ZoStatus.success,
+                    child: Text("这是一段标题 success"),
+                  ),
+                  ZoInteractiveBox(
+                    style: ZoInteractiveBoxStyle.border,
+                    status: ZoStatus.warning,
+                    child: Text("这是一段标题 warning + border"),
+                  ),
+                  ZoInteractiveBox(
+                    style: ZoInteractiveBoxStyle.border,
+                    status: ZoStatus.error,
+                    child: Text("这是一段标题 error + border"),
+                  ),
+
+                  ZoInteractiveBox(
+                    loading: true,
+                    child: Text("这是一段标题"),
+                    onTap: (event) {
+                      print("tap");
+                    },
+                  ),
+                  ZoInteractiveBox(
+                    loading: true,
+                    selected: true,
+                    child: Text("这是一段标题"),
+                    onTap: (event) {
+                      print("tap");
+                    },
+                  ),
+
+                  ZoInteractiveBox(
+                    interactive: false,
+                    child: Text("这是一段标题 interactive: false"),
+                    style: ZoInteractiveBoxStyle.filled,
+                  ),
+
+                  ZoInteractiveBox(
+                    color: Colors.red,
+                    child: Text("这是一段标题 自定义颜色-深"),
+                  ),
+
+                  ZoInteractiveBox(
+                    color: Colors.red.shade100,
+                    child: Text("这是一段标题 自定义颜色-浅"),
+                  ),
+
+                  ZoInteractiveBox(
+                    selected: true,
+                    selectedColor: Colors.blue,
+                    child: Text("这是一段标题 selectedColor"),
+                  ),
+                  ZoInteractiveBox(
+                    highlight: true,
+                    highlightColor: Colors.pink,
+                    child: Text("这是一段标题 highlightColor"),
+                  ),
+                  ZoInteractiveBox(
+                    enabled: false,
+                    disabledColor: Colors.grey,
+                    child: Text("这是一段标题 disabledColor"),
+                  ),
+                  ZoInteractiveBox(
+                    activeColor: Colors.blue.shade300,
+                    tapEffectColor: Colors.red.shade300,
+                    child: Text("这是一段标题 activeColor tapEffectColor"),
+                  ),
+
+                  ZoInteractiveBox(
+                    border: Border.all(color: Colors.red),
+                    activeBorder: Border.all(color: Colors.blue),
+                    child: Text("这是一段标题 border activeBorder"),
+                  ),
+
+                  ZoInteractiveBox(
+                    selected: true,
+                    selectedBorder: Border.all(color: Colors.red),
+                    child: Text("这是一段标题 selectedBorder"),
+                  ),
+
+                  ZoInteractiveBox(
+                    highlight: true,
+                    highlightBorder: Border.all(color: Colors.blue),
+                    child: Text("这是一段标题 highlightBorder"),
+                  ),
+
+                  ZoInteractiveBox(
+                    enableFocusBorder: false,
+                    child: Text("这是一段标题 focusBorder: false"),
+                  ),
+
+                  ZoInteractiveBox(
+                    plain: true,
+                    child: Text("这是一段标题 plain"),
+                  ),
+
+                  ZoInteractiveBox(
+                    plain: true,
+                    color: Colors.blue,
+                    child: Text("这是一段标题 plain + color"),
+                  ),
+
+                  PageTitle("ZoInteractiveBox"),
+
                   ZoTile(
                     leading: Text("前置文本"),
                     header: Text("这是一段标题"),
@@ -316,34 +454,7 @@ class _LayoutPageState extends State<LayoutPage> {
                     horizontal: true,
                     arrow: true,
                   ),
-
-                  ZoTile(header: Text("这是一段标题"), style: ZoTileStyle.border),
                   ZoTile(
-                    header: Text("这是一段标题"),
-                    content: Text(
-                      "这是内容区域, 显示一些内容显示一些内容显示一些内容显示一些内容显示一些内容, 显示一些内容显示一些内容",
-                      style: TextStyle(color: context.zoStyle.hintTextColor),
-                    ),
-                    style: ZoTileStyle.border,
-                  ),
-                  ZoTile(
-                    leading: Text("前置文本"),
-                    header: Text("这是一段标题"),
-                    content: Text(
-                      "这是内容区域, 显示一些内容显示一些内容显示一些内容显示一些内容显示一些内容, 显示一些内容显示一些内容",
-                      style: TextStyle(color: context.zoStyle.hintTextColor),
-                    ),
-                    trailing: Text("后置文本"),
-                    style: ZoTileStyle.border,
-                  ),
-                  ZoTile(
-                    leading: Icon(Icons.supervised_user_circle),
-                    header: Text("这是一段标题"),
-                    trailing: Icon(Icons.thermostat_sharp),
-                    style: ZoTileStyle.border,
-                  ),
-                  ZoTile(
-                    interactive: false,
                     leading: Icon(Icons.supervised_user_circle),
                     header: Text("这是一段标题"),
                     content: Text(
@@ -363,26 +474,21 @@ class _LayoutPageState extends State<LayoutPage> {
                         ),
                       ],
                     ),
-                    style: ZoTileStyle.border,
                   ),
 
-                  ZoTile(header: Text("这是一段标题"), style: ZoTileStyle.filled),
                   ZoTile(
                     header: Text("这是一段标题"),
                     content: Text(
                       "这是内容区域, 显示一些内容显示一些内容显示一些内容显示一些内容显示一些内容, 显示一些内容显示一些内容",
                       style: TextStyle(color: context.zoStyle.hintTextColor),
                     ),
-                    style: ZoTileStyle.filled,
                   ),
                   ZoTile(
                     leading: Icon(Icons.supervised_user_circle),
                     header: Text("这是一段标题"),
                     trailing: Icon(Icons.thermostat_sharp),
-                    style: ZoTileStyle.filled,
                   ),
                   ZoTile(
-                    interactive: false,
                     leading: Icon(Icons.supervised_user_circle),
                     header: Text("这是一段标题"),
                     content: Text(
@@ -402,104 +508,18 @@ class _LayoutPageState extends State<LayoutPage> {
                         ),
                       ],
                     ),
-                    style: ZoTileStyle.filled,
                   ),
-
-                  ZoTile(
-                    enabled: false,
-                    header: Text(
-                      "disabled 这是一段标题",
-                      style: TextStyle(
-                        fontSize: context.zoStyle.fontSizeMD,
-                      ),
-                    ),
-                    content: Text(
-                      "这是内容区域, 显示一些内容显示一些内容显示一些内容显示一些内容显示一些内容, 显示一些内容显示一些内容",
-                    ),
-                    style: ZoTileStyle.filled,
-                  ),
-                  ZoTile(
-                    highlight: true,
-                    header: Text(
-                      "highlight 这是一段标题",
-                      style: TextStyle(
-                        fontSize: context.zoStyle.fontSizeMD,
-                      ),
-                    ),
-                    content: Text(
-                      "这是内容区域, 显示一些内容显示一些内容显示一些内容显示一些内容显示一些内容, 显示一些内容显示一些内容",
-                      style: TextStyle(color: context.zoStyle.hintTextColor),
-                    ),
-                    // style: ZoTileStyle.border,
-                  ),
-                  ZoTile(
-                    active: true,
-                    header: Text(
-                      "active 这是一段标题",
-                      style: TextStyle(
-                        fontSize: context.zoStyle.fontSizeMD,
-                      ),
-                    ),
-                    content: Text(
-                      "这是内容区域, 显示一些内容显示一些内容显示一些内容显示一些内容显示一些内容, 显示一些内容显示一些内容",
-                    ),
-                    // style: ZoTileStyle.border,
-                  ),
-                  ZoTile(
+                  ZoInteractiveBox(
                     status: ZoStatus.info,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    header: Text(
-                      "这是一段标题",
-                      style: TextStyle(
-                        fontSize: context.zoStyle.fontSizeMD,
+                    child: ZoTile(
+                      header: Text("这是一段标题"),
+                      content: Text(
+                        "这是内容区域, 显示一些内容显示一些内容显示一些内容显示一些内容显示一些内容, 显示一些内容显示一些内容",
+                        style: TextStyle(
+                          color: context.zoStyle.hintTextColor,
+                        ),
                       ),
                     ),
-                    content: Text(
-                      "这是内容区域, 显示一些内容显示一些内容显示一些内容显示一些内容显示一些内容, 显示一些内容显示一些内容",
-                    ),
-                    style: ZoTileStyle.border,
-                  ),
-                  ZoTile(
-                    status: ZoStatus.success,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    header: Text(
-                      "这是一段标题",
-                      style: TextStyle(
-                        fontSize: context.zoStyle.fontSizeMD,
-                      ),
-                    ),
-                    content: Text(
-                      "这是内容区域, 显示一些内容显示一些内容显示一些内容显示一些内容显示一些内容, 显示一些内容显示一些内容",
-                    ),
-                    style: ZoTileStyle.border,
-                  ),
-                  ZoTile(
-                    status: ZoStatus.warning,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    header: Text(
-                      "这是一段标题",
-                      style: TextStyle(
-                        fontSize: context.zoStyle.fontSizeMD,
-                      ),
-                    ),
-                    content: Text(
-                      "这是内容区域, 显示一些内容显示一些内容显示一些内容显示一些内容显示一些内容, 显示一些内容显示一些内容",
-                    ),
-                    // style: ZoTileStyle.border,
-                  ),
-                  ZoTile(
-                    status: ZoStatus.error,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    header: Text(
-                      "这是一段标题",
-                      style: TextStyle(
-                        fontSize: context.zoStyle.fontSizeMD,
-                      ),
-                    ),
-                    content: Text(
-                      "这是内容区域, 显示一些内容显示一些内容显示一些内容显示一些内容显示一些内容, 显示一些内容显示一些内容",
-                    ),
-                    // style: ZoTileStyle.border,
                   ),
                 ],
               ),

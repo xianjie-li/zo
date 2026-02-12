@@ -7,6 +7,10 @@ import "package:zo/zo.dart";
 
 part "entry.dart";
 
+/// 所有 [ZoPopper] 组件通过 [ZoPopperManager] 复用的单个实例，
+/// 可通过改实例访问当前气泡或进行命令式控制
+ZoPopperManager? zoPopperPublicManager;
+
 /// 实现气泡提示, 用于在目标的指定方向进行轻量和快速的内容展示
 class ZoPopper extends StatefulWidget {
   const ZoPopper({
@@ -30,8 +34,11 @@ class ZoPopper extends StatefulWidget {
     this.requestTargetFocus = false,
     this.preventOverflow = true,
     this.onOpenChanged,
-    this.popperEntry,
+    this.waitDuration,
   });
+
+  /// 在为 popper 添加开启延迟时，可使用该值
+  static const Duration defaultWaitDuration = Durations.long2;
 
   /// 子级, 会作为气泡的触发目标
   final Widget child;
@@ -92,81 +99,49 @@ class ZoPopper extends StatefulWidget {
   /// 启用防遮挡功能, 详情见 [ZoOverlayEntry.preventOverflow]
   final bool preventOverflow;
 
-  /// 直接传入已有 [ZoPopperEntry] 来显示气泡类型, 在以下常见中, 这会很有用:
-  /// - 需要使用 [ZoPopperEntry] 提供但 [ZoPopper] 未向外暴露的高级功能更
-  /// - 需要在多个 [ZoPopper] 复用一个气泡实例, 避免性能浪费
-  final ZoPopperEntry? popperEntry;
-
   /// 打开或关闭时触发
   final void Function(bool open)? onOpenChanged;
+
+  /// 设置此值时，通过光标悬浮触发时，层会延迟该时间后才出现
+  final Duration? waitDuration;
 
   @override
   State<ZoPopper> createState() => _ZoPopperState();
 }
 
 class _ZoPopperState extends State<ZoPopper> {
-  ZoPopperEntry? _popperEntry;
+  ZoPopperManager get manager {
+    // 初始化
+    zoPopperPublicManager ??= ZoPopperManager(
+      entry: createOrUpdateEntry(),
+    );
 
-  ZoPopperEntry? get popperEntry => _popperEntry;
-
-  set popperEntry(ZoPopperEntry? entry) {
-    if (entry != _popperEntry) {
-      if (_popperEntry != null) {
-        _popperEntry!.hoverEvent.off(overlayHoverChanged);
-      }
-      entry!.hoverEvent.on(overlayHoverChanged);
-    }
-
-    _popperEntry = entry;
+    return zoPopperPublicManager!;
   }
 
-  ZoPopperEntry get entry => popperEntry!;
-
-  @override
-  void initState() {
-    super.initState();
-
-    if (widget.popperEntry != null) {
-      popperEntry = widget.popperEntry!;
-    } else {
-      createOrUpdateEntry();
-    }
-  }
-
-  @override
-  void didUpdateWidget(covariant ZoPopper oldWidget) {
-    super.didUpdateWidget(oldWidget);
-
-    createOrUpdateEntry();
-  }
+  ZoPopperEntry get entry => manager.entry;
 
   @override
   @protected
   void dispose() {
-    // 非传入的 popperEntry 需要释放
-    if (popperEntry != widget.popperEntry) {
-      popperEntry!.disposeSelf();
+    if (manager.target == this) {
+      manager.delayClose();
+      manager.target = null;
     }
-
-    entry.hoverEvent.off(overlayHoverChanged);
-
     super.dispose();
   }
 
   void overlayHoverChanged(bool hovered) {
     if (hovered) {
-      clearTriggerDelayTimer();
+      manager._clearCloseTimer();
     } else {
-      triggerDelayClose();
+      manager.delayClose();
     }
   }
 
-  void createOrUpdateEntry() {
-    // 不对传入的 popperEntry 进行修改
-    if (widget.popperEntry != null) return;
-
-    if (popperEntry == null) {
-      popperEntry = ZoPopperEntry(
+  ZoPopperEntry createOrUpdateEntry() {
+    if (zoPopperPublicManager == null) {
+      return ZoPopperEntry(
         alignment: Alignment.center,
         direction: widget.direction,
         content: widget.content,
@@ -186,8 +161,9 @@ class _ZoPopperState extends State<ZoPopper> {
         onOpenChanged: widget.onOpenChanged,
         dismissMode: ZoOverlayDismissMode.close,
       );
-      return;
     }
+
+    final entry = zoPopperPublicManager!.entry;
 
     entry.actions(() {
       entry.direction = widget.direction;
@@ -207,10 +183,17 @@ class _ZoPopperState extends State<ZoPopper> {
       entry.preventOverflow = widget.preventOverflow;
       entry.onOpenChanged = widget.onOpenChanged;
     }, false);
+
+    return entry;
   }
 
   // 最后绘制的位置信息
   Rect? lastRect;
+
+  Rect _getRectByContext(BuildContext context) {
+    final obj = context.findRenderObject() as RenderBox;
+    return obj.localToGlobal(Offset.zero) & obj.size;
+  }
 
   void onPaint(RenderBox box) {
     // 这些事件由事件对象决定位置, 不需要目标位置
@@ -221,71 +204,76 @@ class _ZoPopperState extends State<ZoPopper> {
 
     lastRect = box.localToGlobal(Offset.zero) & box.size;
 
-    entry.actions(() {
-      entry.rect = lastRect;
-    }, entry.currentOpen);
+    if (entry.rect != null &&
+        entry.rect != lastRect &&
+        manager.target == this) {
+      entry.actions(() {
+        entry.rect = lastRect;
+      }, entry.currentOpen);
+    }
   }
 
   void onTap(ZoTriggerEvent event) {
+    createOrUpdateEntry();
+
     entry.actions(() {
       entry.offset = null;
-      entry.rect = lastRect;
+      entry.rect = _getRectByContext(event.context);
     });
-    zoOverlay.open(entry);
+
+    manager.open(target: this);
   }
 
   void onToggleChanged(ZoTriggerToggleEvent event) {
     if (event.toggle) {
-      clearTriggerDelayTimer();
-      zoOverlay.open(entry);
+      createOrUpdateEntry();
+
+      entry.actions(() {
+        entry.offset = null;
+        entry.rect = _getRectByContext(event.context);
+      });
+
+      if (ZoTrigger.isTouchLike(event.deviceKind)) {
+        // 触摸类设备本身就带了延迟，不需要再添加
+        manager.open(target: this);
+      } else {
+        manager.open(
+          waitDuration: widget.waitDuration,
+          target: this,
+          beforeOpen: () {
+            entry.rect = _getRectByContext(event.context);
+          },
+        );
+      }
     } else {
-      // zoOverlay.close(entry);
-      triggerDelayClose();
+      manager.delayClose();
     }
   }
 
   void onContextMenu(ZoTriggerEvent event) {
+    createOrUpdateEntry();
+
     entry.actions(() {
       entry.rect = null;
       entry.offset = event.position;
     });
-    zoOverlay.open(entry);
+
+    manager.open(target: this);
   }
 
   void onMove(ZoTriggerMoveEvent event) {
     // !entry.currentOpen 可避免快速移动到层上导致关闭
     if (event.first || !entry.currentOpen) {
-      zoOverlay.open(entry);
+      createOrUpdateEntry();
+
+      manager.open(target: this);
     } else if (event.last) {
-      zoOverlay.close(entry);
+      manager.close();
     } else {
       entry.actions(() {
         entry.rect = null;
         entry.offset = event.position;
       });
-    }
-  }
-
-  Timer? delayCloseTimer;
-
-  /// 延迟一段时间后关闭层, 如果延迟后层处于 hover 状态, 则取消关闭,
-  /// 用于 active 场景下, 从目标移动到层上方时, 防止层关闭
-  void triggerDelayClose() {
-    clearTriggerDelayTimer();
-
-    delayCloseTimer = Timer(const Duration(milliseconds: 100), () {
-      if (entry.currentOpen && entry.hover) {
-        return;
-      }
-      zoOverlay.close(entry);
-      delayCloseTimer = null;
-    });
-  }
-
-  void clearTriggerDelayTimer() {
-    if (delayCloseTimer != null) {
-      delayCloseTimer!.cancel();
-      delayCloseTimer = null;
     }
   }
 

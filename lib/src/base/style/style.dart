@@ -26,8 +26,8 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
   ZoStyle({
     required this.brightness,
     this.extensions,
-    this.alpha = 160,
     this.disableOpacity = 0.4,
+    this.alphaColorValue = 48,
     this.primaryColor = Colors.blue,
     this.secondaryColor = Colors.cyan,
     this.tertiaryColor = Colors.red,
@@ -95,7 +95,7 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
     if (selectedColor != null) {
       this.selectedColor = selectedColor;
     } else {
-      this.selectedColor = primaryColor.withAlpha(180);
+      this.selectedColor = primaryColor.withAlpha(alphaColorValue);
     }
 
     this.barrierColor =
@@ -106,10 +106,12 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
 
     this.surfaceColor =
         surfaceColor ??
-        (darkMode ? const Color.fromARGB(255, 48, 48, 48) : Colors.white);
+        (darkMode ? const Color.fromARGB(255, 44, 44, 44) : Colors.white);
     this.surfaceContainerColor =
         surfaceContainerColor ??
-        (darkMode ? const Color.fromARGB(255, 40, 40, 40) : Colors.white);
+        (darkMode
+            ? const Color.fromARGB(255, 54, 54, 54)
+            : const Color.fromARGB(255, 250, 250, 250));
     this.titleTextColor =
         titleTextColor ??
         (darkMode ? Colors.white.withAlpha(220) : Colors.black.withAlpha(200));
@@ -179,13 +181,13 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
         (darkMode ? Colors.white.withAlpha(25) : Colors.black.withAlpha(20));
     this.hoverColor =
         hoverColor ??
-        (darkMode ? Colors.white.withAlpha(30) : Colors.black.withAlpha(15));
+        (darkMode ? Colors.white.withAlpha(20) : Colors.black.withAlpha(15));
     this.highlightColor =
         highlightColor ??
-        (darkMode ? Colors.white.withAlpha(35) : Colors.black.withAlpha(25));
+        (darkMode ? Colors.white.withAlpha(30) : Colors.black.withAlpha(25));
     this.disabledColor =
         disabledColor ??
-        (darkMode ? Colors.white.withAlpha(25) : Colors.black.withAlpha(20));
+        (darkMode ? Colors.white.withAlpha(35) : Colors.black.withAlpha(30));
   }
 
   /// 控制是否为暗黑模式
@@ -224,11 +226,11 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
 
   // # # # # # # # 颜色 # # # # # # #
 
-  /// 通用透明度
-  final int alpha;
-
   /// 禁用状态的透明度
   final double disableOpacity;
+
+  /// 一些需要使用透明色的场景，会使用该值获取颜色的带透明通道颜色
+  final int alphaColorValue;
 
   /// 主色
   final Color primaryColor;
@@ -239,7 +241,7 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
   /// 第三色
   final Color tertiaryColor;
 
-  /// 选中项的标记色, 不传时默认通过 [primaryColor] 生产
+  /// 选中项的标记色, 不传时默认通过 [primaryColor] 生成，通常前景色需要设置为对应的主色
   late final Color selectedColor;
 
   /// 遮罩颜色
@@ -248,7 +250,7 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
   /// 大范围容器表面色
   late final Color surfaceColor;
 
-  /// 组件表面色，大部分组件可能不需要表面色, 与背景一致即可，除非想和背景有明显区分
+  /// 容器和小型组件的表面色，用于和背景做细微差分
   late final Color surfaceContainerColor;
 
   /// 表示强调的信息色
@@ -263,7 +265,7 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
   /// 表示错误的信息色
   final Color errorColor;
 
-  /// 聚焦色
+  /// 聚焦色(主要用作灰度背景)
   late final Color focusColor;
 
   /// 悬停色
@@ -377,7 +379,7 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
     };
   }
 
-  /// 获取放置到 [getSizedExtent] 内部的交互组件的尺寸, 该尺寸比获取的尺寸更小一号
+  /// 获取放置到 [getSizedExtent] 内部的交互组件的尺寸, 该尺寸比 [getSizedExtent] 获取的尺寸小一号
   double getSizedSmallExtent([ZoSize? wSize]) {
     final size = wSize ?? widgetSize;
 
@@ -510,6 +512,7 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
     Iterable<ThemeExtension<dynamic>>? extensions,
     int? alpha,
     double? disableOpacity,
+    int? alphaColorValue,
     Color? primaryColor,
     Color? secondaryColor,
     Color? tertiaryColor,
@@ -572,8 +575,8 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
     return ZoStyle(
       brightness: brightness ?? this.brightness,
       extensions: extensions ?? this.extensions,
-      alpha: alpha ?? this.alpha,
       disableOpacity: disableOpacity ?? this.disableOpacity,
+      alphaColorValue: alphaColorValue ?? this.alphaColorValue,
       primaryColor: primaryColor ?? this.primaryColor,
       secondaryColor: secondaryColor ?? this.secondaryColor,
       tertiaryColor: tertiaryColor ?? this.tertiaryColor,
@@ -643,8 +646,8 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
     return ZoStyle(
       brightness: other.brightness,
       extensions: extensions ?? other.extensions,
-      alpha: other.alpha,
       disableOpacity: other.disableOpacity,
+      alphaColorValue: other.alphaColorValue,
       primaryColor: Color.lerp(primaryColor, other.primaryColor, t)!,
       secondaryColor: Color.lerp(secondaryColor, other.secondaryColor, t)!,
       tertiaryColor: Color.lerp(tertiaryColor, other.tertiaryColor, t)!,

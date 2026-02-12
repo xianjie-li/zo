@@ -1,10 +1,13 @@
 import "package:flutter/material.dart";
 import "package:flutter_localizations/flutter_localizations.dart";
 import "package:zo/zo.dart";
+import "pages/expansible_page.dart";
 import "pages/menus_page.dart";
+import "pages/play_page.dart";
 import "pages/router_links.dart";
 import "pages/select_page.dart";
 import "pages/tab_page.dart";
+import "pages/toggle_page.dart";
 import "pages/tree_page/tree_page.dart";
 
 void main() {
@@ -139,8 +142,8 @@ class _MyAppState extends State<MyApp> {
           ),
         );
       },
-      // home: const PlayPage(),
-      home: const TabsPage(),
+      home: const TogglePage(),
+      // home: const TabsPage(),
     );
   }
 }

@@ -1,7 +1,7 @@
 import "package:flutter/material.dart";
 import "package:zo/zo.dart";
 
-/// 通用交互按钮, 覆盖了几乎所有常见的按钮交互场景
+/// 基础交互按钮
 class ZoButton extends StatelessWidget {
   const ZoButton({
     super.key,
@@ -20,7 +20,7 @@ class ZoButton extends StatelessWidget {
     this.focusNode,
     this.autofocus = false,
     this.canRequestFocus = true,
-    this.focusOnTap = true,
+    this.focusOnTap = false,
     this.adjustSize,
   });
 
@@ -80,6 +80,14 @@ class ZoButton extends StatelessWidget {
     return onTap?.call();
   }
 
+  Color? _getColor(ZoStyle style) {
+    if (primary) return style.primaryColor;
+
+    if (plain) return color;
+
+    return color ?? style.surfaceContainerColor;
+  }
+
   @override
   Widget build(BuildContext context) {
     final style = context.zoStyle;
@@ -131,16 +139,15 @@ class ZoButton extends StatelessWidget {
         textStyle: TextStyle(fontSize: textSize),
         loading: loading,
         enabled: enabled,
+        style: showBorder
+            ? ZoInteractiveBoxStyle.border
+            : ZoInteractiveBoxStyle.normal,
         plain: plain,
         onTap: _onTapHandle,
         onContextAction: onContextAction,
         focusNode: focusNode,
         autofocus: autofocus,
-        color: primary ? style.primaryColor : color,
-        border: showBorder ? Border.all(color: style.outlineColor) : null,
-        activeBorder: showBorder
-            ? Border.all(color: style.outlineColorVariant)
-            : null,
+        color: _getColor(style),
         padding: this.padding ?? EdgeInsets.symmetric(horizontal: padding),
         constraints:
             constraints ??

@@ -1,6 +1,6 @@
 part of "option.dart";
 
-/// 通过 [ZoTile.data] 传递到事件回调中的对象
+/// 传递到事件回调中的对象
 typedef ZoOptionEventData = ({ZoOption option, BuildContext context});
 
 /// 根据 [ZoOption] list 构造可滚动的选项列表
@@ -9,7 +9,7 @@ class ZoOptionViewList extends StatefulWidget {
     super.key,
     required this.options,
     this.option,
-    this.activeCheck,
+    this.selectedCheck,
     this.loadingCheck,
     this.highlightCheck,
     this.maxHeight,
@@ -32,8 +32,8 @@ class ZoOptionViewList extends StatefulWidget {
   /// 菜单对应的父选项, 只有子菜单会存在此项
   final ZoOption? option;
 
-  /// 用于判断选项是否应显示 active 样式
-  final bool Function(ZoOption option)? activeCheck;
+  /// 用于判断选项是否应显示 selected 样式
+  final bool Function(ZoOption option)? selectedCheck;
 
   /// 用于判断选项是否应显示 loading 样式
   final bool Function(ZoOption option)? loadingCheck;
@@ -162,7 +162,7 @@ class _ZoOptionViewListState extends State<ZoOptionViewList> {
 
     if (opt == null) return null;
 
-    final isActive = widget.activeCheck?.call(opt) ?? false;
+    final isSelected = widget.selectedCheck?.call(opt) ?? false;
     final isLoading = widget.loadingCheck?.call(opt) ?? false;
     final isHighlight = widget.highlightCheck?.call(opt) ?? false;
 
@@ -190,21 +190,18 @@ class _ZoOptionViewListState extends State<ZoOptionViewList> {
 
         return SizedBox(
           height: opt.height ?? itemDefaultHeight,
-          child: ZoTile(
-            key: ValueKey(opt.value),
-            header: header,
-            leading: opt.leading,
-            trailing: opt.trailing,
+          child: ZoInteractiveBox(
             enabled: opt.enabled,
-            arrow: opt.isBranch,
-            active: isActive,
+            selected: isSelected,
             loading: isLoading,
+            padding: padding,
             highlight: isHighlight,
             interactive: opt.interactive,
-            crossAxisAlignment: CrossAxisAlignment.center,
             disabledColor: Colors.transparent,
-            padding: padding,
-            horizontalSpacing: itemHorizontalSpacing,
+            focusBorderType: ZoInteractiveBoxFocusBorderType.origin,
+            style: isSelected
+                ? ZoInteractiveBoxStyle.border
+                : ZoInteractiveBoxStyle.normal,
             decorationPadding: const EdgeInsets.symmetric(vertical: 1),
             iconTheme: itemIconTheme,
             textStyle: itemTextStyle,
@@ -212,6 +209,15 @@ class _ZoOptionViewListState extends State<ZoOptionViewList> {
             onActiveChanged: widget.onActiveChanged,
             onFocusChanged: widget.onFocusChanged,
             data: data,
+            child: ZoTile(
+              key: ValueKey(opt.value),
+              header: header,
+              leading: opt.leading,
+              trailing: opt.trailing,
+              arrow: opt.isBranch,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              horizontalSpacing: itemHorizontalSpacing,
+            ),
           ),
         );
       },

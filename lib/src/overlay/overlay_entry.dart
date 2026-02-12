@@ -215,6 +215,12 @@ class ZoOverlayEntry extends ChangeNotifier {
   void openChanged(bool open) {
     onOpenChanged?.call(open);
     openChangedEvent.emit(open);
+
+    // 防止自带的焦点记忆生效，这在菜单等场景不是我们想要的，因为可能导致重新打开层时焦点不在预期位置，
+    // 如果只有一个节点，还会导致无法进行键盘导航
+    if (!open && focusScopeNode.focusedChild != null) {
+      focusScopeNode.focusedChild!.unfocus();
+    }
   }
 
   /// 在关闭或销毁时, 如果包含延迟关闭动画, 会在其结束后调用
@@ -377,9 +383,7 @@ class ZoOverlayEntry extends ChangeNotifier {
 
     if (!mounted) {
       // 延迟到挂载完成后聚焦
-      _mountedCallbackList.add(() {
-        focusScopeNode.requestFocus();
-      });
+      addPostMountedCallback(focusScopeNode.requestFocus);
       return;
     }
 

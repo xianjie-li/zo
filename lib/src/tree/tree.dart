@@ -249,6 +249,11 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree>
         _TreeViewMixin,
         _TreeShortcutsMixin,
         _TreeDragSortMixin {
+  /// 该组件在更新时不会传入新对象，而是更改了内部值的 Iterable<Object>，需要主动跳过检测
+  @override
+  @protected
+  bool get skipValueEqualCheck => true;
+
   @override
   @protected
   void initState() {
@@ -304,8 +309,6 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree>
     }
 
     scrollController.addListener(_onScrollChanged);
-
-    _calcUseLightText();
 
     _isInit = false;
   }
@@ -398,10 +401,6 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree>
       _updateFixedHeight(true);
     }
 
-    if (oldWidget.activeColor != widget.activeColor) {
-      _calcUseLightText();
-    }
-
     if (widget.scrollController != oldWidget.scrollController) {
       scrollController.removeListener(_onScrollChanged);
 
@@ -434,7 +433,9 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree>
   @override
   @protected
   void onPropValueChanged() {
-    selector.setSelected(widget.value ?? []);
+    selector.batch(() {
+      selector.setSelected(widget.value ?? []);
+    }, false);
   }
 
   /// 更新 selector 的选中项到 value 并进行 rerender, 组件内均通过 selector 更改值，
@@ -533,8 +534,6 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree>
   @override
   @protected
   Widget build(BuildContext context) {
-    _activeTextColor = _getActiveTextColor();
-
     final maxHeight = controller.filteredFlatList.isEmpty
         ? widget.maxHeight
         : _fixedHeight;

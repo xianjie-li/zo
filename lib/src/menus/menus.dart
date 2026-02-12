@@ -62,7 +62,7 @@ abstract class ZoMenuEntry extends ZoOverlayEntry {
        _footer = footer;
 
   /// 菜单默认宽度
-  static double defaultWidth = 240.0;
+  static double defaultWidth = 266.0;
 
   /// 在独立控制器管理选项，便于后续在同样需要树形结构的组件中复用逻辑
   late final ZoOptionController controller;
@@ -317,7 +317,7 @@ class ZoMenu extends ZoMenuEntry {
   }
 
   /// 菜单默认宽度
-  static double defaultMenuWidth = 240.0;
+  static double defaultMenuWidth = ZoMenuEntry.defaultWidth;
 
   /// 选项列表, 设置为当前要显示的子选项
   List<ZoOption> viewOption = [];
@@ -862,7 +862,7 @@ class ZoMenu extends ZoMenuEntry {
     return ZoOptionViewList(
       options: options,
       option: option,
-      activeCheck: _isActive,
+      selectedCheck: _isActive,
       highlightCheck: _isHighlight,
       size: size,
       maxHeight: maxHeight,

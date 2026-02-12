@@ -24,16 +24,7 @@ mixin _TreeDragSortMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
 
   /// 构造反馈节点
   Widget _dndFeedbackBuilder(Widget? child) {
-    return Container(
-      padding: EdgeInsets.symmetric(
-        vertical: 2,
-        horizontal: _style!.space2,
-      ),
-      decoration: BoxDecoration(
-        border: Border.all(color: _style!.primaryColor),
-        borderRadius: BorderRadius.circular(_style!.borderRadiusLG),
-        color: _style!.primaryColor.withAlpha(50),
-      ),
+    return ZoDNDFeedbackBadge(
       child: child,
     );
   }

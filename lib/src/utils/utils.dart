@@ -92,9 +92,15 @@ int deepHash(Object? value) {
   return value.hashCode;
 }
 
-/// 判断颜色是否是深色, 如果颜色包含透明通道，需要将颜色混合后传入：`Color.alphaBlend(color, backgroundColor)`
-bool isDarkColor(Color color) {
-  return ThemeData.estimateBrightnessForColor(color) == Brightness.dark;
+/// 判断颜色是否是深色, 如果颜色包含透明通道，通常需要传入 [backgroundColor] 来获得更准确的结果
+bool isDarkColor(Color color, [Color? backgroundColor]) {
+  // if (color.a < 0.4) return false;
+  return ThemeData.estimateBrightnessForColor(
+        backgroundColor == null
+            ? color
+            : Color.alphaBlend(color, backgroundColor),
+      ) ==
+      Brightness.dark;
 }
 
 /// 防抖
@@ -205,6 +211,29 @@ class MemoCallback<A, R> {
   int get hashCode => _uniqueMemoObject.hashCode;
 }
 
+/// 接收两个参数的 [MemoCallback]
+class MemoCallback2Arg<A1, A2, R> {
+  const MemoCallback2Arg(this.callback);
+
+  /// 上下文数据
+  final R Function(A1 arg1, A2 arg2) callback;
+
+  /// 实现 call 方法，使其能伪装成普通函数 Function(Event)
+  R call(A1 arg1, A2 arg2) {
+    return callback(arg1, arg2);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+
+    return other is MemoCallback2Arg<A1, A2, R>;
+  }
+
+  @override
+  int get hashCode => _uniqueMemoObject.hashCode;
+}
+
 /// 专门用于 VoidCallback 的 [MemoCallback] 包装
 class MemoVoidCallback extends MemoCallback<void, void> {
   MemoVoidCallback(VoidCallback callback) : super((_) => callback());
@@ -230,29 +259,6 @@ class MemoVoidCallback2 {
     if (identical(this, other)) return true;
 
     return other is MemoVoidCallback2;
-  }
-
-  @override
-  int get hashCode => _uniqueMemoObject.hashCode;
-}
-
-/// 接收两个参数的 [MemoCallback]
-class MemoCallback2Arg<A1, A2, R> {
-  const MemoCallback2Arg(this.callback);
-
-  /// 上下文数据
-  final R Function(A1 arg1, A2 arg2) callback;
-
-  /// 实现 call 方法，使其能伪装成普通函数 Function(Event)
-  R call(A1 arg1, A2 arg2) {
-    return callback(arg1, arg2);
-  }
-
-  @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-
-    return other is MemoCallback2Arg<A1, A2, R>;
   }
 
   @override

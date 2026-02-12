@@ -4,9 +4,9 @@ import "package:zo/src/button/button.dart";
 import "base_page.dart";
 import "button_page.dart";
 import "dnd_page.dart";
+import "expansible_page.dart";
 import "fetcher_page.dart";
 import "input_page.dart";
-import "input_page2.dart";
 import "layout_page.dart";
 import "menus_page.dart";
 import "overlay_page1.dart";
@@ -16,6 +16,7 @@ import "progress_page.dart";
 import "result_page.dart";
 import "select_page.dart";
 import "tab_page.dart";
+import "toggle_page.dart";
 import "transition_page.dart";
 import "tree_page/tree_page.dart";
 
@@ -67,11 +68,6 @@ class RouterLinks extends StatelessWidget {
               plain: true,
               child: const Text("Input"),
               onTap: () => toPage(context, const InputPage()),
-            ),
-            ZoButton(
-              plain: true,
-              child: const Text("Input2"),
-              onTap: () => toPage(context, const InputPage2()),
             ),
             ZoButton(
               plain: true,
@@ -127,6 +123,16 @@ class RouterLinks extends StatelessWidget {
               plain: true,
               child: const Text("Tabs"),
               onTap: () => toPage(context, const TabsPage()),
+            ),
+            ZoButton(
+              plain: true,
+              child: const Text("Expansible"),
+              onTap: () => toPage(context, const ExpansiblePage()),
+            ),
+            ZoButton(
+              plain: true,
+              child: const Text("Toggle"),
+              onTap: () => toPage(context, const TogglePage()),
             ),
           ],
         ),

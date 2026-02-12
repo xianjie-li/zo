@@ -104,6 +104,11 @@ class OverlayPositionedRenderObject extends RenderBox
   /// 到可用区域
   BoxConstraints? internalConstraints;
 
+  /// 防止 internalConstraints 高频更新
+  final Throttler _internalConstraintsThrottler = Throttler(
+    delay: Durations.short4,
+  );
+
   @override
   bool hitTestChildren(BoxHitTestResult result, {required Offset position}) {
     if (child == null) return false;
@@ -726,17 +731,15 @@ class OverlayPositionedRenderObject extends RenderBox
 
     final changed = newConstraints != internalConstraints;
 
-    final hasOverflow =
-        overlaySize.width > availableSpace.width ||
-        overlaySize.height > availableSpace.height;
-
-    if (changed && hasOverflow) {
+    if (changed) {
       internalConstraints = newConstraints;
 
-      WidgetsBinding.instance.addPostFrameCallback((d) {
-        if (attached) {
-          markNeedsLayout();
-        }
+      _internalConstraintsThrottler.run(() {
+        WidgetsBinding.instance.addPostFrameCallback((d) {
+          if (attached) {
+            markNeedsLayout();
+          }
+        });
       });
     }
   }

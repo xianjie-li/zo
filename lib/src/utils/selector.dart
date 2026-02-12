@@ -20,7 +20,7 @@ class ZoSelector<Val, Opt> extends ChangeNotifier {
     Iterable<Val>? selected,
     this.valueGetter,
     this.optionsGetter,
-  }) : _selected = selected == null ? HashSet() : HashSet.from(selected);
+  }) : _selected = selected == null ? {} : Set.from(selected);
 
   /// 控制如何从 [Opt] 中获取选中值, 如果选项本身就代表值则不需要设置
   Val Function(Opt option)? valueGetter;
@@ -30,9 +30,7 @@ class ZoSelector<Val, Opt> extends ChangeNotifier {
 
   /// 已选中选项
   /// 选中值不一定存在于选项列表中
-  ///
-  /// 为了最好的性能，使用 HashSet 而不是 Set，因为选中顺序在绝大多数场景都是无用的
-  final HashSet<Val> _selected;
+  final Set<Val> _selected;
 
   /// 获取指定选项对应的值
   Val getOptionValue(Opt opt) {
@@ -40,8 +38,8 @@ class ZoSelector<Val, Opt> extends ChangeNotifier {
   }
 
   /// 将指定的选项转换为值
-  HashSet<Val> getOptionsValues(Iterable<Opt> options) {
-    return HashSet.from(options.map(getOptionValue));
+  Set<Val> getOptionsValues(Iterable<Opt> options) {
+    return Set.from(options.map(getOptionValue));
   }
 
   /// 指定的值是否选中
@@ -93,7 +91,7 @@ class ZoSelector<Val, Opt> extends ChangeNotifier {
   }
 
   /// 获取当前选中值
-  HashSet<Val> getSelected() {
+  Set<Val> getSelected() {
     return _selected;
   }
 
@@ -102,9 +100,9 @@ class ZoSelector<Val, Opt> extends ChangeNotifier {
   SelectorState<Val, Opt> getSelectionState([Iterable<Opt>? allOptions]) {
     final allOptions2 = _assertOptionsValid(allOptions);
 
-    final selected = HashSet<Val>();
-    final selectedOptions = HashSet<Opt>();
-    final unlistedSelected = HashSet<Val>();
+    final selected = <Val>{};
+    final selectedOptions = <Opt>{};
+    final unlistedSelected = <Val>{};
 
     final HashMap<Val, Opt> optionsMap = HashMap();
 
@@ -235,7 +233,6 @@ class ZoSelector<Val, Opt> extends ChangeNotifier {
   }
 
   @override
-  @protected
   void notifyListeners() {
     if (_blockNotify) return;
     super.notifyListeners();
@@ -257,11 +254,11 @@ class SelectorState<Val, Opt> {
   });
 
   /// 所有在选项清单中的值
-  final HashSet<Val> selected;
+  final Set<Val> selected;
 
   /// [selected] 对应的选项信息
-  final HashSet<Opt> selectedOptions;
+  final Set<Opt> selectedOptions;
 
   /// 未在选项清单的所有选中值
-  final HashSet<Val> unlistedSelected;
+  final Set<Val> unlistedSelected;
 }

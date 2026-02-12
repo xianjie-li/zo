@@ -187,6 +187,7 @@ class _DNDPageState extends State<DNDPage> {
                 ),
                 ZoDND(
                   droppablePosition: const ZoDNDPosition.all(),
+                  autoIgnorePointer: false,
                   child: Container(
                     height: 200.0,
                     width: 200.0,
@@ -230,6 +231,20 @@ class _DNDPageState extends State<DNDPage> {
                 ZoDND(
                   droppablePosition: const ZoDNDPosition(
                     top: true,
+                    bottom: true,
+                    right: true,
+                    left: true,
+                  ),
+                  child: Container(
+                    height: 100.0,
+                    width: 100.0,
+                    color: Colors.lightGreenAccent,
+                    child: const Center(child: Text("no center")),
+                  ),
+                ),
+                ZoDND(
+                  droppablePosition: const ZoDNDPosition(
+                    top: true,
                     center: true,
                   ),
                   child: Container(
@@ -261,6 +276,7 @@ class _DNDPageState extends State<DNDPage> {
                   droppablePosition: const ZoDNDPosition.all(),
                   data: "dnd 11",
                   builder: (context, dndContext) {
+                    print("dndContext ${dndContext.activeRegions.center}");
                     return Container(
                       height: 100.0,
                       width: 250.0,
@@ -277,6 +293,23 @@ class _DNDPageState extends State<DNDPage> {
                     child: Text("hello"),
                   ),
                 ),
+                ZoDND(
+                  droppablePosition: const ZoDNDPosition.all(center: false),
+                  dropIndicator: false,
+                  builder: (context, dndContext) {
+                    return ZoDNDDropRegionBuilder(
+                      dndContext: dndContext,
+                      child: SizedBox(
+                        height: 460,
+                        width: 600,
+                        child: Container(
+                          decoration: BoxDecoration(border: Border.all()),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+
                 SizedBox(
                   height: 1000,
                   width: double.infinity,

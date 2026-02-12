@@ -6,7 +6,7 @@ part of "popper.dart";
 /// 通常会使用 child / title / status 等快速配置, 如果完全定制气泡内容, 请使用 [builder],
 /// 它仅保留最基本的底色 / 阴影 / 箭头样式
 ///
-/// 大部分情况下, 会使用 [ZoPopper] 组件, 而不是直接通常 entry 使用, 除非需要在很多触发点复用
+/// 大部分情况下, 会使用 [ZoPopper] 组件, 而不是直接通过 entry 使用, 除非需要在很多触发点复用
 /// 同一个实例
 class ZoPopperEntry extends ZoOverlayEntry {
   ZoPopperEntry({
@@ -536,7 +536,7 @@ class ZoPopperEntry extends ZoOverlayEntry {
     return Container(
       decoration: BoxDecoration(
         border: Border.all(color: borderColor ?? style.outlineColor),
-        color: color ?? style.surfaceContainerColor,
+        color: color ?? style.surfaceColor,
         borderRadius: BorderRadius.circular(style.borderRadius),
         boxShadow: style.brightness == Brightness.dark
             ? null
@@ -551,5 +551,122 @@ class ZoPopperEntry extends ZoOverlayEntry {
           ),
       child: child,
     );
+  }
+}
+
+/// 将单个 [ZoPopperEntry] 在多个触发位置复用，在包含大量触发点并使用几乎相同行为的 popper 时非常有用，
+/// 它也能整合不同触发点的行为，比如：在延迟启用一个层后，在层启用的状态下其他触发点会立即将层移动到新位置，
+/// 而不用重新等待
+class ZoPopperManager {
+  ZoPopperManager({
+    required this.entry,
+  }) {
+    entry.hoverEvent.on(_overlayHoverChanged);
+  }
+
+  final ZoPopperEntry entry;
+
+  bool get enable => _enable;
+  set enable(bool e) {
+    if (e == _enable) return;
+
+    if (!e) {
+      clear();
+
+      if (zoOverlay.isActive(entry)) {
+        close();
+      }
+    }
+
+    _enable = e;
+  }
+
+  bool _enable = true;
+
+  // 可见触发点记录到此处来区分当时是哪个触发点打开的层
+  Object? target;
+
+  Timer? _delayCloseTimer;
+
+  Timer? _delayOpenTimer;
+
+  /// 开启或移动层到指定位置, 设置 [waitDuration] 可以为层设置开启延迟,
+  /// 当存在启用延迟时，在延迟结束后定位目标可能又发生了位移，此时可以通过 [beforeOpen] 再次更新位置
+  void open({
+    Duration? waitDuration,
+    Object? target,
+    VoidCallback? beforeOpen,
+  }) {
+    clear();
+
+    if (!enable) return;
+
+    this.target = target;
+
+    // 未处于打开状态且传入启用延迟时，应用该延迟
+    if (!zoOverlay.isVisible(entry) &&
+        waitDuration != null &&
+        waitDuration != Duration.zero) {
+      _delayOpenTimer = Timer(waitDuration, () {
+        clear();
+        beforeOpen?.call();
+        zoOverlay.open(entry);
+      });
+      return;
+    }
+
+    zoOverlay.open(entry);
+  }
+
+  /// 关闭层
+  void close() {
+    clear();
+
+    zoOverlay.close(entry);
+  }
+
+  /// 延迟关闭层
+  void delayClose() {
+    clear();
+
+    _delayCloseTimer = Timer(const Duration(milliseconds: 100), () {
+      if (entry.currentOpen && entry.hover) {
+        return;
+      }
+      zoOverlay.close(entry);
+      _delayCloseTimer = null;
+    });
+  }
+
+  void _clearCloseTimer() {
+    if (_delayCloseTimer != null) {
+      _delayCloseTimer!.cancel();
+      _delayCloseTimer = null;
+    }
+  }
+
+  void _clearOpenTimer() {
+    if (_delayOpenTimer != null) {
+      _delayOpenTimer!.cancel();
+      _delayOpenTimer = null;
+    }
+  }
+
+  void clear() {
+    _clearCloseTimer();
+    _clearOpenTimer();
+  }
+
+  void _overlayHoverChanged(bool hovered) {
+    if (hovered) {
+      _clearCloseTimer();
+    } else {
+      delayClose();
+    }
+  }
+
+  void dispose() {
+    clear();
+    entry.hoverEvent.off(_overlayHoverChanged);
   }
 }

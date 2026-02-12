@@ -50,6 +50,7 @@ base class RenderLayoutTrigger extends RenderProxyBox {
 
     if (widget.onLayout != null) {
       WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
+        if (!attached) return;
         widget.onLayout?.call(child!);
       });
     }
@@ -63,6 +64,7 @@ base class RenderLayoutTrigger extends RenderProxyBox {
 
     if (widget.onPaint != null) {
       WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
+        if (!attached) return;
         widget.onPaint?.call(child!);
       });
     }

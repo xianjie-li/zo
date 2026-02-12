@@ -43,8 +43,8 @@ class ZoAdaptiveLayoutMeta<Val> extends BoxConstraints {
 ///
 /// [ZoAdaptiveLayout] 会通过 builder 提供 [ZoAdaptiveLayoutMeta] 对象, 有两种方式来使用它:
 /// - 通过 [ZoAdaptiveLayoutMeta.point] / [ZoAdaptiveLayoutMeta.isSmall] 等属性判断并显示不同的 UI
-/// - 提供 [ZoAdaptiveLayout.values] 配置, 根据当前断点会自动从中挑选合适的作为 [ZoAdaptiveLayoutMeta.value],
-/// 在 UI 中直接它进行 UI 显示控制, value 的类型与泛型 [Val] 匹配
+/// - 提供 [ZoAdaptiveLayout.values] 配置, 根据当前断点会自动从中挑选合适的项作为 [ZoAdaptiveLayoutMeta.value],
+/// 值可能是颜色、尺寸等, 在 UI 中直接它进行 UI 显示控制, value 的类型与泛型 [Val] 匹配
 ///
 /// 通过 [ZoAdaptiveLayout.values] 使用时, 不需要为所有断点都提供对应的值, 更大的断点会自动继承更小
 /// 断点的值配置, xs 是必须配置的, 其后所有断点的值都是可选的
