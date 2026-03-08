@@ -586,8 +586,10 @@ class ZoSelectState extends ZoCustomFormState<Iterable<Object>, ZoSelect> {
     return Transform.translate(
       // 让标签视觉上更对其输入框
       offset: const Offset(-4, 0),
-      child: Padding(
-        padding: EdgeInsets.only(left: showLeftPadding ? 16 : 0),
+      child: AnimatedPadding(
+        padding: EdgeInsets.only(left: showLeftPadding ? 24 : 0),
+        curve: Curves.easeInOut,
+        duration: Durations.medium1,
         child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           hitTestBehavior: HitTestBehavior.translucent,

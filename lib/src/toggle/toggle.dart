@@ -319,6 +319,7 @@ class ZoToggleGroupState
   bool _blockNotify = false;
 
   @override
+  @protected
   void initState() {
     super.initState();
 
@@ -336,6 +337,7 @@ class ZoToggleGroupState
   }
 
   @override
+  @protected
   void dispose() {
     widget.ref?.call(null);
 
@@ -345,6 +347,7 @@ class ZoToggleGroupState
   }
 
   @override
+  @protected
   void onPropValueChanged() {
     super.onPropValueChanged();
 
@@ -387,6 +390,7 @@ class ZoToggleGroupState
   }
 
   @override
+  @protected
   Widget build(BuildContext context) {
     return _GroupLinker(
       bind: bind,

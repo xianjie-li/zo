@@ -97,6 +97,7 @@ class ZoInteractiveBox extends StatefulWidget {
     this.onContextAction,
     this.onActiveChanged,
     this.onFocusChanged,
+    this.onDrag,
     this.data,
 
     this.focusNode,
@@ -115,6 +116,8 @@ class ZoInteractiveBox extends StatefulWidget {
     this.width,
     this.height,
     this.constraints,
+    this.changeCursor = true,
+    this.cursors,
 
     this.ref,
   });
@@ -215,6 +218,9 @@ class ZoInteractiveBox extends StatefulWidget {
   /// 焦点变更
   final ZoTriggerListener<ZoTriggerToggleEvent>? onFocusChanged;
 
+  /// 拖拽目标
+  final ZoTriggerListener<ZoTriggerDragEvent>? onDrag;
+
   /// 触发上下文操作, 在鼠标操作中表示右键点击, 在触摸操作中表示长按
   final ZoTriggerListener<ZoTriggerEvent>? onContextAction;
 
@@ -265,6 +271,12 @@ class ZoInteractiveBox extends StatefulWidget {
 
   /// 盒子约束
   final BoxConstraints? constraints;
+
+  /// 是否显示适合当前事件的光标类型
+  final bool changeCursor;
+
+  /// 配置不同状态下显示的光标
+  final Map<ZoTriggerCursorType, MouseCursor>? cursors;
 
   /// 获取 state 的引用, 会在实例可用、销毁时调用，可用来便捷的访问 state 而无需创建 globalKey
   final void Function(ZoInteractiveBoxState? state)? ref;
@@ -346,6 +358,8 @@ class ZoInteractiveBoxState extends State<ZoInteractiveBox> {
   void _onActiveChanged(ZoTriggerToggleEvent event) {
     widget.onActiveChanged?.call(event);
 
+    if (active == event.toggle) return;
+
     setState(() {
       active = event.toggle;
     });
@@ -360,6 +374,7 @@ class ZoInteractiveBoxState extends State<ZoInteractiveBox> {
   void _onFocusChanged(ZoTriggerToggleEvent event) {
     widget.onFocusChanged?.call(event);
 
+    if (focus == event.toggle) return;
     setState(() {
       focus = event.toggle;
     });
@@ -737,7 +752,8 @@ class ZoInteractiveBoxState extends State<ZoInteractiveBox> {
     return _withTextAndIconColor(
       ZoTrigger(
         enabled: widget.enabled && _interactive,
-        changeCursor: _interactive,
+        changeCursor: widget.changeCursor && _interactive,
+        cursors: widget.cursors,
         canRequestFocus: _interactive && widget.canRequestFocus && !isLoading,
         onActiveChanged: _onActiveChanged,
         onFocusChanged: _onFocusChanged,
@@ -748,6 +764,7 @@ class ZoInteractiveBoxState extends State<ZoInteractiveBox> {
         onContextAction: widget.onContextAction == null
             ? null
             : _onContextAction,
+        onDrag: widget.onDrag,
         focusNode: widget.focusNode,
         autofocus: widget.autofocus,
         focusOnTap: widget.focusOnTap,

@@ -15,6 +15,7 @@ import "play_page.dart";
 import "progress_page.dart";
 import "result_page.dart";
 import "select_page.dart";
+import "split_view_page.dart";
 import "tab_page.dart";
 import "toggle_page.dart";
 import "transition_page.dart";
@@ -133,6 +134,11 @@ class RouterLinks extends StatelessWidget {
               plain: true,
               child: const Text("Toggle"),
               onTap: () => toPage(context, const TogglePage()),
+            ),
+            ZoButton(
+              plain: true,
+              child: const Text("SplitView"),
+              onTap: () => toPage(context, const SplitViewPage()),
             ),
           ],
         ),

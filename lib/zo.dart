@@ -25,3 +25,4 @@ export "src/form/form.dart";
 export "src/tabs/tabs.dart";
 export "src/expander/expander.dart";
 export "src/toggle/toggle.dart";
+export "src/split_view/split_view.dart";

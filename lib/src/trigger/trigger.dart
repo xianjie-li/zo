@@ -19,6 +19,24 @@ enum ZoTriggerType {
   move,
 }
 
+/// 可进行定制的状态光标
+enum ZoTriggerCursorType {
+  /// 默认状态显示的光标
+  normal,
+
+  /// 禁用状态显示的光标
+  disabled,
+
+  /// 可拖动状态显示的光标
+  drag,
+
+  /// 拖动中显示的光标
+  dragging,
+
+  /// 可点击时显示的光标
+  tap,
+}
+
 /// 通用事件, 包含事件类型, 触发位置等信息
 class ZoTriggerEvent extends Notification {
   ZoTriggerEvent({
@@ -138,7 +156,7 @@ class ZoTriggerDragEvent extends ZoTriggerEvent {
   /// 是否是拖动开始
   final bool first;
 
-  /// 是否是拖动结束
+  /// 是否是拖动结束, 即使是取消拖动也会触发
   final bool last;
 
   /// 相对上一次拖动位置的位移
@@ -205,8 +223,8 @@ class ZoTrigger extends StatefulWidget {
     this.autofocus = false,
     this.canRequestFocus = true,
     this.focusOnTap = true,
-    this.defaultCursor,
     this.changeCursor = false,
+    this.cursors,
     this.longPressDragOnTouch = true,
     this.notification = false,
     this.behavior,
@@ -271,11 +289,11 @@ class ZoTrigger extends StatefulWidget {
   /// 是否可通过点击获得焦点, 需要同事启用点击相关的事件才能生效
   final bool focusOnTap;
 
-  /// 默认显示的光标
-  final MouseCursor? defaultCursor;
-
-  /// 是否显示适合当前事件的光标类型
+  /// 是否显示适合当前事件的光标类型, [ZoTriggerCursorType.normal] 不需要启用此项
   final bool changeCursor;
+
+  /// 配置不同状态下显示的光标
+  final Map<ZoTriggerCursorType, MouseCursor>? cursors;
 
   /// 在触控类操作中使用 longPress 触发拖动事件, 防止干扰后方的滚动组件
   final bool longPressDragOnTouch;
@@ -319,13 +337,27 @@ class _ZoTriggerState extends State<ZoTrigger> {
   bool isTapActive = false;
 
   /// 控制显示的光标
-  SystemMouseCursor? currentCursor;
+  MouseCursor? currentCursor;
 
   /// 是否存在未结束的 tap 事件
   bool tapPending = false;
 
   /// 焦点控制
   late FocusNode focusNode;
+
+  /// 默认光标类型
+  Map<ZoTriggerCursorType, MouseCursor> cursors = {
+    ZoTriggerCursorType.normal: MouseCursor.defer,
+    ZoTriggerCursorType.disabled: SystemMouseCursors.forbidden,
+    ZoTriggerCursorType.drag: SystemMouseCursors.grab,
+    ZoTriggerCursorType.dragging: SystemMouseCursors.grabbing,
+    ZoTriggerCursorType.tap: SystemMouseCursors.click,
+  };
+
+  /// 根据传入和默认配置获取显示的光标
+  MouseCursor getCursorByType(ZoTriggerCursorType type) {
+    return widget.cursors?[type] ?? cursors[type]!;
+  }
 
   @override
   void initState() {
@@ -606,7 +638,7 @@ class _ZoTriggerState extends State<ZoTrigger> {
         lastActiveEvent == null &&
         !isTapActive &&
         _mouseActiveTimer == null) {
-      _mouseActiveTimer = Timer(const Duration(milliseconds: 20), () {
+      _mouseActiveTimer = Timer(const Duration(milliseconds: 60), () {
         final e = ZoTriggerToggleEvent(
           type: ZoTriggerType.active,
           time: DateTime.now(),
@@ -1033,16 +1065,19 @@ class _ZoTriggerState extends State<ZoTrigger> {
 
   /// 设置拖动光标
   void setDragCursor(bool dragging) {
+    final dragCursor = getCursorByType(ZoTriggerCursorType.drag);
+    final draggingCursor = getCursorByType(ZoTriggerCursorType.dragging);
+
     if (widget.onDrag != null && widget.changeCursor) {
-      if (dragging && currentCursor != SystemMouseCursors.grabbing) {
+      if (dragging && currentCursor != draggingCursor) {
         setState(() {
-          currentCursor = SystemMouseCursors.grabbing;
+          currentCursor = draggingCursor;
         });
       }
 
-      if (!dragging && currentCursor != SystemMouseCursors.grab) {
+      if (!dragging && currentCursor != dragCursor) {
         setState(() {
-          currentCursor = SystemMouseCursors.grab;
+          currentCursor = dragCursor;
         });
       }
     }
@@ -1164,17 +1199,17 @@ class _ZoTriggerState extends State<ZoTrigger> {
       final enterExitEnable =
           enable && (widget.onActiveChanged != null || widget.onMove != null);
 
-      MouseCursor cursor = widget.defaultCursor ?? MouseCursor.defer;
+      MouseCursor cursor = getCursorByType(ZoTriggerCursorType.normal);
 
       if (widget.changeCursor) {
         if (currentCursor != null) {
           cursor = currentCursor!;
         } else if (!widget.enabled) {
-          cursor = SystemMouseCursors.forbidden;
+          cursor = getCursorByType(ZoTriggerCursorType.disabled);
         } else if (enableDrag) {
-          cursor = SystemMouseCursors.grab;
+          cursor = getCursorByType(ZoTriggerCursorType.drag);
         } else if (enableTap) {
-          cursor = SystemMouseCursors.click;
+          cursor = getCursorByType(ZoTriggerCursorType.tap);
         }
       }
 
