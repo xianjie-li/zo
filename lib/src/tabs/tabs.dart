@@ -1576,7 +1576,7 @@ class ZoTabsState extends ZoCustomFormState<Iterable<Object>, ZoTabs> {
 
     if (!widget.scrollIndicator) return child;
 
-    return ScrollIndicatorContainer(
+    return ZoScrollIndicatorContainer(
       axis: widget.direction,
       child: child,
     );

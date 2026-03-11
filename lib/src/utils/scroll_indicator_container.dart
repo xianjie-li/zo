@@ -2,13 +2,13 @@ import "package:flutter/material.dart";
 import "package:zo/zo.dart";
 
 /// 用于为滚动容器添加可滚动阴影指示器
-class ScrollIndicatorContainer extends StatefulWidget {
+class ZoScrollIndicatorContainer extends StatefulWidget {
   final Widget child;
   final Axis axis;
   final List<Color>? shadowColor;
   final double shadowSize;
 
-  const ScrollIndicatorContainer({
+  const ZoScrollIndicatorContainer({
     super.key,
     required this.child,
     this.axis = Axis.horizontal, // 默认横向，适合 Tab 场景
@@ -17,11 +17,12 @@ class ScrollIndicatorContainer extends StatefulWidget {
   });
 
   @override
-  State<ScrollIndicatorContainer> createState() =>
-      _ScrollIndicatorContainerState();
+  State<ZoScrollIndicatorContainer> createState() =>
+      _ZoScrollIndicatorContainerState();
 }
 
-class _ScrollIndicatorContainerState extends State<ScrollIndicatorContainer> {
+class _ZoScrollIndicatorContainerState
+    extends State<ZoScrollIndicatorContainer> {
   bool _showStart = false;
   bool _showEnd = false;
 

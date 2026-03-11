@@ -3,11 +3,21 @@ import "dart:math" as math;
 import "package:flutter/material.dart";
 import "package:zo/zo.dart";
 
-/// 表示单个面板配置
+/// `ZoSplitView` 中单个面板的静态配置。
 ///
-/// 分割器相关的配置表示的是面板左侧的分割器
+/// 该对象用于描述面板在初始化或恢复布局时的目标状态：
+/// - 使用 [size] 表示固定像素尺寸
+/// - 使用 [flex] 表示剩余空间中的占比权重
+/// - 使用 [min] / [max] 约束面板可收缩和可扩张的范围
+///
+/// `size` 和 `flex` 只能二选一：
+/// - 传入 [size] 时，当前面板按固定尺寸参与布局
+/// - 传入 [flex] 时，当前面板按权重瓜分剩余空间
+/// - 两者都不传时，会被视为“自动 fixed 面板”，并在初始化时按剩余空间均分
+///
+/// 分割器相关的交互约束，语义上作用于当前面板左侧的那条分割线。
 class ZoSplitViewPanelConfig {
-  ZoSplitViewPanelConfig({
+  const ZoSplitViewPanelConfig({
     required this.id,
     this.size,
     this.flex,
@@ -20,29 +30,56 @@ class ZoSplitViewPanelConfig {
          "Panel cannot have both size and flex.",
        );
 
-  /// 用于标识当前面板的唯一值
+  /// 用于标识当前面板的唯一值。
+  ///
+  /// 该值会同时用于：
+  /// - `LayoutId` 的 id
+  /// - 面板查找、重置、最大化、最小化等 API 的目标标识
+  ///
+  /// 同一个 `ZoSplitView` 内必须保持唯一。
   final Object id;
 
-  /// 绝对尺寸
-  double? size;
+  /// 固定像素尺寸。
+  ///
+  /// 传入后当前面板不再参与 flex 分配，而是先占用对应的布局空间。
+  final double? size;
 
-  /// 弹性尺寸, 默认为 1
+  /// 弹性权重。
+  ///
+  /// 当前面板会参与剩余空间分配，值越大，占到的空间越多。
+  /// 一般推荐使用相对简单的数值，如 `1`、`2`、`3`。
   final double? flex;
 
-  /// 最小尺寸, 面板等于改值时可视为折叠状态
+  /// 最小尺寸。
+  ///
+  /// 当面板收缩到该值时，可视为折叠状态。
   final double min;
 
-  /// 最大尺寸
+  /// 最大尺寸。
+  ///
+  /// 仅限制当前面板自身的最大可扩张范围；未传时表示不限制。
   final double? max;
 
-  /// 容器被拖动小于该尺寸时, 会先停顿一段距离, 继续向前拖动时, 会直接折叠到 [min] 尺寸
+  /// 折叠吸附阈值。
+  ///
+  /// 当面板从展开态向 [min] 收缩时，会先在该值附近停顿；继续拖动后再折叠到 [min]。
+  /// 当面板起始已折叠时，重新展开也会先经过该阈值，以获得更稳定的交互手感。
   final double? snapToMin;
 
-  /// 是否添加滚动容器, 使面板过小时能进行滚动查看
+  /// 是否自动包裹滚动容器。
+  ///
+  /// 启用后，当面板内容大于当前可用空间时，会自动通过内部滚动查看内容。
   final bool wrapScrollView;
 }
 
-/// 分割线相关信息
+/// 单条分割线的运行时信息。
+///
+/// 该对象由 `ZoSplitView` 在布局计算后生成，常用于：
+/// - 自定义分割器 UI
+/// - 拖拽时判断可移动范围
+/// - 在示例或业务逻辑中观察当前相邻面板状态
+///
+/// 这是运行时对象，请勿持久化保存。
 class ZoSplitViewSeparatorInfo {
   ZoSplitViewSeparatorInfo({
     required this.min,
@@ -50,25 +87,43 @@ class ZoSplitViewSeparatorInfo {
     required this.separatorSize,
     required this.prevPanel,
     required this.nextPanel,
+    required this.index,
   });
 
-  /// 左侧最大可用距离
+  /// 分割线向左移动的最大可用距离。
+  ///
+  /// 该值同时受左侧可收缩空间和右侧可扩张空间共同限制。
   double min;
 
-  /// 右侧最大可用距离
+  /// 分割线向右移动的最大可用距离。
+  ///
+  /// 该值同时受右侧可收缩空间和左侧可扩张空间共同限制。
   double max;
 
-  /// 分割线尺寸
+  /// 分割线当前的交互尺寸。
+  ///
+  /// 通常等于 `ZoSplitView.separatorSize`，会在构建分割器时写入。
   double separatorSize;
 
-  /// 前方面板
+  /// 分割线前一个面板（左侧或上方）。
   ZoSplitViewPanelInfo prevPanel;
 
-  /// 后方面板
+  /// 分割线后一个面板（右侧或下方）。
   ZoSplitViewPanelInfo nextPanel;
+
+  /// 在当前 `separators` 列表中的索引。
+  int index;
 }
 
-/// 面板的活动尺寸信息
+/// 单个面板的运行时信息。
+///
+/// 与 [ZoSplitViewPanelConfig] 不同，这个对象表示的是“当前布局结果”：
+/// - [size] / [min] / [max] 是当前时刻真正参与布局的值
+/// - [collapsed] 表示当前是否已经收缩到折叠状态
+/// - [prev] / [next] 便于在运行时沿链表查找相邻面板
+///
+/// 通常在 `builder` 中读取该对象来决定内容渲染方式，
+/// 不建议在不了解内部布局规则时直接修改其字段。
 class ZoSplitViewPanelInfo {
   ZoSplitViewPanelInfo({
     required this.max,
@@ -78,70 +133,87 @@ class ZoSplitViewPanelInfo {
     required this.config,
   });
 
-  /// 面板不可大于此尺寸
+  /// 当前布局下允许的最大尺寸。
+  ///
+  /// 这是结合相邻面板可移动空间后得到的运行时值，不一定等于原始配置中的 [ZoSplitViewPanelConfig.max]。
   double max;
 
-  /// 面板不可小于此尺寸
+  /// 当前布局下允许的最小尺寸。
+  ///
+  /// 一般等于 [ZoSplitViewPanelConfig.min]。
   double min;
 
-  /// 面板像素尺寸
+  /// 当前布局结果中的像素尺寸。
   double size;
 
-  /// 是否折叠, 即尺寸等于 min
+  /// 是否处于折叠状态。
+  ///
+  /// 当面板尺寸等于 [min] 时为 `true`。
   bool collapsed;
 
-  /// 是否是固定尺寸的面板
+  /// 当前面板是否按 fixed 模式参与布局。
+  ///
+  /// 判断依据是原始配置中是否提供了 `flex`。
   bool get fixed => config.flex == null;
 
-  /// 左侧相邻面板信息
+  /// 左侧或上方相邻面板。
   ZoSplitViewPanelInfo? prev;
 
-  /// 右侧相邻面板信息
+  /// 右侧或下方相邻面板。
   ZoSplitViewPanelInfo? next;
 
-  /// 面板对应的配置
+  /// 当前面板对应的原始配置。
   ZoSplitViewPanelConfig config;
 }
 
-/// 渲染一组支持调整尺寸的拆分面板, 通过 [value] / [onChanged] 来像表单控件一样配置面板,
-/// 并在 [builder] 中进行实际的渲染
+/// 可拖拽调整尺寸的拆分面板容器。
+///
+/// `ZoSplitView` 负责：
+/// - 根据 [initialConfig] 初始化一组面板
+/// - 在 fixed / flex 混合模式下分配可用空间
+/// - 支持分割线并处理拖拽等交互
+/// - 在 `builder` 中将当前 [ZoSplitViewPanelInfo] 传给面板内容
+///
+/// 适用于侧边栏、工作区分栏、可折叠区域等需要用户手动调整尺寸的场景。
 class ZoSplitView extends StatefulWidget {
   const ZoSplitView({
     super.key,
     required this.initialConfig,
     required this.builder,
     this.direction = Axis.horizontal,
-    this.enableDoubleTap = true,
     this.resizable = true,
     this.separatorBuilder,
     this.separatorSize = 10,
-    this.separatorLayoutSize = 10,
+    this.separatorLayoutSize = 1,
     this.separatorColor,
     this.ref,
   });
 
-  /// 面板配置, 包含以下限制
+  /// 初始面板配置。
   ///
   /// - flex 项必须连续放置, 不能被固定尺寸项分隔开
   /// - 建议至少放置一个 flex 项, 防止出现面板总尺寸小于容器尺寸的情况
   final List<ZoSplitViewPanelConfig> initialConfig;
 
-  /// 构造面板内容
+  /// 构造面板内容。
   ///
-  /// 用户可根据面板尺寸等信息决定是否需要挂载内容
+  /// 回调会收到当前面板的运行时信息，用户可根据尺寸、折叠状态等决定如何渲染内容。
   final Widget Function(BuildContext context, ZoSplitViewPanelInfo info)
   builder;
 
-  /// 方向
+  /// 面板排列方向。
+  ///
+  /// - [Axis.horizontal]：从左到右排列
+  /// - [Axis.vertical]：从上到下排列
   final Axis direction;
 
-  /// 启用双击行为, 双击分割线时, 会重置面板大小
-  final bool enableDoubleTap;
-
-  /// 是否可调整尺寸
+  /// 是否允许拖动分割线调整尺寸。
   final bool resizable;
 
-  /// 自定义分割器
+  /// 自定义分割器构建回调。
+  ///
+  /// 如果不传，会使用组件内置的简单线条样式。
+  /// 传入后可以根据 [ZoSplitViewSeparatorInfo] 和交互状态完全自定义表现。
   final Widget Function(
     BuildContext context,
     ZoSplitViewSeparatorInfo info,
@@ -157,31 +229,324 @@ class ZoSplitView extends StatefulWidget {
   /// 可以设置一个合适的值来避免面板区域和分割线重叠
   final double separatorLayoutSize;
 
-  /// 默认的分割线颜色
+  /// 默认的分割线颜色。
+  ///
+  /// 仅在未提供 [separatorBuilder] 时生效。
   final Color? separatorColor;
 
-  /// 获取 state 的引用, 会在实例可用、销毁时调用，可用来便捷的访问 state 而无需创建 globalKey
+  /// 获取 [ZoSplitViewState] 的引用。
+  ///
+  /// 会在实例可用和销毁时分别回调一次，可用来在不创建 `GlobalKey` 的情况下，
+  /// 操作面板实例。
   final void Function(ZoSplitViewState? state)? ref;
 
   @override
   State<ZoSplitView> createState() => ZoSplitViewState();
 }
 
+/// `ZoSplitView` 的状态对象。
+///
+/// 该对象既负责内部布局计算，也暴露了一组可供外部调用的能力：
+/// - 通过 [config] 重新设置整组面板配置
+/// - 通过 [getCurrentConfig] 导出当前布局快照
+/// - 通过 [update] 在直接改动运行时面板后重新计算布局
+///
+/// 大多数业务场景下，推荐通过 `ref` 拿到该对象后，只使用 `config` 和 [getCurrentConfig]，
+/// 避免直接修改 [panels]。
 class ZoSplitViewState extends State<ZoSplitView> {
-  /// 容器尺寸
+  /// 当前容器尺寸。
+  ///
+  /// 会根据 [ZoSplitView.direction] 取宽或高。
   double? containerSize;
 
-  /// 布局尺寸, 大于或等于容器尺寸
+  /// 当前布局尺寸。
+  ///
+  /// 当所有面板的最小尺寸之和超过容器尺寸时，该值会大于 [containerSize]，
+  /// 用于驱动外层滚动容器。
   double? layoutSize;
 
-  /// 需要的最小布局尺寸
+  /// 当前所有面板理论上需要的最小布局尺寸。
   double? minLayoutSize;
 
   /// 面板列表
-  List<ZoSplitViewPanelInfo> _panels = [];
+  ///
+  /// 可以手动更新面板对象的 size, 然后通过 update() 来重新计算其他面板的尺寸,
+  /// 这是内部用于更新面板的方式, 如果你不清楚会发生什么, 请避免这样做, 改为更新 config
+  List<ZoSplitViewPanelInfo> panels = [];
 
-  /// 分割线列表
-  List<ZoSplitViewSeparatorInfo> _separators = [];
+  /// 当前布局下生成的分割线列表。
+  List<ZoSplitViewSeparatorInfo> separators = [];
+
+  /// 当前正在使用的输入配置。
+  ///
+  /// 给它重新赋值会：
+  /// - 重新校验配置是否合法
+  /// - 清空当前运行时布局状态
+  /// - 根据新配置重新初始化并刷新界面
+  late List<ZoSplitViewPanelConfig> _config;
+
+  /// 当前正在使用的输入配置。
+  ///
+  /// 一般用于读取上一次设置给 `ZoSplitView` 的配置，而不是“当前拖拽后的实时布局结果”。
+  List<ZoSplitViewPanelConfig> get config => _config;
+
+  /// 设置新的输入配置并立即重建布局。
+  set config(List<ZoSplitViewPanelConfig> newConfig) {
+    _config = newConfig;
+    _verifyCurrentConfig();
+
+    _resetLayoutState();
+
+    update();
+    setState(() {});
+  }
+
+  /// 获取当前布局配置快照。
+  ///
+  /// 返回的结果可直接用于持久化，或在后续重新赋值给 [config] 以恢复当前布局：
+  /// - `min` / `max` / `snapToMin` / `wrapScrollView` 等约束沿用原始配置
+  /// - fixed 面板记录当前像素尺寸到 `size`
+  /// - flex 面板根据当前所有 flex 面板的尺寸占比重新生成 `flex`
+  ///
+  /// 注意：该方法返回的是“当前布局结果”的快照，不等同于 [config]
+  List<ZoSplitViewPanelConfig> getCurrentConfig() {
+    if (panels.isEmpty) {
+      return config;
+    }
+
+    var totalFlexSize = 0.0;
+
+    for (final panel in panels) {
+      if (panel.fixed) {
+        continue;
+      }
+
+      totalFlexSize += panel.size;
+    }
+
+    return [
+      for (final panel in panels)
+        panel.fixed
+            ? _copyPanelConfig(panel.config, size: panel.size)
+            : _copyPanelConfig(
+                panel.config,
+                flex: ZoMathUtils.isPositive(totalFlexSize)
+                    ? ZoMathUtils.normalize(panel.size / totalFlexSize)
+                    : (panel.config.flex ?? 1),
+              ),
+    ];
+  }
+
+  /// 根据当前的 [panels] 和容器尺寸更新每个面板的实际尺寸，并更新分割线、子级信息。
+  ///
+  /// 如果 [panels] 还未初始化，会先根据当前 [config] 完成初始化。
+  ///
+  /// 典型用途：
+  /// - 内部拖拽流程在修改某些面板尺寸后重新结算布局
+  /// - 外部明确修改了 [panels] 中的运行时值后，手动触发一次重新计算
+  ///
+  /// 更推荐的外部用法仍然是直接设置 [config]；只有在需要保留部分运行时状态时，
+  /// 才建议直接操作 [panels] 再调用 [update]。
+  ///
+  /// 尺寸更新行为：
+  /// - 所有面板都会受限与其 max、min 约束
+  /// - 固定尺寸会优先分配, 占用剩余空间后再分配给 flex 项
+  /// - flex 面板会根据 flex 值占比分配剩余空间
+  ///
+  /// 该方法会直接修改 [panels] 中面板的尺寸等信息, 但不会调用 setState, 调用方需要根据实际情况决定是否需要调用 setState 来触发重绘
+  void update() {
+    if (_constraints == null) return;
+
+    final constraints = _constraints!;
+
+    containerSize = widget.direction == Axis.horizontal
+        ? constraints.maxWidth
+        : constraints.maxHeight;
+
+    assert(
+      containerSize != double.infinity,
+      "Container size must be finite",
+    );
+
+    // 面板尚未初始化过, 初始化对象
+    if (panels.isEmpty) {
+      _initPanels();
+    }
+
+    final List<ZoSplitViewPanelInfo> localPanels = [...panels];
+
+    final List<ZoSplitViewSeparatorInfo> localSeparators = [];
+
+    minLayoutSize = 0;
+
+    /// 固定项占用的总尺寸
+    var fixedSize = 0.0;
+
+    /// flex 项的 min 之和
+    var flexMinSize = 0.0;
+
+    /// flex 的尺寸总量
+    var totalFlexSize = 0.0;
+
+    /// 记录已计算完成的项
+    final processed = HashSet<Object>();
+
+    // 第一轮处理：计算需要的最小容器尺寸, 并处理固定尺寸项和必要的总量统计
+    for (var i = 0; i < panels.length; i++) {
+      final info = panels[i];
+      final config = info.config;
+
+      // 是否固定项, 正在拖动的分割线两侧面板始终视为固定项处理
+      if (!_isPanelFollowable(info)) {
+        final curSize = info.size.clamp(
+          config.min,
+          config.max ?? double.infinity,
+        );
+
+        localPanels[i] = ZoSplitViewPanelInfo(
+          // max 先占位, 在后续计算出总的最小尺寸后再作调整
+          max: double.infinity,
+          min: config.min,
+          size: curSize,
+          collapsed: curSize == info.min,
+          config: info.config,
+        );
+
+        fixedSize += curSize;
+
+        processed.add(info.config.id);
+      } else {
+        totalFlexSize += info.size;
+        flexMinSize += info.min;
+      }
+    }
+
+    minLayoutSize = fixedSize + flexMinSize;
+
+    layoutSize = math.max(containerSize!, minLayoutSize!);
+
+    // 扣除固定项后剩余的可用尺寸
+    double remainSize = layoutSize! - fixedSize;
+
+    /// 分配 flex 项尺寸, 如果出现被 max/min 截断的项, 将其推出分配池并递归重新分配剩余空间,
+    /// 直到所有项分配完毕
+    void flexAllocation([skipClamp = false]) {
+      var hasClamp = false;
+
+      // 计算包含 max、min 的 flex 项尺寸
+      for (var i = 0; i < panels.length; i++) {
+        final cur = panels[i];
+        final config = cur.config;
+
+        // 仅 flex 和未分配项参与后续分配
+        if (processed.contains(config.id) || !_isPanelFollowable(cur)) {
+          continue;
+        }
+
+        // 根据比例分配剩余尺寸
+        final ratio = _getFlexRatioBySize(totalFlexSize, cur.size);
+        final size = remainSize * ratio;
+
+        // 已完成处理时, 剩余项之间平分剩余空间
+        if (skipClamp) {
+          localPanels[i] = ZoSplitViewPanelInfo(
+            // max 先占位, 在后续计算出总的最小尺寸后再作调整
+            max: double.infinity,
+            min: config.min,
+            size: size,
+            collapsed: size == config.min,
+            config: config,
+          );
+          processed.add(config.id);
+          continue;
+        }
+
+        // 如果小于最小值, 设置尺寸为最小值, 并将补齐的部分从剩余尺寸扣掉并将其推出池子
+        if (size <= config.min) {
+          remainSize -= config.min;
+          totalFlexSize -= cur.size;
+
+          localPanels[i] = ZoSplitViewPanelInfo(
+            // max 先占位, 在后续计算出总的最小尺寸后再作调整
+            max: double.infinity,
+            min: config.min,
+            size: config.min,
+            collapsed: true,
+            config: config,
+          );
+
+          processed.add(config.id);
+          hasClamp = true;
+        }
+
+        // 如果大于最大值, 将超出的部分从剩余尺寸扣掉并退出池子
+        if (config.max != null &&
+            config.max != double.infinity &&
+            size >= config.max!) {
+          remainSize -= config.max!;
+
+          // 恢复原尺寸而不是 max
+          totalFlexSize -= cur.size;
+
+          localPanels[i] = ZoSplitViewPanelInfo(
+            max: config.max!,
+            min: config.min,
+            size: config.max!,
+            collapsed: config.max == config.min,
+            config: config,
+          );
+
+          processed.add(config.id);
+          hasClamp = true;
+        }
+      }
+
+      if (skipClamp) return;
+
+      // 如果没有被 clamp 掉的项, 直接重新分配剩余项
+      flexAllocation(!hasClamp);
+    }
+
+    flexAllocation();
+
+    panels = localPanels;
+
+    ZoSplitViewPanelInfo? prev;
+
+    for (var i = 0; i < panels.length; i++) {
+      final cur = localPanels[i];
+
+      cur.prev = prev;
+      prev?.next = cur;
+      prev = cur;
+    }
+
+    for (var i = 0; i < panels.length; i++) {
+      final info = panels[i];
+
+      final (leftMax, rightMax) = _getSeparatorAvailableSpace(info);
+
+      if (i != 0) {
+        localSeparators.add(
+          ZoSplitViewSeparatorInfo(
+            min: leftMax,
+            max: rightMax,
+            // 在 __updateChildren 中更新
+            separatorSize: 0,
+            prevPanel: info.prev!,
+            nextPanel: info,
+            index: i - 1,
+          ),
+        );
+      }
+
+      info.max = info.min + leftMax + rightMax;
+    }
+
+    separators = localSeparators;
+
+    _updateChildren();
+  }
 
   /// 子级列表, 包含面板和分割线
   List<LayoutId> _children = [];
@@ -224,26 +589,9 @@ class ZoSplitViewState extends State<ZoSplitView> {
   void initState() {
     super.initState();
 
-    // 限制 initialConfig 的 flex 项必须是连续的, 不能被固定尺寸项分隔开
-    //  是否已经进入过 flex 段
-    var startedFlexBlock = false;
-    // 是否已经离开 flex 段
-    var endedFlexBlock = false;
+    _config = widget.initialConfig;
 
-    for (var i = 0; i < widget.initialConfig.length; i++) {
-      final config = widget.initialConfig[i];
-      final isFlex = config.flex != null;
-
-      if (isFlex) {
-        assert(
-          !endedFlexBlock,
-          "Flex panels in initialConfig must be contiguous and cannot be separated by fixed-size panels.",
-        );
-        startedFlexBlock = true;
-      } else if (startedFlexBlock) {
-        endedFlexBlock = true;
-      }
-    }
+    _verifyCurrentConfig();
 
     widget.ref?.call(this);
   }
@@ -254,6 +602,62 @@ class ZoSplitViewState extends State<ZoSplitView> {
     widget.ref?.call(null);
 
     super.dispose();
+  }
+
+  /// 清空基于当前配置推导出来的布局与交互状态。
+  void _resetLayoutState() {
+    panels.clear();
+    separators.clear();
+    _children.clear();
+
+    _draggingSeparator = null;
+    _startPosition = null;
+    _startPrevFixedSize = null;
+    _startNextFixedSize = null;
+    _lastDragDiff = null;
+
+    _forceFixedPanels.clear();
+    _releasedExpandSnapPanels.clear();
+  }
+
+  ZoSplitViewPanelConfig _copyPanelConfig(
+    ZoSplitViewPanelConfig source, {
+    double? size,
+    double? flex,
+  }) {
+    return ZoSplitViewPanelConfig(
+      id: source.id,
+      size: size,
+      flex: flex,
+      min: source.min,
+      max: source.max,
+      snapToMin: source.snapToMin,
+      wrapScrollView: source.wrapScrollView,
+    );
+  }
+
+  /// 验证当前 [config] 是否满足要求
+  void _verifyCurrentConfig() {
+    // 限制当前 config 的 flex 项必须是连续的, 不能被固定尺寸项分隔开
+    //  是否已经进入过 flex 段
+    var startedFlexBlock = false;
+    // 是否已经离开 flex 段
+    var endedFlexBlock = false;
+
+    for (var i = 0; i < config.length; i++) {
+      final cur = config[i];
+      final isFlex = cur.flex != null;
+
+      if (isFlex) {
+        assert(
+          !endedFlexBlock,
+          "Flex panels in config must be contiguous and cannot be separated by fixed-size panels.",
+        );
+        startedFlexBlock = true;
+      } else if (startedFlexBlock) {
+        endedFlexBlock = true;
+      }
+    }
   }
 
   /// 面板是否允许在拖动时跟随移动
@@ -474,9 +878,13 @@ class ZoSplitViewState extends State<ZoSplitView> {
   /// 拖动处理
   ///
   /// - 面板尺寸更新逻辑：判断对应方向是否可用, 面板同向放大, 逆向缩小
-  ///   - 如果任意一侧存在固定尺寸的项, 只需更新固定项, 其余项在 [_update] 中自动计算尺寸
-  ///   - 如果只存在 flex 项, 将两侧都视为固定项处理, 直接更新尺寸, 其余项在 [_update] 中自动计算尺寸
+  ///   - 如果任意一侧存在固定尺寸的项, 只需更新固定项, 其余项在 [update] 中自动计算尺寸
+  ///   - 如果只存在 flex 项, 将两侧都视为固定项处理, 直接更新尺寸, 其余项在 [update] 中自动计算尺寸
   void _onDrag(ZoTriggerDragEvent event) {
+    if (!widget.resizable) {
+      return;
+    }
+
     final info = event.data as ZoSplitViewSeparatorInfo;
     final prev = info.prevPanel;
     final next = info.nextPanel;
@@ -522,7 +930,7 @@ class ZoSplitViewState extends State<ZoSplitView> {
         next.size = _startNextFixedSize! - effectiveDiff;
       }
 
-      _update();
+      update();
 
       // 避免和结束时的更新冗余
       if (!event.last) {
@@ -530,6 +938,10 @@ class ZoSplitViewState extends State<ZoSplitView> {
       }
       _lastDragDiff = effectiveDiff;
     }
+
+    final freshInfo = separators.elementAtOrNull(info.index) ?? info;
+
+    ZoGlobalCursor.show(_getCursorBySeparator(freshInfo), true);
 
     if (event.last) {
       _startPosition = null;
@@ -540,8 +952,10 @@ class ZoSplitViewState extends State<ZoSplitView> {
       _forceFixedPanels.clear();
       _releasedExpandSnapPanels.clear();
 
+      ZoGlobalCursor.hide();
+
       // 开始状态被清理后, 统一更新一次面板
-      _update();
+      update();
       setState(() {});
     }
   }
@@ -551,13 +965,17 @@ class ZoSplitViewState extends State<ZoSplitView> {
     final style = context.zoStyle;
     final info = args.data as ZoSplitViewSeparatorInfo;
 
+    final isCollapsed = info.prevPanel.collapsed || info.nextPanel.collapsed;
+
     final isActive = args.active;
     final double lineSize = isActive ? 5 : 2;
 
     final separator = widget.separatorBuilder != null
         ? widget.separatorBuilder!(context, info, args)
         : Container(
-            color: isActive
+            color: isCollapsed
+                ? Colors.red
+                : isActive
                 ? style.primaryColor
                 : widget.separatorColor ?? style.outlineColor,
             width: widget.direction == Axis.horizontal ? lineSize : null,
@@ -580,7 +998,7 @@ class ZoSplitViewState extends State<ZoSplitView> {
 
   /// 更新面板子级
   void _updateChildren() {
-    if (_panels.isEmpty) {
+    if (panels.isEmpty) {
       _children = [];
       return;
     }
@@ -590,8 +1008,8 @@ class ZoSplitViewState extends State<ZoSplitView> {
     // 所有分割器, 放到数组最后, 以免被面板遮挡
     final List<LayoutId> separators = [];
 
-    for (var i = 0; i < _panels.length; i++) {
-      final info = _panels[i];
+    for (var i = 0; i < panels.length; i++) {
+      final info = panels[i];
 
       var child = widget.builder(context, info);
 
@@ -606,7 +1024,7 @@ class ZoSplitViewState extends State<ZoSplitView> {
         child: child,
       );
 
-      if (widget.separatorLayoutSize > 0 && widget.initialConfig.length > 1) {
+      if (widget.separatorLayoutSize > 0 && _config.length > 1) {
         final separatorSize = widget.separatorLayoutSize;
         final half = separatorSize / 2;
 
@@ -618,7 +1036,7 @@ class ZoSplitViewState extends State<ZoSplitView> {
           padding = widget.direction == Axis.horizontal
               ? EdgeInsets.only(right: half)
               : EdgeInsets.only(bottom: half);
-        } else if (i == _panels.length - 1) {
+        } else if (i == panels.length - 1) {
           padding = widget.direction == Axis.horizontal
               ? EdgeInsets.only(left: half)
               : EdgeInsets.only(top: half);
@@ -639,8 +1057,8 @@ class ZoSplitViewState extends State<ZoSplitView> {
       );
     }
 
-    for (var i = 0; i < _separators.length; i++) {
-      final info = _separators[i];
+    for (var i = 0; i < this.separators.length; i++) {
+      final info = this.separators[i];
 
       final id = _getSplitID(i + 1);
 
@@ -651,10 +1069,10 @@ class ZoSplitViewState extends State<ZoSplitView> {
         padding: const EdgeInsets.all(0),
         alignment: Alignment.center,
         changeCursor: false,
-        cursors: const {
-          ZoTriggerCursorType.normal: SystemMouseCursors.resizeLeftRight,
+        cursors: {
+          ZoTriggerCursorType.normal: _getCursorBySeparator(info),
         },
-        onDrag: _onDrag,
+        onDrag: widget.resizable ? _onDrag : null,
         builder: _buildSeparator,
       );
 
@@ -672,13 +1090,13 @@ class ZoSplitViewState extends State<ZoSplitView> {
     _children = children;
   }
 
-  void initPanels() {
+  void _initPanels() {
     double totalFlex = 0;
     double explicitFixedSize = 0;
     int autoFixedCount = 0;
 
-    for (var i = 0; i < widget.initialConfig.length; i++) {
-      final cur = widget.initialConfig[i];
+    for (var i = 0; i < _config.length; i++) {
+      final cur = _config[i];
 
       if (cur.flex != null) {
         totalFlex += cur.flex ?? 1;
@@ -688,7 +1106,7 @@ class ZoSplitViewState extends State<ZoSplitView> {
         autoFixedCount++;
       }
 
-      _panels.add(
+      panels.add(
         // 填入初始 panel 信息, 后续会根据实际容器尺寸进行调整
         ZoSplitViewPanelInfo(
           max: cur.max ?? double.infinity,
@@ -711,8 +1129,8 @@ class ZoSplitViewState extends State<ZoSplitView> {
 
     // 未传 size 的 fixed 项平均分配剩余空间, flex 项按权重分配剩余空间。
     // 这里不要求最终像素精确, 只需提供合理初始值供后续 _update 继续收敛。
-    for (var i = 0; i < _panels.length; i++) {
-      final info = _panels[i];
+    for (var i = 0; i < panels.length; i++) {
+      final info = panels[i];
 
       if (info.fixed) {
         if (info.config.size == null) {
@@ -722,200 +1140,6 @@ class ZoSplitViewState extends State<ZoSplitView> {
         info.size = unitSize * (info.config.flex ?? 1);
       }
     }
-  }
-
-  /// 根据当前的面板 ZoSplitViewPanelInfo 数组和容器尺寸计算每个面板的实际尺寸, 并更新分割线、子级信息
-  void _update() {
-    if (_constraints == null) return;
-
-    final constraints = _constraints!;
-
-    containerSize = widget.direction == Axis.horizontal
-        ? constraints.maxWidth
-        : constraints.maxHeight;
-
-    assert(
-      containerSize != double.infinity,
-      "Container size must be finite",
-    );
-
-    // 面板尚未初始化过, 初始化对象
-    if (_panels.isEmpty) {
-      initPanels();
-    }
-
-    final List<ZoSplitViewPanelInfo> panels = [..._panels];
-
-    final List<ZoSplitViewSeparatorInfo> separators = [];
-
-    minLayoutSize = 0;
-
-    /// 固定项占用的总尺寸
-    var fixedSize = 0.0;
-
-    /// flex 项的 min 之和
-    var flexMinSize = 0.0;
-
-    /// flex 的尺寸总量
-    var totalFlexSize = 0.0;
-
-    /// 记录已计算完成的项
-    final processed = HashSet<Object>();
-
-    // 第一轮处理：计算需要的最小容器尺寸, 并处理固定尺寸项和必要的总量统计
-    for (var i = 0; i < _panels.length; i++) {
-      final info = _panels[i];
-      final config = info.config;
-
-      // 是否固定项, 正在拖动的分割线两侧面板始终视为固定项处理
-      if (!_isPanelFollowable(info)) {
-        final curSize = info.size.clamp(
-          config.min,
-          config.max ?? double.infinity,
-        );
-
-        panels[i] = ZoSplitViewPanelInfo(
-          // max 先占位, 在后续计算出总的最小尺寸后再作调整
-          max: double.infinity,
-          min: config.min,
-          size: curSize,
-          collapsed: curSize == info.min,
-          config: info.config,
-        );
-
-        fixedSize += curSize;
-
-        processed.add(info.config.id);
-      } else {
-        totalFlexSize += info.size;
-        flexMinSize += info.min;
-      }
-    }
-
-    minLayoutSize = fixedSize + flexMinSize;
-
-    layoutSize = math.max(containerSize!, minLayoutSize!);
-
-    // 扣除固定项后剩余的可用尺寸
-    double remainSize = layoutSize! - fixedSize;
-
-    /// 分配 flex 项尺寸, 如果出现被 max/min 截断的项, 将其推出分配池并递归重新分配剩余空间,
-    /// 直到所有项分配完毕
-    void flexAllocation([skipClamp = false]) {
-      var hasClamp = false;
-
-      // 计算包含 max、min 的 flex 项尺寸
-      for (var i = 0; i < _panels.length; i++) {
-        final cur = _panels[i];
-        final config = cur.config;
-
-        // 仅 flex 和未分配项参与后续分配
-        if (processed.contains(config.id) || !_isPanelFollowable(cur)) {
-          continue;
-        }
-
-        // 根据比例分配剩余尺寸
-        final ratio = _getFlexRatioBySize(totalFlexSize, cur.size);
-        final size = remainSize * ratio;
-
-        // 已完成处理时, 剩余项之间平分剩余空间
-        if (skipClamp) {
-          panels[i] = ZoSplitViewPanelInfo(
-            // max 先占位, 在后续计算出总的最小尺寸后再作调整
-            max: double.infinity,
-            min: config.min,
-            size: size,
-            collapsed: size == config.min,
-            config: config,
-          );
-          processed.add(config.id);
-          continue;
-        }
-
-        // 如果小于最小值, 设置尺寸为最小值, 并将补齐的部分从剩余尺寸扣掉并将其推出池子
-        if (size <= config.min) {
-          remainSize -= config.min;
-          totalFlexSize -= cur.size;
-
-          panels[i] = ZoSplitViewPanelInfo(
-            // max 先占位, 在后续计算出总的最小尺寸后再作调整
-            max: double.infinity,
-            min: config.min,
-            size: config.min,
-            collapsed: true,
-            config: config,
-          );
-
-          processed.add(config.id);
-          hasClamp = true;
-        }
-
-        // 如果大于最大值, 将超出的部分从剩余尺寸扣掉并退出池子
-        if (config.max != null &&
-            config.max != double.infinity &&
-            size >= config.max!) {
-          remainSize -= config.max!;
-
-          // 恢复原尺寸而不是 max
-          totalFlexSize -= cur.size;
-
-          panels[i] = ZoSplitViewPanelInfo(
-            max: config.max!,
-            min: config.min,
-            size: config.max!,
-            collapsed: config.max == config.min,
-            config: config,
-          );
-
-          processed.add(config.id);
-          hasClamp = true;
-        }
-      }
-
-      if (skipClamp) return;
-
-      // 如果没有被 clamp 掉的项, 直接重新分配剩余项
-      flexAllocation(!hasClamp);
-    }
-
-    flexAllocation();
-
-    _panels = panels;
-
-    ZoSplitViewPanelInfo? prev;
-
-    for (var i = 0; i < _panels.length; i++) {
-      final cur = panels[i];
-
-      cur.prev = prev;
-      prev?.next = cur;
-      prev = cur;
-    }
-
-    for (var i = 0; i < _panels.length; i++) {
-      final info = _panels[i];
-
-      final (leftMax, rightMax) = _getSeparatorAvailableSpace(info);
-
-      if (i != 0) {
-        separators.add(
-          ZoSplitViewSeparatorInfo(
-            min: leftMax,
-            max: rightMax,
-            // 在 __updateChildren 中更新
-            separatorSize: 0,
-            prevPanel: info.prev!,
-            nextPanel: info,
-          ),
-        );
-      }
-
-      info.max = info.min + leftMax + rightMax;
-    }
-
-    _separators = separators;
-
-    _updateChildren();
   }
 
   /// 获取左侧分割线左右的可移动空间, 按以下规则获取：
@@ -990,15 +1214,46 @@ class ZoSplitViewState extends State<ZoSplitView> {
     final rightShrink = math.max(0.0, right.size - right.min);
     final moveRight = math.min(leftGrow, rightShrink);
 
-    return (moveLeft, moveRight);
+    return (
+      ZoMathUtils.normalize(moveLeft),
+      ZoMathUtils.normalize(moveRight),
+    );
+  }
+
+  /// 根据分割线信息获取当前应该显示的鼠标样式
+  MouseCursor _getCursorBySeparator(ZoSplitViewSeparatorInfo info) {
+    if (!widget.resizable) {
+      return MouseCursor.defer;
+    }
+
+    final leftDraggable = ZoMathUtils.isPositive(info.min);
+    final rightDraggable = ZoMathUtils.isPositive(info.max);
+
+    if (leftDraggable && rightDraggable) {
+      return widget.direction == Axis.horizontal
+          ? SystemMouseCursors.resizeLeftRight
+          : SystemMouseCursors.resizeUpDown;
+    } else if (leftDraggable) {
+      return widget.direction == Axis.horizontal
+          ? SystemMouseCursors.resizeLeft
+          : SystemMouseCursors.resizeUp;
+    } else if (rightDraggable) {
+      return widget.direction == Axis.horizontal
+          ? SystemMouseCursors.resizeRight
+          : SystemMouseCursors.resizeDown;
+    } else {
+      return SystemMouseCursors.forbidden;
+    }
   }
 
   /// 根据总尺寸和给定尺寸获取其 flex 系数
   double _getFlexRatioBySize(double totalFlexSize, double size) {
-    if (totalFlexSize == 0) {
+    if (!ZoMathUtils.isPositive(totalFlexSize)) {
       return 1;
     }
-    return size / totalFlexSize;
+
+    final ratio = size / totalFlexSize;
+    return ZoMathUtils.normalize(ratio);
   }
 
   @override
@@ -1009,7 +1264,7 @@ class ZoSplitViewState extends State<ZoSplitView> {
         if (_constraints == null || _constraints != constraints) {
           _constraints = constraints;
 
-          _update();
+          update();
         } else {
           _constraints = constraints;
         }
@@ -1028,8 +1283,8 @@ class ZoSplitViewState extends State<ZoSplitView> {
             child: CustomMultiChildLayout(
               delegate: _LayoutDelegate(
                 direction: widget.direction,
-                panels: _panels,
-                separators: _separators,
+                panels: panels,
+                separators: separators,
               ),
               children: _children,
             ),

@@ -11,6 +11,9 @@ class SplitViewPage extends StatefulWidget {
 class _SplitViewPageState extends State<SplitViewPage> {
   ZoSplitViewState? splitViewState1;
   ZoSplitViewState? splitViewState2;
+  List<ZoSplitViewPanelConfig>? savedCurrentConfig;
+  String operationTitle = "";
+  String operationResult = "";
 
   List<ZoSplitViewPanelConfig> config = [
     ZoSplitViewPanelConfig(id: "1", size: 100),
@@ -55,6 +58,99 @@ class _SplitViewPageState extends State<SplitViewPage> {
         color: active ? Colors.blue : Colors.transparent,
       ),
     );
+  }
+
+  List<ZoSplitViewPanelConfig> config3 = [
+    ZoSplitViewPanelConfig(id: "2"),
+  ];
+
+  void _showOperationResult(String title, List<ZoSplitViewPanelConfig> value) {
+    final result = _formatConfigList(value);
+
+    setState(() {
+      operationTitle = title;
+      operationResult = result;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(title),
+      ),
+    );
+  }
+
+  String _formatConfigList(List<ZoSplitViewPanelConfig> value) {
+    if (value.isEmpty) {
+      return "[]";
+    }
+
+    return value.map((item) => _formatConfigItem(item)).join("\n");
+  }
+
+  String _formatConfigItem(ZoSplitViewPanelConfig item) {
+    final fields = <String>[
+      'id: "${item.id}"',
+      if (item.size != null) "size: ${item.size}",
+      if (item.flex != null) "flex: ${item.flex}",
+      "min: ${item.min}",
+      if (item.max != null) "max: ${item.max}",
+      if (item.snapToMin != null) "snapToMin: ${item.snapToMin}",
+      if (item.wrapScrollView) "wrapScrollView: true",
+    ];
+
+    return "ZoSplitViewPanelConfig(${fields.join(", ")})";
+  }
+
+  List<ZoSplitViewPanelConfig> _createExampleConfig() {
+    return [
+      ZoSplitViewPanelConfig(id: "1", size: 140),
+      ZoSplitViewPanelConfig(
+        id: "2",
+        size: 120,
+        snapToMin: 50,
+        min: 20,
+      ),
+      ZoSplitViewPanelConfig(id: "4", flex: 3, min: 150, max: 220),
+      ZoSplitViewPanelConfig(id: "5", flex: 1, min: 50),
+      ZoSplitViewPanelConfig(id: "6", flex: 2, min: 50),
+      ZoSplitViewPanelConfig(id: "7", size: 80),
+      ZoSplitViewPanelConfig(id: "8", size: 160),
+    ];
+  }
+
+  void _handleGetConfig() {
+    final state = splitViewState1;
+    if (state == null) return;
+
+    _showOperationResult("getConfig", state.config);
+  }
+
+  void _handleSetConfig() {
+    final state = splitViewState1;
+    if (state == null) return;
+
+    final nextConfig = savedCurrentConfig ?? _createExampleConfig();
+
+    setState(() {
+      config = nextConfig;
+    });
+
+    state.config = nextConfig;
+
+    _showOperationResult(
+      savedCurrentConfig == null ? "setConfig（应用预设配置）" : "setConfig（应用当前布局快照）",
+      nextConfig,
+    );
+  }
+
+  void _handleGetCurrentConfig() {
+    final state = splitViewState1;
+    if (state == null) return;
+
+    final currentConfig = state.getCurrentConfig();
+
+    savedCurrentConfig = currentConfig;
+    _showOperationResult("getCurrentConfig", currentConfig);
   }
 
   Widget panelBuilder(BuildContext context, ZoSplitViewPanelInfo info) {
@@ -128,7 +224,7 @@ class _SplitViewPageState extends State<SplitViewPage> {
           child: Column(
             children: [
               SizedBox(
-                height: 300,
+                height: 250,
                 child: ZoSplitView(
                   initialConfig: config,
                   builder: panelBuilder,
@@ -138,20 +234,57 @@ class _SplitViewPageState extends State<SplitViewPage> {
                 ),
               ),
 
-              ZoButton(
-                child: Text("setState"),
-                onTap: () {
-                  setState(() {});
-                },
+              const SizedBox(height: 12),
+
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  ZoButton(
+                    onTap: _handleGetConfig,
+                    child: const Text("getConfig"),
+                  ),
+                  ZoButton(
+                    onTap: _handleSetConfig,
+                    child: const Text("setConfig"),
+                  ),
+                  ZoButton(
+                    onTap: _handleGetCurrentConfig,
+                    child: const Text("getCurrentConfig"),
+                  ),
+                ],
               ),
+
+              if (operationResult.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    border: Border.all(color: Colors.grey.shade300),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        operationTitle,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      SelectableText(operationResult),
+                    ],
+                  ),
+                ),
+              ],
 
               const Divider(
                 height: 48,
               ),
 
-              const SizedBox(height: 12),
               SizedBox(
-                height: 300,
+                height: 200,
                 child: ZoSplitView(
                   initialConfig: config2,
                   builder: panelBuilder2,
@@ -159,6 +292,31 @@ class _SplitViewPageState extends State<SplitViewPage> {
                   ref: (state) {
                     splitViewState2 = state;
                   },
+                ),
+              ),
+
+              const Divider(
+                height: 48,
+              ),
+
+              SizedBox(
+                height: 200,
+                child: ZoSplitView(
+                  initialConfig: config3,
+                  builder: panelBuilder2,
+                  separatorBuilder: separatorBuilder,
+                ),
+              ),
+
+              const Divider(
+                height: 48,
+              ),
+
+              SizedBox(
+                height: 200,
+                child: ZoSplitView(
+                  initialConfig: const [],
+                  builder: panelBuilder2,
                 ),
               ),
             ],

@@ -1,7 +1,6 @@
 import "dart:async";
 
 import "package:flutter/material.dart";
-import "package:flutter/widgets.dart";
 
 export "operation_history.dart";
 export "app_state.dart";
@@ -10,6 +9,7 @@ export "mutator.dart";
 export "selector.dart";
 export "shortcuts.dart";
 export "prop_instance_coordinator.dart";
+export "math_utils.dart";
 
 // const int maxIntValue = kIsWeb ? 9007199254740991 : 9223372036854775807;
 // const int minIntValue = kIsWeb ? -9007199254740991 : -9223372036854775808;
