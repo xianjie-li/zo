@@ -1,8 +1,10 @@
 import "package:flutter/material.dart";
 import "package:flutter_localizations/flutter_localizations.dart";
 import "package:zo/zo.dart";
+import "pages/badge_page.dart";
 import "pages/router_links.dart";
 import "pages/split_view_page.dart";
+import "pages/tag_page.dart";
 
 void main() {
   runApp(const MyApp());
@@ -83,7 +85,6 @@ class _MyAppState extends State<MyApp> {
                       ),
                       child: SafeArea(
                         child: Column(
-                          spacing: 12,
                           children: [
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -136,7 +137,7 @@ class _MyAppState extends State<MyApp> {
           ),
         );
       },
-      home: const SplitViewPage(),
+      home: const BadgePage(),
       // home: const TabsPage(),
     );
   }

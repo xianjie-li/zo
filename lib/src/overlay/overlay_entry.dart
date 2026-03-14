@@ -67,7 +67,10 @@ class ZoOverlayEntry extends ChangeNotifier {
        _constrainsToView = constrainsToView,
        assert(offset != null || rect != null || alignment != null);
 
-  double changeId = 0;
+  /// 每次发生变更时, 生成一个新的 changeId, 可通过其判断层是否发生了变更,
+  /// 可通过 [changed] 触发变更
+  double get changeId => _changeId;
+  double _changeId = 0;
 
   /// 当前所在的 overlay
   ZoOverlay? get overlay => _overlay;
@@ -106,6 +109,10 @@ class ZoOverlayEntry extends ChangeNotifier {
   /// 记录了最近一次 open 变为 true 的时间
   DateTime? get lastOpenTime => _lastOpenTime;
   DateTime? _lastOpenTime;
+
+  /// 记录了最近一次 open 变为 false 的时间
+  DateTime? get lastCloseTime => _lastCloseTime;
+  DateTime? _lastCloseTime;
 
   /// 与 [onOpenChanged] 触发时机相同
   final openChangedEvent = EventTrigger<bool>();
@@ -167,7 +174,7 @@ class ZoOverlayEntry extends ChangeNotifier {
 
   /// 通知层发生了变更
   void changed() {
-    changeId = math.Random().nextDouble();
+    _changeId = math.Random().nextDouble();
     if (!_lockNotify) {
       notifyListeners();
     }
@@ -443,6 +450,8 @@ class ZoOverlayEntry extends ChangeNotifier {
 
     if (value) {
       _lastOpenTime = DateTime.now();
+    } else {
+      _lastCloseTime = DateTime.now();
     }
 
     _localOpen = value;
@@ -620,7 +629,7 @@ class ZoOverlayEntry extends ChangeNotifier {
     changed();
   }
 
-  /// 动画持续时间, 设置为0后可关闭动画
+  /// 动画持续时间, 设置为0可关闭动画
   Duration get duration => _duration ?? ZoTransition.defaultDuration;
   Duration? _duration;
   set duration(Duration? value) {

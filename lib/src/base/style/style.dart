@@ -81,6 +81,7 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
     this.sizeSM = 28,
     this.sizeMD = 34,
     this.sizeLG = 40,
+    this.borderRadiusSM = 8,
     this.borderRadius = 10,
     this.borderRadiusLG = 18,
 
@@ -417,6 +418,14 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
     };
   }
 
+  /// 根据传入或当前 [widgetSize] 获取默认圆角, 会在 small 尺寸时略微缩小圆角, 防止较小的控件显得过圆
+  double getSizedRadius([ZoSize? wSize]) {
+    return switch (wSize ?? widgetSize) {
+      ZoSize.medium || ZoSize.large => borderRadius,
+      ZoSize.small => borderRadius - 2,
+    };
+  }
+
   /// 根据传入或当前 [widgetSize] 获取文本大小
   double getSizedFontSize([ZoSize? wSize]) {
     return switch (wSize ?? widgetSize) {
@@ -425,6 +434,9 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
       ZoSize.large => fontSizeMD,
     };
   }
+
+  /// 更小的圆角
+  final double borderRadiusSM;
 
   /// 圆角
   final double borderRadius;
@@ -564,6 +576,7 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
     double? sizeSM,
     double? sizeMD,
     double? sizeLG,
+    double? borderRadiusSM,
     double? borderRadius,
     double? borderRadiusLG,
     double? breakPointSM,
@@ -628,6 +641,7 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
       sizeSM: sizeSM ?? this.sizeSM,
       sizeMD: sizeMD ?? this.sizeMD,
       sizeLG: sizeLG ?? this.sizeLG,
+      borderRadiusSM: borderRadiusSM ?? this.borderRadiusSM,
       borderRadius: borderRadius ?? this.borderRadius,
       borderRadiusLG: borderRadiusLG ?? this.borderRadiusLG,
       breakPointSM: breakPointSM ?? this.breakPointSM,
@@ -710,6 +724,7 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
       sizeSM: other.sizeSM,
       sizeMD: other.sizeMD,
       sizeLG: other.sizeLG,
+      borderRadiusSM: other.borderRadiusSM,
       borderRadius: other.borderRadius,
       borderRadiusLG: other.borderRadiusLG,
       breakPointSM: other.breakPointSM,

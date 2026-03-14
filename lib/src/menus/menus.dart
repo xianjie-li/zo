@@ -493,6 +493,10 @@ class ZoMenu extends ZoMenuEntry {
 
   /// 通过按键关闭所有层
   KeyEventResult _onShortcutsClose() {
+    /// 由于覆盖了 escapeClosable 行为，原本由 ZoOverlay 处理的按键事件现在会传递到这里，
+    /// 因此需要在此处记录最后一次按下 escape 的时间，以便 ZoOverlay 判断是否需要关闭层
+    overlay?.lastEscapeTime = DateTime.now();
+
     _getRelativeOverlay().forEach((entry) {
       entry.close();
     });

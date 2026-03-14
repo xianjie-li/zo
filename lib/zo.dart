@@ -1,4 +1,5 @@
 export "src/base/base.dart";
+export "src/badge/badge.dart";
 export "src/button/button.dart";
 export "src/fetcher/fetcher.dart";
 export "src/input/input.dart";
@@ -26,3 +27,4 @@ export "src/tabs/tabs.dart";
 export "src/expander/expander.dart";
 export "src/toggle/toggle.dart";
 export "src/split_view/split_view.dart";
+export "src/tag/tag.dart";

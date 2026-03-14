@@ -91,12 +91,18 @@ class ZoOverlay {
     return _overlayKey!.currentState!;
   }
 
+  /// 记录最后触发 tapAway 的时间, 用于防止单次点击一次性关闭所有层
+  DateTime? lastTapAwayTime;
+
+  /// 记录最后触发 escape 的时间
+  DateTime? lastEscapeTime;
+
   /// 禁用所有层的 tapAwayClosable, 在某些场景很有用, 比如当前层通过 onDismiss 弹出确认关闭的 Modal,
   /// 可以临时通过此项禁用范围外点击关闭来避免错误触发
   bool _disableAllTapAwayClosable = false;
 
   /// 禁用所有层的 escapeClosable
-  bool disableAllEscapeClosable = false;
+  bool _disableAllEscapeClosable = false;
 
   /// 原始 OverlayEntry, 与 [overlays] 对应
   final HashMap<ZoOverlayEntry, OverlayEntry> _originalOverlays = HashMap();
@@ -122,9 +128,6 @@ class ZoOverlay {
 
   /// 用于 [ZoOverlayView] 组件之间发送特定的通知
   final _viewTrigger = EventTrigger<_ViewTriggerArgs>();
-
-  /// 记录最后触发 tapAway 的时间, 用于防止单次点击一次性关闭所有层
-  DateTime? _lastTapAwayTime;
 
   /// 一个开关状态, 可控制 dispose 是否忽略关闭动画延迟立即完成
   bool _disposeImmediately = false;
@@ -379,12 +382,12 @@ class ZoOverlay {
 
   /// 禁用所有层的 escapeClosable, 需要确保在完成操作后重新通过 [enableEscapeClose] 启用
   void disableEscapeClose() {
-    disableAllEscapeClosable = true;
+    _disableAllEscapeClosable = true;
   }
 
   /// 恢复被 [disableEscapeClose] 禁用的操作
   void enableEscapeClose() {
-    disableAllEscapeClosable = false;
+    _disableAllEscapeClosable = false;
   }
 
   /// 每个层 open 时调用
@@ -787,12 +790,12 @@ class _ZoOverlayViewState extends State<ZoOverlayView> {
 
     /// 如果触发了 tapAway 需要在短暂延迟内阻止其他 tapAway
     /// 上面的 lastClosable 依然要保留, 因为 onTapOutside 的触发顺序可能和我们的层顺序不一致
-    if (overlay._lastTapAwayTime != null &&
-        now.difference(overlay._lastTapAwayTime!).inMilliseconds < 80) {
+    if (overlay.lastTapAwayTime != null &&
+        now.difference(overlay.lastTapAwayTime!).inMilliseconds < 80) {
       return;
     }
 
-    overlay._lastTapAwayTime = now;
+    overlay.lastTapAwayTime = now;
 
     entry.dismiss();
   }
@@ -806,17 +809,19 @@ class _ZoOverlayViewState extends State<ZoOverlayView> {
     // 已明确无需传播
     if (res != KeyEventResult.ignored) return res;
 
-    if (!entry.escapeClosable || overlay.disableAllEscapeClosable) {
+    if (!entry.escapeClosable || overlay._disableAllEscapeClosable) {
       return KeyEventResult.ignored;
     }
 
     // 处理esc关闭
     final escapeCloseableIsValid =
-        entry.escapeClosable && !overlay.disableAllEscapeClosable;
+        entry.escapeClosable && !overlay._disableAllEscapeClosable;
 
     if (escapeCloseableIsValid &&
         event is KeyDownEvent &&
         event.logicalKey == LogicalKeyboardKey.escape) {
+      overlay.lastEscapeTime = DateTime.now();
+      print("closeByEscape ${overlay.lastEscapeTime}");
       entry.dismiss();
       return KeyEventResult.handled;
     }

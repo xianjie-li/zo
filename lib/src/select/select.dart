@@ -32,7 +32,7 @@ class ZoSelect extends ZoCustomFormWidget<Iterable<Object>> {
     this.onInputChanged,
     this.maxSelectedShowNumber = 10,
     this.showOpenIndicator = true,
-    this.customTagDecoration,
+    this.customTag,
     this.clear = true,
     this.size,
     this.hintText,
@@ -78,9 +78,12 @@ class ZoSelect extends ZoCustomFormWidget<Iterable<Object>> {
   /// 在输入框右侧显示下拉展开指示器
   final bool showOpenIndicator;
 
-  /// 自定义标签装饰, 当value不存在对应的选项时，option 可能为空
-  final BoxDecoration Function(Object value, ZoOption? option)?
-  customTagDecoration;
+  /// 自定义已选标签配置。
+  ///
+  /// 回调返回一个 [ZoTag] 作为标签外观配置：
+  /// - 有效配置: `color`、`textStyle`、`backgroundAlpha`、`borderRadius`, 等其他配置不会生效
+  /// - 当 value 不存在对应选项时，`option` 可能为 `null`
+  final ZoTag Function(Object value, ZoOption? option)? customTag;
 
   // # # # # # # # Input # # # # # # #
 
@@ -147,9 +150,6 @@ class ZoSelectState extends ZoCustomFormState<Iterable<Object>, ZoSelect> {
   /// input 最后绘制的位置信息
   Rect? _lastRect;
 
-  /// 最后关闭的时间
-  DateTime? _lastCloseTime;
-
   /// 输入框是否聚焦
   bool _isFocus = false;
 
@@ -183,6 +183,9 @@ class ZoSelectState extends ZoCustomFormState<Iterable<Object>, ZoSelect> {
   final _rectUpdateThrottler = Throttler(
     delay: Durations.short1,
   );
+
+  /// 识别关闭是否由 esc 触发的时间窗口
+  static const _escapeCloseThreshold = Duration(milliseconds: 80);
 
   @override
   @protected
@@ -302,8 +305,10 @@ class ZoSelectState extends ZoCustomFormState<Iterable<Object>, ZoSelect> {
   void _onFocusChanged(bool focus) {
     // 聚焦时显示下拉层, 失焦时，延迟一定时间，如果下一焦点不是当前层或未处于按下则关闭
     if (focus) {
-      if (_lastCloseTime != null) {
-        final diff = DateTime.now().difference(_lastCloseTime!);
+      final lastCloseTime = menuEntry.lastCloseTime;
+
+      if (lastCloseTime != null) {
+        final diff = DateTime.now().difference(lastCloseTime);
 
         if (diff > const Duration(milliseconds: 80)) {
           menuEntry.open();
@@ -331,7 +336,24 @@ class ZoSelectState extends ZoCustomFormState<Iterable<Object>, ZoSelect> {
 
   void _onOpenChanged(bool open) {
     if (!open) {
-      _lastCloseTime = DateTime.now();
+      final now = DateTime.now();
+
+      final lastEscapeTime = zoOverlay.lastEscapeTime;
+
+      final closeByEscape =
+          lastEscapeTime != null &&
+          now.difference(lastEscapeTime) <= _escapeCloseThreshold;
+
+      // 如果最近一次关闭不是 escape 键触发的，则主动失焦输入框,
+      // 放置自动的焦点回退导致不太自然的输入框聚焦行为
+      if (!closeByEscape) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            _focusNode.unfocus();
+            return;
+          }
+        });
+      }
     }
     setState(() {});
   }
@@ -427,25 +449,9 @@ class ZoSelectState extends ZoCustomFormState<Iterable<Object>, ZoSelect> {
 
   /// 输入框位置变更时，根据位置调整显示方向、最大高度等
   void _updateOverlayPosition(Rect rect) {
-    // final height = MediaQuery.heightOf(context);
-    // final viewPadding = MediaQuery.viewPaddingOf(context);
-
-    // final topSpace = rect.top;
-    // final bottomSpace = height - rect.bottom;
-    // final direction = topSpace > bottomSpace
-    //     ? ZoPopperDirection.topLeft
-    //     : ZoPopperDirection.bottomLeft;
-    // final maxHeight = (topSpace > bottomSpace ? topSpace : bottomSpace) - 24;
-
-    // print(
-    //   "top ${viewPadding} ${height} ${topSpace} ${bottomSpace} ${maxHeight}",
-    // );
-
     menuEntry.actions(() {
       menuEntry.rect = _lastRect;
       menuEntry.width = rect.width;
-      // menuEntry.direction = direction;
-      // menuEntry.maxHeight = maxHeight;
     }, menuEntry.currentOpen);
   }
 
@@ -473,6 +479,70 @@ class ZoSelectState extends ZoCustomFormState<Iterable<Object>, ZoSelect> {
     return list;
   }
 
+  ZoTag _getTagConfig(Object value, ZoOption? option) {
+    return widget.customTag?.call(value, option) ??
+        ZoTag(
+          type: ZoTagType.outline,
+          size: widget.size,
+          borderRadius: context.zoStyle.getSizedRadius(widget.size),
+          child: const SizedBox.shrink(),
+        );
+  }
+
+  Widget _buildSelectTag({
+    required Object value,
+    required ZoOption? option,
+    required String text,
+    required bool isSmall,
+  }) {
+    final tag = _getTagConfig(value, option);
+    final style = context.zoStyle;
+    final currentSize = widget.size;
+    final currentWidgetSize = currentSize ?? style.widgetSize;
+    final adjustHeight = switch (currentWidgetSize) {
+      ZoSize.small || ZoSize.medium => 8,
+      ZoSize.large => 10,
+    };
+    final tagHeight = style.getSizedExtent(currentSize) - adjustHeight;
+    final closeSpace = switch (widget.size ?? style.widgetSize) {
+      ZoSize.small => 16.0,
+      ZoSize.medium => 16.0,
+      ZoSize.large => 14.0,
+    };
+
+    return ZoTag(
+      type: ZoTagType.outline,
+      color: tag.color,
+      size: currentSize,
+      height: tagHeight,
+      textStyle: tag.textStyle,
+      backgroundAlpha: tag.backgroundAlpha,
+      borderRadius: tag.borderRadius,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 180),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(
+                text,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: isSmall ? style.fontSizeSM : null,
+                ),
+              ),
+            ),
+            SizedBox(width: closeSpace),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Color? _getTagTextColor(ZoTag tag, ZoStyle style) {
+    return tag.textStyle?.color ?? tag.color ?? style.textColor;
+  }
+
   /// 获取用于渲染的tag或文本
   ///
   /// tag的显示逻辑：
@@ -481,7 +551,6 @@ class ZoSelectState extends ZoCustomFormState<Iterable<Object>, ZoSelect> {
   /// - enableInput 为 false，固定显示
   Widget? _getShowTags() {
     final style = context.zoStyle;
-    final isDarkMode = style.brightness == Brightness.dark;
 
     final selected = _getShowOptionList(widget.maxSelectedShowNumber);
 
@@ -500,36 +569,14 @@ class ZoSelectState extends ZoCustomFormState<Iterable<Object>, ZoSelect> {
     // 是否在左侧显示额外的间距，防止与光标重叠
     final showLeftPadding = _isFocus && length > 0;
 
-    // 标签的修正高度，根据标准尺寸扣减
-    final adjustHeight = switch (widget.size ?? style.widgetSize) {
-      ZoSize.small || ZoSize.medium => 8,
-      ZoSize.large => 10, // 大尺寸下额外调整2px，使其看起来更合适
-    };
-
     final list = selected.map((opt) {
       final (value, option) = opt;
       final text = option?.getTitleText() ?? value.toString();
 
-      final double height = style.getSizedExtent(widget.size) - adjustHeight;
-
       final isSmall = widget.size == ZoSize.small;
 
-      final decoration = widget.customTagDecoration != null
-          ? widget.customTagDecoration!(value, option)
-          : BoxDecoration(
-              border: Border.all(color: style.outlineColor),
-              borderRadius: BorderRadius.circular(style.borderRadius),
-              color: style.surfaceColor,
-            );
-
-      Color? textColor;
-
-      if (decoration.color != null) {
-        final useLightText = isDarkColor(decoration.color!, style.surfaceColor);
-        if (useLightText && !isDarkMode) {
-          textColor = Colors.white;
-        }
-      }
+      final tagConfig = _getTagConfig(value, option);
+      final textColor = _getTagTextColor(tagConfig, style);
 
       // 通过 stack 实现
       return Stack(
@@ -537,32 +584,18 @@ class ZoSelectState extends ZoCustomFormState<Iterable<Object>, ZoSelect> {
         alignment: AlignmentGeometry.center,
         children: [
           IgnorePointer(
-            child: Container(
-              key: ValueKey(value),
-              decoration: decoration,
-              height: height,
-              padding: EdgeInsets.only(
-                left: isSmall ? style.space1 : style.space2,
-                right: 24,
-              ),
-              constraints: const BoxConstraints(maxWidth: 180),
-              child: Center(
-                widthFactor: 1,
-                child: Text(
-                  text,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: isSmall ? style.fontSizeSM : null,
-                    color: textColor,
-                  ),
-                ),
-              ),
+            child: _buildSelectTag(
+              value: value,
+              option: option,
+              text: text,
+              isSmall: isSmall,
             ),
           ),
           Positioned(
-            right: 2,
+            right: 4,
             child: Transform.scale(
               scale: isSmall ? 0.6 : 0.8,
+              alignment: Alignment.centerRight,
               child: ZoButton(
                 canRequestFocus: false,
                 icon: Icon(
@@ -695,8 +728,8 @@ class ZoSelectState extends ZoCustomFormState<Iterable<Object>, ZoSelect> {
           mainWrapper: _mainWrapper,
           // tags显示时，始终隐藏
           hintText: tags == null ? widget.hintText : null,
-          leading: widget.leading, // 改造
-          trailing: _buildCustomTrailing(), // 改造
+          leading: widget.leading,
+          trailing: _buildCustomTrailing(),
           padding: widget.padding,
           constraints: widget.constraints,
           autofocus: widget.autofocus,

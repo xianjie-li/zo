@@ -103,6 +103,16 @@ bool isDarkColor(Color color, [Color? backgroundColor]) {
       Brightness.dark;
 }
 
+/// 获取比传入颜色更浅的颜色
+Color getLighterColor(Color color, [double amount = 0.2]) {
+  assert(amount >= 0 && amount <= 1, "Amount must be between 0 and 1");
+  final hsl = HSLColor.fromColor(color);
+  final lighterHsl = hsl.withLightness(
+    (hsl.lightness + amount).clamp(0.0, 1.0),
+  );
+  return lighterHsl.toColor();
+}
+
 /// 防抖
 class Debouncer {
   final Duration delay;
