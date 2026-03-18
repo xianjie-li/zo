@@ -143,6 +143,7 @@ class ZoProgress extends StatelessWidget {
     if (this.child == null) return child;
 
     return Stack(
+      fit: StackFit.passthrough,
       children: [
         this.child!,
         if (open)

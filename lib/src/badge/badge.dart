@@ -68,6 +68,7 @@ class ZoBadge extends StatelessWidget {
     return Stack(
       clipBehavior: Clip.none,
       alignment: Alignment.topRight,
+      fit: StackFit.passthrough,
       children: [
         child!,
         FractionalTranslation(

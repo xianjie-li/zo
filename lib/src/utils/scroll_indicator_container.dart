@@ -40,7 +40,7 @@ class _ZoScrollIndicatorContainerState
         return false; // 允许事件继续向上冒泡
       },
       child: Stack(
-        fit: StackFit.expand,
+        fit: StackFit.passthrough,
         children: [
           // 1. 实际的滚动视图
           widget.child,

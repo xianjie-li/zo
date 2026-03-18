@@ -22,6 +22,8 @@ class ZoButton extends StatelessWidget {
     this.canRequestFocus = true,
     this.focusOnTap = false,
     this.adjustSize,
+    this.mainAxisAlignment = MainAxisAlignment.center,
+    this.builder,
   });
 
   /// 按钮主要内容
@@ -76,6 +78,14 @@ class ZoButton extends StatelessWidget {
   /// 为了避免按钮和容器重叠，可以通过此项微调按钮尺寸
   final double? adjustSize;
 
+  /// 主轴对齐方式, 仅在同时存在 [icon] 和 [child] 时生效
+  final MainAxisAlignment mainAxisAlignment;
+
+  /// 通过构造器自定义子级, 可通过此方式覆盖默认的 flex 布局结构, 并且可以接受 [ZoInteractiveBoxBuildArgs.active],
+  /// [ZoInteractiveBoxBuildArgs.focus] 等状态来定制渲染
+  final Widget Function(ZoButton widget, ZoInteractiveBoxBuildArgs args)?
+  builder;
+
   dynamic _onTapHandle(ZoTriggerEvent event) {
     return onTap?.call();
   }
@@ -86,6 +96,10 @@ class ZoButton extends StatelessWidget {
     if (plain) return color;
 
     return color ?? style.surfaceContainerColor;
+  }
+
+  Widget _buildChild(ZoInteractiveBoxBuildArgs args) {
+    return builder!(this, args);
   }
 
   @override
@@ -130,6 +144,29 @@ class ZoButton extends StatelessWidget {
     // 是否显示边框
     final showBorder = !primary && color == null && !plain;
 
+    Widget? childNode;
+
+    if (builder != null) {
+      childNode = null;
+    } else if (icon != null && child != null) {
+      childNode = Row(
+        spacing: style.space1,
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: mainAxisAlignment,
+        children: [
+          icon!,
+          child!,
+        ],
+      );
+    } else if (icon != null || child != null) {
+      childNode = Center(
+        widthFactor: 1,
+        child: icon ?? child!,
+      );
+    } else {
+      return const SizedBox.shrink();
+    }
+
     return Semantics(
       button: true,
       enabled: enabled,
@@ -149,22 +186,15 @@ class ZoButton extends StatelessWidget {
         autofocus: autofocus,
         color: _getColor(style),
         padding: this.padding ?? EdgeInsets.symmetric(horizontal: padding),
-        constraints:
-            constraints ??
-            BoxConstraints(
-              minWidth: minWidth,
-              minHeight: minHeight,
-            ),
-        focusOnTap: focusOnTap,
-        child: Row(
-          spacing: style.space1,
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ?icon,
-            ?child,
-          ],
+        constraints: BoxConstraints(
+          minWidth: constraints?.minWidth ?? minWidth,
+          minHeight: constraints?.minHeight ?? minHeight,
+          maxWidth: constraints?.maxWidth ?? double.infinity,
+          maxHeight: constraints?.maxHeight ?? double.infinity,
         ),
+        focusOnTap: focusOnTap,
+        builder: builder != null ? _buildChild : null,
+        child: childNode,
       ),
     );
   }

@@ -1,4 +1,3 @@
-
 - FieldLayout FormLayoutConfig
 - 自动添加必填标记
 - 计数器
@@ -8,3 +7,8 @@
 - fieldLayout 嵌套 fieldLayout
 - 几种布局模式根据类型直接切换
 - 所有字段支持单独使用校验器并展示错误信息
+
+**form state**
+
+默认状态下, 表单值是不可变的, 每次变更始终应提供新值
+可通过 ZoFormValue 包装值来处理可变值

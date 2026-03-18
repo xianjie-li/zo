@@ -1,7 +1,7 @@
 part of "tree.dart";
 
 /// 快捷键操作
-mixin _TreeDragSortMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
+mixin _TreeDragSortMixin on ZoFormState<Iterable<Object>, ZoTree>
     implements _TreeBaseMixin, _TreeActionsMixin {
   /// 通知keepAlive启用，防止在拖动过程在当前组件被销毁导致事件中断
   ListenableNotifier? _keepAliveNotifier;

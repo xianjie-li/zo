@@ -25,7 +25,7 @@ class ZoToggleBuilderArgs {
 
 /// 一个 boolean 输入控件, 它可渲染为 CheckBox、Radio、Switch 三种不同风格,
 /// 还可使用 [ZoToggleGroup] 来批量管理子级 [ZoToggle], 并将选中值收集到一个集合中
-class ZoToggle extends ZoCustomFormWidget<bool> {
+class ZoToggle extends ZoFormWidget<bool> {
   const ZoToggle({
     super.key,
     super.value,
@@ -86,10 +86,10 @@ class ZoToggle extends ZoCustomFormWidget<bool> {
   final Color? activeColor;
 
   @override
-  ZoCustomFormState<bool, ZoToggle> createState() => ToggleState();
+  ZoFormState<bool, ZoToggle> createState() => ToggleState();
 }
 
-class ToggleState extends ZoCustomFormState<bool, ZoToggle> {
+class ToggleState extends ZoFormState<bool, ZoToggle> {
   @override
   @protected
   bool? get fallbackValue => false;
@@ -280,7 +280,7 @@ class ToggleState extends ZoCustomFormState<bool, ZoToggle> {
 
 /// 管理子级的 [ZoToggle], 根据他们的选中状态将 [ZoToggle.groupValue] 添加为选中值,
 /// 未设置 [ZoToggle.groupValue] 的项不会被视为组选项
-class ZoToggleGroup extends ZoCustomFormWidget<Iterable<Object>> {
+class ZoToggleGroup extends ZoFormWidget<Iterable<Object>> {
   const ZoToggleGroup({
     super.key,
     super.value,
@@ -307,8 +307,7 @@ class ZoToggleGroup extends ZoCustomFormWidget<Iterable<Object>> {
   State<ZoToggleGroup> createState() => ZoToggleGroupState();
 }
 
-class ZoToggleGroupState
-    extends ZoCustomFormState<Iterable<Object>, ZoToggleGroup> {
+class ZoToggleGroupState extends ZoFormState<Iterable<Object>, ZoToggleGroup> {
   /// 所有选项
   final options = <Object>{};
 
@@ -353,7 +352,7 @@ class ZoToggleGroupState
 
     // 更新 props.value 变更到选择器
     selector.batch(() {
-      selector.setSelected(widget.value ?? []);
+      selector.setSelected(widget.value ?? {});
     }, false);
 
     // 延迟更新, 防止触发 toggle 组件的 setState

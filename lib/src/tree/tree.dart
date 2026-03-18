@@ -26,7 +26,7 @@ part "drag_sort.dart";
 /// - [ZoTreeState.jumpTo] 和 [ZoTreeState.focusOption] 跳转到指定选项
 ///
 /// 如果要在层中渲染菜单给用户选择，menus 模块提供了一个 [ZoTreeMenu]
-class ZoTree extends ZoCustomFormWidget<Iterable<Object>> {
+class ZoTree extends ZoFormWidget<Iterable<Object>> {
   const ZoTree({
     super.key,
     super.value = const [],
@@ -242,18 +242,13 @@ class ZoTree extends ZoCustomFormWidget<Iterable<Object>> {
   State<ZoTree> createState() => ZoTreeState();
 }
 
-class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree>
+class ZoTreeState extends ZoFormState<Iterable<Object>, ZoTree>
     with
         _TreeBaseMixin,
         _TreeActionsMixin,
         _TreeViewMixin,
         _TreeShortcutsMixin,
         _TreeDragSortMixin {
-  /// 该组件在更新时不会传入新对象，而是更改了内部值的 Iterable<Object>，需要主动跳过检测
-  @override
-  @protected
-  bool get skipValueEqualCheck => true;
-
   @override
   @protected
   void initState() {
@@ -434,7 +429,7 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree>
   @protected
   void onPropValueChanged() {
     selector.batch(() {
-      selector.setSelected(widget.value ?? []);
+      selector.setSelected(widget.value ?? {});
     }, false);
   }
 
@@ -442,7 +437,7 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree>
   /// 不直接设置 value
   void _onSelectChanged() {
     setState(() {
-      value = selector.getSelected();
+      value = selector.getSelected().toSet();
     });
   }
 
@@ -543,6 +538,7 @@ class ZoTreeState extends ZoCustomFormState<Iterable<Object>, ZoTree>
         maxHeight: maxHeight ?? double.infinity,
       ),
       child: Stack(
+        fit: StackFit.passthrough,
         children: [
           NotificationListener<ZoTriggerFocusNodeChangedNotification>(
             onNotification: _onFocusNodeNotification,

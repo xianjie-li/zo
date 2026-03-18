@@ -1,7 +1,7 @@
 part of "tree.dart";
 
 /// 基础成员, 它们在不同功能共享
-mixin _TreeBaseMixin on ZoCustomFormState<Iterable<Object>, ZoTree> {
+mixin _TreeBaseMixin on ZoFormState<Iterable<Object>, ZoTree> {
   late ZoPropInstanceCoordinator<ZoOptionController> _controllerCoordinator;
 
   /// 选项、树形数据等管理

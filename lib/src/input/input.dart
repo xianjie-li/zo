@@ -24,7 +24,7 @@ import "package:zo/zo.dart";
 ///   ],
 /// )
 /// ```
-class ZoInput<T> extends ZoCustomFormWidget<T> {
+class ZoInput<T> extends ZoFormWidget<T> {
   const ZoInput({
     super.key,
     super.value,
@@ -173,7 +173,7 @@ class ZoInput<T> extends ZoCustomFormWidget<T> {
   State<ZoInput> createState() => _ZoInputState<T>();
 }
 
-class _ZoInputState<T> extends ZoCustomFormState<T, ZoInput<T>> {
+class _ZoInputState<T> extends ZoFormState<T, ZoInput<T>> {
   TextEditingController? innerController;
   TextEditingController get controller {
     if (widget.controller != null) return widget.controller!;
@@ -565,6 +565,7 @@ class _ZoInputState<T> extends ZoCustomFormState<T, ZoInput<T>> {
     Widget mainContent = Stack(
       key: const ValueKey("_MAIN_CONTENT"),
       alignment: AlignmentGeometry.centerLeft,
+      fit: StackFit.passthrough,
       children: [
         ?hintNode,
         TextField(

@@ -18,34 +18,34 @@ enum ZoSelectMenuType {
 ///
 /// 自适应菜单：默认情况下，根据屏幕宽度，小屏下会使用 [ZoTreeMenu] 作为选项层，大屏使用 [ZoMenu] ,
 /// 可以通过 [selectMenuType] 自行控制
-class ZoSelect extends ZoCustomFormWidget<Iterable<Object>> {
+class ZoSelect extends ZoFormWidget<Iterable<Object>> {
   const ZoSelect({
     super.key,
-    super.value = const [],
+    super.value,
     super.onChanged,
     required this.options,
     this.selectionType = ZoSelectionType.single,
     this.branchSelectable = false,
     this.selectMenuType = ZoSelectMenuType.menu,
     this.toolbar,
+    this.size,
+    this.maxSelectedShowNumber = 10,
+    this.enabled = true,
+
     this.localSearch = true,
     this.onInputChanged,
-    this.maxSelectedShowNumber = 10,
     this.showOpenIndicator = true,
     this.customTag,
     this.clear = true,
-    this.size,
     this.hintText,
     this.leading,
     this.trailing,
-    this.padding,
     this.constraints,
     this.autofocus = false,
-    this.controller,
-    this.enabled = true,
+    this.textController,
     this.focusNode,
     this.readOnly = false,
-    this.style,
+    this.textStyle,
     this.textAlign = TextAlign.start,
     this.textDirection,
     this.textInputAction,
@@ -66,14 +66,23 @@ class ZoSelect extends ZoCustomFormWidget<Iterable<Object>> {
   /// 在下拉列表顶部渲染自定义内容，例如一个工具栏
   final Widget? toolbar;
 
+  /// 组件尺寸
+  final ZoSize? size;
+
+  /// 要在处显示的已选中项最大数量
+  final int maxSelectedShowNumber;
+
+  /// 是否启用
+  final bool enabled;
+
+  /// 控制触发目标焦点
+  final FocusNode? focusNode;
+
   /// 启用本地搜索
   final bool localSearch;
 
   /// 输入框的值变更时触发，设置后，输入组件可聚焦并进行输入，可借此实现服务端搜索
   final ZoFormOnChanged<String>? onInputChanged;
-
-  /// 要在输入框处显示的已选中项最大数量
-  final int maxSelectedShowNumber;
 
   /// 在输入框右侧显示下拉展开指示器
   final bool showOpenIndicator;
@@ -90,9 +99,6 @@ class ZoSelect extends ZoCustomFormWidget<Iterable<Object>> {
   /// 在包含已选择内容时, 显示清除按钮
   final bool clear;
 
-  /// 组件尺寸
-  final ZoSize? size;
-
   /// 提示文本
   final Widget? hintText;
 
@@ -102,23 +108,18 @@ class ZoSelect extends ZoCustomFormWidget<Iterable<Object>> {
   /// 后导内容
   final List<Widget>? trailing;
 
-  /// 内间距
-  final EdgeInsetsGeometry? padding;
-
   /// 尺寸控制
   final BoxConstraints? constraints;
 
+  /// 是否自动聚焦
   final bool autofocus;
 
-  final TextEditingController? controller;
-
-  final bool enabled;
-
-  final FocusNode? focusNode;
+  /// 输入框控制器
+  final TextEditingController? textController;
 
   final bool readOnly;
 
-  final TextStyle? style;
+  final TextStyle? textStyle;
 
   final TextAlign textAlign;
 
@@ -132,7 +133,7 @@ class ZoSelect extends ZoCustomFormWidget<Iterable<Object>> {
   }
 }
 
-class ZoSelectState extends ZoCustomFormState<Iterable<Object>, ZoSelect> {
+class ZoSelectState extends ZoFormState<Iterable<Object>, ZoSelect> {
   /// 下拉列表的渲染层
   late ZoMenuEntry menuEntry;
 
@@ -141,11 +142,6 @@ class ZoSelectState extends ZoCustomFormState<Iterable<Object>, ZoSelect> {
 
   /// 选项控制器
   ZoOptionController get optionController => menuEntry.controller;
-
-  /// 该组件在更新时不会传入新对象，而是更改了内部值的 Iterable<Object>，需要主动跳过检测
-  @override
-  @protected
-  bool get skipValueEqualCheck => true;
 
   /// input 最后绘制的位置信息
   Rect? _lastRect;
@@ -360,7 +356,7 @@ class ZoSelectState extends ZoCustomFormState<Iterable<Object>, ZoSelect> {
 
   /// 更新selector的选中项到value并进行rerender
   void _onSelectChanged() {
-    value = selector.getSelected();
+    value = selector.getSelected().toSet();
     setState(() {});
   }
 
@@ -429,7 +425,7 @@ class ZoSelectState extends ZoCustomFormState<Iterable<Object>, ZoSelect> {
   void onPropValueChanged() {
     // 立即更新，但避免进行通知
     selector.batch(() {
-      selector.setSelected(widget.value ?? []);
+      selector.setSelected(widget.value ?? {});
     }, false);
 
     // 但仍要通知层进行更新
@@ -730,14 +726,13 @@ class ZoSelectState extends ZoCustomFormState<Iterable<Object>, ZoSelect> {
           hintText: tags == null ? widget.hintText : null,
           leading: widget.leading,
           trailing: _buildCustomTrailing(),
-          padding: widget.padding,
           constraints: widget.constraints,
           autofocus: widget.autofocus,
-          controller: widget.controller,
+          controller: widget.textController,
           enabled: widget.enabled,
           focusNode: _focusNode,
           readOnly: widget.readOnly || !enableInput,
-          style: widget.style,
+          style: widget.textStyle,
           textAlign: widget.textAlign,
           textDirection: widget.textDirection,
           textInputAction: widget.textInputAction,

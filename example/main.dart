@@ -3,6 +3,7 @@ import "package:flutter_localizations/flutter_localizations.dart";
 import "package:zo/zo.dart";
 import "pages/badge_page.dart";
 import "pages/router_links.dart";
+import "pages/select_page.dart";
 import "pages/split_view_page.dart";
 import "pages/tag_page.dart";
 
@@ -137,7 +138,7 @@ class _MyAppState extends State<MyApp> {
           ),
         );
       },
-      home: const BadgePage(),
+      home: const SelectPage(),
       // home: const TabsPage(),
     );
   }

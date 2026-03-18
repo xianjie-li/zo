@@ -135,14 +135,23 @@ class _SelectPageState extends State<SelectPage> {
                 size: ZoSize.large,
               ),
             ),
-            ZoInput(),
-            Focus(
-              onKeyEvent: (node, event) {
-                print(event.logicalKey);
-                return KeyEventResult.ignored;
-              },
-              skipTraversal: true,
-              child: ZoInput(),
+            SizedBox(
+              width: 400,
+              child: ZoMenusTrigger(
+                selectionType: ZoSelectionType.single,
+                options: options,
+                size: ZoSize.large,
+                builder: (args) {
+                  return ZoButton(
+                    onTap: () {
+                      args.state.toggle();
+                    },
+                    focusOnTap: true,
+                    size: ZoSize.large,
+                    child: Text("自定义触发目标"),
+                  );
+                },
+              ),
             ),
           ],
         ),

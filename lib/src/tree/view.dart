@@ -1,7 +1,7 @@
 part of "tree.dart";
 
 /// widget 构造相关
-mixin _TreeViewMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
+mixin _TreeViewMixin on ZoFormState<Iterable<Object>, ZoTree>
     implements _TreeBaseMixin, _TreeActionsMixin, _TreeDragSortMixin {
   /// 更新 _fixedHeight
   void _updateFixedHeight([bool skipUpdate = false]) {

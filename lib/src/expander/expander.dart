@@ -22,7 +22,7 @@ HashMap<Object, HashSet<ZoExpanderState>> _groupedMap = HashMap();
 ///
 /// 性能：默认情况下，内容在首次初始化时才挂载，并在再次关闭时保持状态，可通过 [mountOnEnter]
 /// 和 [unmountOnExit] 调整行为，在需要大量渲染
-class ZoExpander extends ZoCustomFormWidget<bool> {
+class ZoExpander extends ZoFormWidget<bool> {
   const ZoExpander({
     super.key,
     required this.title,
@@ -92,16 +92,13 @@ class ZoExpander extends ZoCustomFormWidget<bool> {
   State<ZoExpander> createState() => ZoExpanderState();
 }
 
-class ZoExpanderState extends ZoCustomFormState<bool, ZoExpander> {
+class ZoExpanderState extends ZoFormState<bool, ZoExpander> {
   /// 是否包含父面板或子面板
   bool get nested => _parentLinker != null || _children.isNotEmpty;
 
   /// 面板层级，如果嵌套在其他面板内，会有更高的层级
   int get level => _level;
   int _level = 0;
-
-  /// 面板展开控制，应使用 value = bool 代替
-  final ExpansibleController _controller = ExpansibleController();
 
   /// 子面板
   final HashSet<ZoExpanderState> _children = HashSet();
@@ -192,7 +189,6 @@ class ZoExpanderState extends ZoCustomFormState<bool, ZoExpander> {
     widget.ref?.call(null);
 
     _accordionTrigger.off(_accordionHandle);
-    _controller.dispose();
 
     if (_parentLinker != null) {
       _parentLinker!.current._children.remove(this);
@@ -234,7 +230,6 @@ class ZoExpanderState extends ZoCustomFormState<bool, ZoExpander> {
       _accordionTrigger.emit((_getParentElement(), context));
     }
 
-    _syncValueToController();
     super.onChanged(newValue);
   }
 
@@ -244,8 +239,6 @@ class ZoExpanderState extends ZoCustomFormState<bool, ZoExpander> {
     if (widget.accordion && nonNullValue) {
       _accordionTrigger.emit((_getParentElement(), context));
     }
-
-    _syncValueToController();
   }
 
   /// 将实例存储到指定的组
@@ -270,17 +263,6 @@ class ZoExpanderState extends ZoCustomFormState<bool, ZoExpander> {
 
     if (group != null) {
       group.remove(groupId);
-    }
-  }
-
-  /// 同步值到控制器
-  void _syncValueToController() {
-    if (value != _controller.isExpanded) {
-      if (!nonNullValue) {
-        _controller.collapse();
-      } else {
-        _controller.expand();
-      }
     }
   }
 
@@ -373,6 +355,7 @@ class ZoExpanderState extends ZoCustomFormState<bool, ZoExpander> {
       // 从顶部开始收缩
       axisAlignment: -1,
       child: Stack(
+        fit: StackFit.passthrough,
         children: [
           if (nested)
             Positioned(

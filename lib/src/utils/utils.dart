@@ -30,6 +30,9 @@ var _uniqueId = 0;
 
 /// 返回一个相对于应用生命周期唯一的id
 String createTempId() {
+  if (_uniqueId == 1e9) {
+    _uniqueId = 0; // 重置以避免过大
+  }
   _uniqueId++;
   return _uniqueId.toString();
 }

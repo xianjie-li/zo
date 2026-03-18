@@ -5,6 +5,7 @@ import "badge_page.dart";
 import "base_page.dart";
 import "button_page.dart";
 import "dnd_page.dart";
+import "dropdown_page.dart";
 import "expansible_page.dart";
 import "fetcher_page.dart";
 import "input_page.dart";
@@ -74,6 +75,10 @@ class _RouterLinksState extends State<RouterLinks> {
       page: const OverlayPage2(),
     ),
     (tab: ZoTabsEntry(label: "Menus", value: "menus"), page: const MenusPage()),
+    (
+      tab: ZoTabsEntry(label: "Dropdown", value: "dropdown"),
+      page: const DropdownPage(),
+    ),
     (
       tab: ZoTabsEntry(label: "Select", value: "select"),
       page: const SelectPage(),

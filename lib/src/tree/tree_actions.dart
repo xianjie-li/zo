@@ -1,7 +1,7 @@
 part of "tree.dart";
 
 /// 向外暴露的树视图操作方法,也包含部分内部使用的操作方法
-mixin _TreeActionsMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
+mixin _TreeActionsMixin on ZoFormState<Iterable<Object>, ZoTree>
     implements _TreeBaseMixin {
   /// 聚焦指定的选项, 选项未渲染时调用无效
   void focusOption(Object value) {

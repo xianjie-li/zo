@@ -775,6 +775,7 @@ class ZoInteractiveBoxState extends State<ZoInteractiveBox> {
           type: widget.progressType,
           borderRadius: radius,
           child: Stack(
+            fit: StackFit.passthrough,
             children: [
               ?widget.backgroundWidget,
               // 背景层, 和内容分开, 防止被遮罩反馈影响显示

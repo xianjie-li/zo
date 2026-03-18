@@ -25,6 +25,8 @@ class _PlayPageState extends State<PlayPage> {
     super.initState();
   }
 
+  String? value = "hello";
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -54,6 +56,15 @@ class _PlayPageState extends State<PlayPage> {
               Container(
                 height: 100,
                 decoration: BoxDecoration(border: Border.all()),
+              ),
+              Text("value: $value"),
+              ZoInput(
+                value: value,
+                onChanged: (newValue) {
+                  setState(() {
+                    value = newValue;
+                  });
+                },
               ),
             ],
           ),

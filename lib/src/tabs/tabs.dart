@@ -114,7 +114,7 @@ abstract class ZoTabsChangedEvent {
 /// 拖动实现：基于 [ZoDND] 实现，相同组的 tab 可以互相拖放，甚至可以拖动到其它相同组的不同类型组件。
 ///
 /// 作为表单控件： 通过 [value] / [onChanged], 可将组件作为支持单选、多选的标签选择控件使用。
-class ZoTabs extends ZoCustomFormWidget<Iterable<Object>> {
+class ZoTabs extends ZoFormWidget<Iterable<Object>> {
   const ZoTabs({
     super.key,
     super.value,
@@ -338,10 +338,10 @@ class ZoTabs extends ZoCustomFormWidget<Iterable<Object>> {
   final bool scrollIndicator;
 
   @override
-  ZoCustomFormState<Iterable<Object>, ZoTabs> createState() => ZoTabsState();
+  ZoFormState<Iterable<Object>, ZoTabs> createState() => ZoTabsState();
 }
 
-class ZoTabsState extends ZoCustomFormState<Iterable<Object>, ZoTabs> {
+class ZoTabsState extends ZoFormState<Iterable<Object>, ZoTabs> {
   /// 当前主题样式
   late ZoStyle style;
 
@@ -350,11 +350,6 @@ class ZoTabsState extends ZoCustomFormState<Iterable<Object>, ZoTabs> {
 
   /// tabs 的副本，用于内部直接修改
   List<ZoTabsEntry> tabs = [];
-
-  /// 该组件在更新时不会传入新对象，而是更改了内部值的 Iterable<Object>，需要主动跳过检测
-  @override
-  @protected
-  bool get skipValueEqualCheck => true;
 
   bool get isHorizontal => widget.direction == Axis.horizontal;
 
@@ -447,7 +442,7 @@ class ZoTabsState extends ZoCustomFormState<Iterable<Object>, ZoTabs> {
   @protected
   void onPropValueChanged() {
     selector.batch(() {
-      selector.setSelected(widget.value ?? []);
+      selector.setSelected(widget.value ?? {});
     }, false);
   }
 
@@ -626,7 +621,7 @@ class ZoTabsState extends ZoCustomFormState<Iterable<Object>, ZoTabs> {
   /// 不直接设置 value
   void _onSelectChanged() {
     setState(() {
-      value = selector.getSelected();
+      value = selector.getSelected().toSet();
     });
   }
 

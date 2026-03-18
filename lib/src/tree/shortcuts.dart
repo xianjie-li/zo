@@ -1,7 +1,7 @@
 part of "tree.dart";
 
 /// 快捷键操作
-mixin _TreeShortcutsMixin on ZoCustomFormState<Iterable<Object>, ZoTree>
+mixin _TreeShortcutsMixin on ZoFormState<Iterable<Object>, ZoTree>
     implements _TreeBaseMixin, _TreeActionsMixin, _TreeViewMixin {
   /// 全选操作计数
   int _allSelectActionCount = 0;
