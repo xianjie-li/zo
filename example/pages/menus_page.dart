@@ -12,6 +12,14 @@ class MenusPage extends StatefulWidget {
 }
 
 class _MenusPageState extends State<MenusPage> {
+  final GlobalKey<ZoMenusTriggerState> _triggerStateKey = GlobalKey();
+  final FocusNode _triggerFocusNode = FocusNode();
+
+  Iterable<Object> _triggerSingle = const [];
+  Iterable<Object> _triggerMultiple = const ["Option 2"];
+  Iterable<Object> _triggerFocusValue = const [];
+  String _triggerReadText = "未读取";
+
   var options1 = [
     ZoOption(
       value: "Option 1",
@@ -340,6 +348,12 @@ class _MenusPageState extends State<MenusPage> {
   );
 
   @override
+  void dispose() {
+    _triggerFocusNode.dispose();
+    super.dispose();
+  }
+
+  @override
   void initState() {
     super.initState();
 
@@ -381,10 +395,220 @@ class _MenusPageState extends State<MenusPage> {
     return list;
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildTriggerDemoItem({
+    required String title,
+    required Widget child,
+  }) {
+    return SizedBox(
+      width: 320,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 12),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMenusTriggerExamples(BuildContext context) {
     final style = context.zoStyle;
 
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border.all(color: style.outlineColor),
+        borderRadius: BorderRadius.circular(style.borderRadiusLG),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "ZoMenusTrigger 示例",
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Text("展示按钮触发、状态读取、聚焦打开和手动绑定用法"),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 16,
+              runSpacing: 16,
+              children: [
+                _buildTriggerDemoItem(
+                  title: "按钮触发",
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ZoMenusTrigger(
+                        value: _triggerSingle,
+                        options: options1,
+                        menuWidth: 220,
+                        onChanged: (value) {
+                          setState(() {
+                            _triggerSingle = value ?? const [];
+                          });
+                        },
+                        builder: (args) {
+                          final text = args.state.getSelectedText();
+
+                          return ZoButton(
+                            focusOnTap: true,
+                            focusNode: args.focusNode,
+                            onTap: args.state.toggle,
+                            child: Text(
+                              text.isEmpty ? "点击打开菜单" : text,
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      Text("当前值: ${_triggerSingle.join(", ")}"),
+                    ],
+                  ),
+                ),
+                _buildTriggerDemoItem(
+                  title: "多选与状态读取",
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ZoMenusTrigger(
+                        key: _triggerStateKey,
+                        value: _triggerMultiple,
+                        options: options5,
+                        selectionType: ZoSelectionType.multiple,
+                        menuWidth: 260,
+                        onChanged: (value) {
+                          setState(() {
+                            _triggerMultiple = value ?? const [];
+                          });
+                        },
+                        builder: (args) {
+                          final text = args.state.getSelectedText();
+
+                          return ZoButton(
+                            focusOnTap: true,
+                            focusNode: args.focusNode,
+                            onTap: args.state.toggle,
+                            child: Text(
+                              text.isEmpty ? "选择多个选项" : text,
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          ZoButton(
+                            onTap: () {
+                              setState(() {
+                                _triggerReadText =
+                                    _triggerStateKey.currentState
+                                        ?.getSelectedText() ??
+                                    "未读取";
+                              });
+                            },
+                            child: const Text("读取当前文本"),
+                          ),
+                          Text(_triggerReadText),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                _buildTriggerDemoItem(
+                  title: "聚焦自动打开",
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ZoMenusTrigger(
+                        value: _triggerFocusValue,
+                        options: options5,
+                        openOnFocus: true,
+                        focusNode: _triggerFocusNode,
+                        menuWidth: 240,
+                        onChanged: (value) {
+                          setState(() {
+                            _triggerFocusValue = value ?? const [];
+                          });
+                        },
+                        builder: (args) {
+                          final text = args.state.getSelectedText();
+
+                          return ZoButton(
+                            focusNode: args.focusNode,
+                            focusOnTap: true,
+                            onTap: args.state.toggle,
+                            child: Text(
+                              text.isEmpty ? "聚焦或点击打开" : text,
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      ZoButton(
+                        onTap: () {
+                          _triggerFocusNode.requestFocus();
+                        },
+                        child: const Text("请求焦点"),
+                      ),
+                    ],
+                  ),
+                ),
+                _buildTriggerDemoItem(
+                  title: "手动绑定 focus 包装",
+                  child: ZoMenusTrigger(
+                    options: options1,
+                    menuWidth: 220,
+                    builder: (args) {
+                      return args.bindFocusWrapper(
+                        GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: args.state.toggle,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: style.outlineColor),
+                              borderRadius: BorderRadius.circular(
+                                style.borderRadiusLG,
+                              ),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text("自定义组合触发目标"),
+                                SizedBox(width: 8),
+                                Icon(Icons.unfold_more_rounded),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       body: SingleChildScrollView(
         clipBehavior: Clip.none,
@@ -510,6 +734,10 @@ class _MenusPageState extends State<MenusPage> {
                   ),
                 ],
               ),
+            ),
+            ZoCell(
+              span: 12,
+              child: _buildMenusTriggerExamples(context),
             ),
           ],
         ),

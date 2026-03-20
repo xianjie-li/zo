@@ -1,4 +1,4 @@
-/// 组合 [ZoMenu] 和 [ZoTreeMenu] 的触发器组件
+/// 组合 [ZoMenu] 和 [ZoTreeMenu] 的菜单触发器组件
 library;
 
 import "dart:async";
@@ -9,10 +9,14 @@ import "package:zo/zo.dart";
 
 /// 选项层类型
 enum ZoMenusTriggerType {
-  /// 常规菜单，子级以级联菜单展示
+  /// 常规菜单
+  ///
+  /// 子级以级联菜单展示
   menu,
 
-  /// 树形菜单，子级以内联树展开展示
+  /// 树形菜单
+  ///
+  /// 子级以内联树展开展示
   treeMenu,
 }
 
@@ -36,17 +40,19 @@ class ZoMenusTriggerBuilderArgs {
   ///
   /// 可通过 [ZoMenusTriggerState.selector] 和 [ZoMenusTriggerState.menuEntry] 读取选中项与弹层
   ///
-  /// 可通过 [ZoMenusTriggerState.openMenu] 和 [ZoMenusTriggerState.closeMenu] 控制开关
+  /// 可通过 [ZoMenusTriggerState.toggle]、[ZoMenusTriggerState.openMenu]、[ZoMenusTriggerState.closeMenu] 控制开关
   final ZoMenusTriggerState state;
 
   /// 绑定到触发目标上的焦点节点
   ///
-  /// 用于上层组件暴露焦点能力，该组件内部不直接使用
+  /// 主要用于上层组件透出焦点能力
   final FocusNode focusNode;
 
   /// 绑定焦点事件到指定子节点
   ///
-  /// 子级存在多个可聚焦节点时可手动调用, 不调用时会自动包裹在最外层
+  /// 子级存在多个可聚焦节点时可手动调用
+  ///
+  /// 不调用时会自动包裹在最外层
   final Widget Function(Widget child) bindFocusWrapper;
 }
 
@@ -58,14 +64,16 @@ typedef ZoMenusTriggerBuilder =
 
 /// 将 [ZoMenu] 或 [ZoTreeMenu] 绑定到任意触发目标
 ///
-/// 是 [ZoSelect] 和 [ZoDropdown] 的核心底层组件, 常见场景优先使用这些上层组件
+/// 负责菜单实例控制、定位、焦点和快捷键处理
+///
+/// 是 [ZoSelect] 和 [ZoDropdown] 的底层能力组件，常见场景优先使用这些上层组件
 class ZoMenusTrigger extends ZoFormWidget<Iterable<Object>> {
   const ZoMenusTrigger({
     super.key,
     super.value,
     super.onChanged,
     required this.options,
-    required this.builder,
+    this.builder,
     this.selectionType = ZoSelectionType.single,
     this.branchSelectable = false,
     this.selectMenuType = ZoMenusTriggerType.menu,
@@ -74,6 +82,7 @@ class ZoMenusTrigger extends ZoFormWidget<Iterable<Object>> {
     this.menuWidth,
     this.maxSelectedShowNumber = 10,
     this.enabled = true,
+    this.openOnFocus = true,
     this.focusNode,
   });
 
@@ -87,7 +96,9 @@ class ZoMenusTrigger extends ZoFormWidget<Iterable<Object>> {
   /// 需要焦点行为时建议渲染可聚焦组件并绑定焦点节点
   final ZoMenusTriggerBuilder? builder;
 
-  /// 选择类型，默认单选
+  /// 选择类型
+  ///
+  /// 默认为单选
   final ZoSelectionType selectionType;
 
   /// 选项层类型
@@ -113,6 +124,9 @@ class ZoMenusTrigger extends ZoFormWidget<Iterable<Object>> {
   /// 是否启用
   final bool enabled;
 
+  /// 触发目标获取焦点时是否自动打开菜单
+  final bool openOnFocus;
+
   /// 外部传入的触发目标焦点
   final FocusNode? focusNode;
 
@@ -122,8 +136,8 @@ class ZoMenusTrigger extends ZoFormWidget<Iterable<Object>> {
   }
 }
 
-class ZoMenusTriggerState
-    extends ZoFormState<Iterable<Object>, ZoMenusTrigger> {
+class ZoMenusTriggerState<W extends ZoMenusTrigger>
+    extends ZoFormState<Iterable<Object>, W> {
   /// 菜单弹层实例
   late ZoMenuEntry menuEntry;
 
@@ -139,6 +153,12 @@ class ZoMenusTriggerState
   /// 触发目标焦点节点
   late FocusNode focusNode;
 
+  /// 当前状态下是否允许打开菜单
+  @protected
+  bool get canOpenMenu {
+    return widget.enabled;
+  }
+
   /// 切换菜单开关
   void toggle() {
     if (menuEntry.currentOpen) {
@@ -150,8 +170,10 @@ class ZoMenusTriggerState
 
   /// 打开菜单
   void openMenu() {
+    if (!canOpenMenu) return;
+
     if (!menuEntry.currentOpen) {
-      _stopOpenTimer();
+      stopOpenTimer();
       _openTimer = Timer(Duration.zero, menuEntry.open);
     }
   }
@@ -159,7 +181,7 @@ class ZoMenusTriggerState
   /// 关闭菜单
   void closeMenu() {
     if (menuEntry.currentOpen) {
-      _stopOpenTimer();
+      stopOpenTimer();
       menuEntry.close();
     }
   }
@@ -182,6 +204,8 @@ class ZoMenusTriggerState
   }
 
   /// 获取用于展示的选中文本
+  ///
+  /// 超出 [ZoMenusTrigger.maxSelectedShowNumber] 时追加 `...`
   String getSelectedText() {
     final selected = getSelectedOptionList(widget.maxSelectedShowNumber);
     final length = selector.getSelected().length;
@@ -218,9 +242,9 @@ class ZoMenusTriggerState
   );
 
   /// 目标位置更新节流
-  final _rectUpdateThrottler = Throttler(
-    delay: Durations.short1,
-  );
+  // final _rectUpdateThrottler = Throttler(
+  //   delay: Durations.short1,
+  // );
 
   @override
   @protected
@@ -234,7 +258,7 @@ class ZoMenusTriggerState
 
   @override
   @protected
-  void didUpdateWidget(ZoMenusTrigger oldWidget) {
+  void didUpdateWidget(W oldWidget) {
     super.didUpdateWidget(oldWidget);
 
     menuEntry.actions(() {
@@ -267,10 +291,10 @@ class ZoMenusTriggerState
   @protected
   void dispose() {
     super.dispose();
-    _stopOpenTimer();
+    stopOpenTimer();
 
     selector.removeListener(_onSelectChanged);
-    menuEntry.openChangedEvent.off(_onOpenChanged);
+    menuEntry.openChangedEvent.off(onOpenChanged);
     menuEntry.disposeSelf();
 
     // 如果旧的focusNode是内部创建的，将其销毁
@@ -288,7 +312,7 @@ class ZoMenusTriggerState
     }
 
     selector.addListener(_onSelectChanged);
-    menuEntry.openChangedEvent.on(_onOpenChanged);
+    menuEntry.openChangedEvent.on(onOpenChanged);
   }
 
   ZoMenuEntry _getMenu() {
@@ -329,17 +353,17 @@ class ZoMenusTriggerState
   /// 失焦且菜单未被按压、菜单内无焦点时关闭菜单
   void _onFocusChanged(bool focus) {
     // 聚焦时显示下拉层, 失焦时，延迟一定时间，如果下一焦点不是当前层或未处于按下则关闭
-    if (focus) {
+    if (focus && widget.openOnFocus && canOpenMenu) {
       final lastCloseTime = menuEntry.lastCloseTime;
 
       if (lastCloseTime != null) {
         final diff = DateTime.now().difference(lastCloseTime);
 
         if (diff > const Duration(milliseconds: 80)) {
-          menuEntry.open();
+          openMenu();
         }
       } else {
-        menuEntry.open();
+        openMenu();
       }
     } else if (!menuEntry.pressed && !menuEntry.focusScopeNode.hasFocus) {
       menuEntry.close();
@@ -350,7 +374,9 @@ class ZoMenusTriggerState
     });
   }
 
-  void _onOpenChanged(bool open) {
+  /// 层打开状态变更
+  @protected
+  void onOpenChanged(bool open) {
     setState(() {});
   }
 
@@ -362,27 +388,31 @@ class ZoMenusTriggerState
 
   /// 延迟打开定时器
   ///
-  /// 用于给其他事件留出抢占机会
+  /// 用于给其他事件留出抢占机会, 目前是用于 select 中点击 tag 的关闭按钮时,
+  /// 防止层打开
   Timer? _openTimer;
 
   /// 清理延迟打开定时器
-  void _stopOpenTimer() {
+  @protected
+  void stopOpenTimer() {
     _openTimer?.cancel();
     _openTimer = null;
   }
 
-  /// 快捷键关闭
+  /// 处理关闭快捷键
   KeyEventResult _onShortcutsClose() {
     menuEntry.close();
     return KeyEventResult.handled;
   }
 
-  /// 快捷键打开
+  /// 处理打开快捷键
   KeyEventResult _onShortcutsOpen() {
+    if (!canOpenMenu) return KeyEventResult.ignored;
+
     if (menuEntry.currentOpen) {
       menuEntry.focusChild();
     } else {
-      menuEntry.open();
+      openMenu();
     }
 
     return KeyEventResult.handled;
@@ -403,13 +433,16 @@ class ZoMenusTriggerState
     });
   }
 
+  /// 记录触发目标区域并同步菜单定位
   @protected
   void onPaint(RenderBox box) {
     _lastRect = box.localToGlobal(Offset.zero) & box.size;
 
-    _rectUpdateThrottler.run(() {
-      _updateOverlayPosition(_lastRect!);
-    });
+    _updateOverlayPosition(_lastRect!);
+
+    // _rectUpdateThrottler.run(() {
+    //   _updateOverlayPosition(_lastRect!);
+    // });
   }
 
   /// 根据触发目标位置更新菜单定位信息
@@ -425,6 +458,7 @@ class ZoMenusTriggerState
     }, menuEntry.currentOpen);
   }
 
+  /// 处理触发目标键盘事件
   KeyEventResult _keyEvent(FocusNode node, KeyEvent event) {
     if (ZoShortcutsHelper.checkEvent(_closeActivator, event)) {
       return _onShortcutsClose();
@@ -435,7 +469,8 @@ class ZoMenusTriggerState
   }
 
   /// 绑定焦点与键盘事件到指定节点
-  Widget _bindFocusWrapper(Widget child) {
+  @protected
+  Widget bindFocusWrapper(Widget child) {
     return Focus(
       canRequestFocus: widget.enabled,
       onKeyEvent: _keyEvent,
@@ -445,7 +480,8 @@ class ZoMenusTriggerState
     );
   }
 
-  Widget _buildTarget(BuildContext context, Widget child) {
+  @protected
+  Widget buildTarget(BuildContext context, Widget child) {
     return RenderTrigger(
       onPaint: onPaint,
       child: TapRegion(
@@ -455,6 +491,7 @@ class ZoMenusTriggerState
     );
   }
 
+  /// 构建触发目标并补齐默认焦点包装
   @override
   @protected
   Widget build(BuildContext context) {
@@ -466,7 +503,7 @@ class ZoMenusTriggerState
 
     Widget localBind(Widget child) {
       bindFlag = true;
-      return _bindFocusWrapper(child);
+      return bindFocusWrapper(child);
     }
 
     final args = ZoMenusTriggerBuilderArgs(
@@ -481,9 +518,9 @@ class ZoMenusTriggerState
 
     // 未手动绑定时自动包裹 focus 容器
     if (!bindFlag) {
-      child = _bindFocusWrapper(child);
+      child = bindFocusWrapper(child);
     }
 
-    return _buildTarget(context, child);
+    return buildTarget(context, child);
   }
 }

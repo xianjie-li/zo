@@ -177,18 +177,18 @@ class ZoStyle extends ThemeExtension<ZoStyle> {
       offset: const Offset(3, 3),
     );
 
-    this.focusColor =
-        focusColor ??
-        (darkMode ? Colors.white.withAlpha(25) : Colors.black.withAlpha(20));
     this.hoverColor =
         hoverColor ??
-        (darkMode ? Colors.white.withAlpha(20) : Colors.black.withAlpha(15));
-    this.highlightColor =
-        highlightColor ??
-        (darkMode ? Colors.white.withAlpha(30) : Colors.black.withAlpha(25));
+        (darkMode ? Colors.white.withAlpha(20) : Colors.black.withAlpha(14));
     this.disabledColor =
         disabledColor ??
-        (darkMode ? Colors.white.withAlpha(35) : Colors.black.withAlpha(30));
+        (darkMode ? Colors.white.withAlpha(22) : Colors.black.withAlpha(16));
+    this.focusColor =
+        focusColor ??
+        (darkMode ? Colors.white.withAlpha(24) : Colors.black.withAlpha(18));
+    this.highlightColor =
+        highlightColor ??
+        (darkMode ? Colors.white.withAlpha(26) : Colors.black.withAlpha(20));
   }
 
   /// 控制是否为暗黑模式

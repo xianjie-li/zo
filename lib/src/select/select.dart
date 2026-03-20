@@ -1,10 +1,7 @@
 /// 组合 [ZoMenu] 和 [ZoInput] 实现的下拉选择器
 library;
 
-import "dart:async";
-
 import "package:flutter/material.dart";
-import "package:flutter/services.dart";
 import "package:zo/zo.dart";
 
 /// 选项显示的菜单类型
@@ -13,29 +10,33 @@ enum ZoSelectMenuType {
   treeMenu,
 }
 
-/// 用于内容选择的表单控件，组合了 [ZoInput] 和 [ZoMenu] 来实现选取操作，它接收并渲染一组 [ZoOption],
-/// 提供了选择行为控制、样子定制、本地搜索、菜单类型控制等功能
+/// 组合 [ZoInput] 和菜单弹层的下拉选择器
 ///
-/// 自适应菜单：默认情况下，根据屏幕宽度，小屏下会使用 [ZoTreeMenu] 作为选项层，大屏使用 [ZoMenu] ,
-/// 可以通过 [selectMenuType] 自行控制
-class ZoSelect extends ZoFormWidget<Iterable<Object>> {
+/// 支持本地搜索、远程搜索接入、单选多选、标签展示和菜单类型切换
+///
+/// 可根据场景选择 [ZoMenu] 或 [ZoTreeMenu]
+class ZoSelect extends ZoMenusTrigger {
   const ZoSelect({
     super.key,
     super.value,
     super.onChanged,
-    required this.options,
-    this.selectionType = ZoSelectionType.single,
-    this.branchSelectable = false,
-    this.selectMenuType = ZoSelectMenuType.menu,
-    this.toolbar,
-    this.size,
-    this.maxSelectedShowNumber = 10,
-    this.enabled = true,
+    required super.options,
+    super.selectionType,
+    super.branchSelectable,
+    super.selectMenuType,
+    super.toolbar,
+    super.size,
+    super.menuWidth,
+    super.maxSelectedShowNumber,
+    super.enabled,
+    super.openOnFocus,
+    super.focusNode,
 
     this.localSearch = true,
     this.onInputChanged,
     this.showOpenIndicator = true,
     this.customTag,
+    this.forceTextDisplay = false,
     this.clear = true,
     this.hintText,
     this.leading,
@@ -43,7 +44,6 @@ class ZoSelect extends ZoFormWidget<Iterable<Object>> {
     this.constraints,
     this.autofocus = false,
     this.textController,
-    this.focusNode,
     this.readOnly = false,
     this.textStyle,
     this.textAlign = TextAlign.start,
@@ -51,52 +51,30 @@ class ZoSelect extends ZoFormWidget<Iterable<Object>> {
     this.textInputAction,
   }) : assert(selectionType != ZoSelectionType.none);
 
-  /// 选项列表
-  final List<ZoOption> options;
-
-  /// 控制选择类型, 默认为单选
-  final ZoSelectionType selectionType;
-
-  /// 选项显示的菜单类型
-  final ZoSelectMenuType selectMenuType;
-
-  /// 分支节点是否可选中
-  final bool branchSelectable;
-
-  /// 在下拉列表顶部渲染自定义内容，例如一个工具栏
-  final Widget? toolbar;
-
-  /// 组件尺寸
-  final ZoSize? size;
-
-  /// 要在处显示的已选中项最大数量
-  final int maxSelectedShowNumber;
-
-  /// 是否启用
-  final bool enabled;
-
-  /// 控制触发目标焦点
-  final FocusNode? focusNode;
-
   /// 启用本地搜索
   final bool localSearch;
 
-  /// 输入框的值变更时触发，设置后，输入组件可聚焦并进行输入，可借此实现服务端搜索
+  /// 输入框值变更回调
+  ///
+  /// 设置后输入组件可输入内容，可借此接入服务端搜索
   final ZoFormOnChanged<String>? onInputChanged;
 
   /// 在输入框右侧显示下拉展开指示器
   final bool showOpenIndicator;
 
-  /// 自定义已选标签配置。
+  /// 自定义已选标签配置
   ///
-  /// 回调返回一个 [ZoTag] 作为标签外观配置：
-  /// - 有效配置: `color`、`textStyle`、`backgroundAlpha`、`borderRadius`, 等其他配置不会生效
-  /// - 当 value 不存在对应选项时，`option` 可能为 `null`
+  /// 回调返回的 [ZoTag] 仅使用外观相关配置
+  ///
+  /// 当值不存在对应选项时，`option` 可能为 `null`
   final ZoTag Function(Object value, ZoOption? option)? customTag;
 
-  // # # # # # # # Input # # # # # # #
+  /// 是否强制使用文本显示选中项
+  ///
+  /// 默认情况下，多选使用标签，单选使用文本
+  final bool forceTextDisplay;
 
-  /// 在包含已选择内容时, 显示清除按钮
+  /// 在包含已选内容时显示清除按钮
   final bool clear;
 
   /// 提示文本
@@ -117,14 +95,19 @@ class ZoSelect extends ZoFormWidget<Iterable<Object>> {
   /// 输入框控制器
   final TextEditingController? textController;
 
+  /// 是否只读
   final bool readOnly;
 
+  /// 输入框文本样式
   final TextStyle? textStyle;
 
+  /// 输入框文本对齐方式
   final TextAlign textAlign;
 
+  /// 输入框文本方向
   final TextDirection? textDirection;
 
+  /// 输入框的键盘动作按钮类型
   final TextInputAction? textInputAction;
 
   @override
@@ -133,39 +116,9 @@ class ZoSelect extends ZoFormWidget<Iterable<Object>> {
   }
 }
 
-class ZoSelectState extends ZoFormState<Iterable<Object>, ZoSelect> {
-  /// 下拉列表的渲染层
-  late ZoMenuEntry menuEntry;
-
-  /// 选中项控制
-  ZoSelector<Object, ZoOption> get selector => menuEntry.selector;
-
-  /// 选项控制器
-  ZoOptionController get optionController => menuEntry.controller;
-
-  /// input 最后绘制的位置信息
-  Rect? _lastRect;
-
-  /// 输入框是否聚焦
-  bool _isFocus = false;
-
+class ZoSelectState extends ZoMenusTriggerState<ZoSelect> {
   /// 输入框的值
   String? _inputValue;
-
-  /// 控制数据框焦点
-  late FocusNode _focusNode;
-
-  /// 按下方向键下
-  final _downActivator = const SingleActivator(
-    LogicalKeyboardKey.arrowDown,
-    includeRepeats: false,
-  );
-
-  /// 关闭键
-  final _closeActivator = const SingleActivator(
-    LogicalKeyboardKey.escape,
-    includeRepeats: false,
-  );
 
   /// 箭头动画旋转区间
   final _arrowTween = Tween<double>(begin: 0, end: 0.5);
@@ -175,162 +128,37 @@ class ZoSelectState extends ZoFormState<Iterable<Object>, ZoSelect> {
     delay: Durations.medium1,
   );
 
-  /// 输入框位置更新节流防抖
-  final _rectUpdateThrottler = Throttler(
-    delay: Durations.short1,
-  );
-
   /// 识别关闭是否由 esc 触发的时间窗口
   static const _escapeCloseThreshold = Duration(milliseconds: 80);
 
   @override
   @protected
-  void initState() {
-    super.initState();
-
-    _init();
-
-    _focusNode = widget.focusNode ?? FocusNode();
-  }
-
-  @override
-  @protected
-  void didUpdateWidget(ZoSelect oldWidget) {
-    super.didUpdateWidget(oldWidget);
-
-    menuEntry.actions(() {
-      if (oldWidget.options != widget.options) {
-        menuEntry.options = widget.options;
-      }
-      if (oldWidget.selectionType != widget.selectionType) {
-        menuEntry.selectionType = widget.selectionType;
-      }
-      if (oldWidget.branchSelectable != widget.branchSelectable) {
-        menuEntry.branchSelectable = widget.branchSelectable;
-      }
-      if (oldWidget.size != widget.size) {
-        menuEntry.size = widget.size;
-      }
-      if (oldWidget.toolbar != widget.toolbar) {
-        menuEntry.toolbar = widget.toolbar;
-      }
-      if (oldWidget.focusNode != widget.focusNode) {
-        // 如果旧的focusNode是内部创建的，将其销毁
-        if (oldWidget.focusNode != _focusNode) {
-          _focusNode.dispose();
-        }
-        _focusNode = widget.focusNode ?? FocusNode();
-      }
-    }, false);
+  bool get canOpenMenu {
+    return super.canOpenMenu && !widget.readOnly;
   }
 
   @override
   @protected
   void dispose() {
-    super.dispose();
     _localSearchDebuncer.cancel();
-    selector.removeListener(_onSelectChanged);
-    menuEntry.openChangedEvent.off(_onOpenChanged);
-    menuEntry.disposeSelf();
-    // 如果旧的focusNode是内部创建的，将其销毁
-    if (widget.focusNode != _focusNode) {
-      _focusNode.dispose();
-    }
-  }
 
-  /// 初始化 entry 实例
-  void _init() {
-    if (widget.selectMenuType == ZoSelectMenuType.menu) {
-      menuEntry = _getMenu();
-    } else {
-      menuEntry = _getTreeMenu();
-    }
-
-    selector.addListener(_onSelectChanged);
-    menuEntry.openChangedEvent.on(_onOpenChanged);
-  }
-
-  ZoMenuEntry _getMenu() {
-    return ZoMenu(
-      options: widget.options,
-      selected: value,
-      selectionType: widget.selectionType,
-      branchSelectable: widget.branchSelectable,
-      size: widget.size,
-      toolbar: widget.toolbar,
-      dismissMode: ZoOverlayDismissMode.close,
-      direction: ZoPopperDirection.bottomLeft,
-      autoFocus: false, // 手动控制
-      inheritWidth: false,
-      // height/width/matchString/autoFocus
-    );
-  }
-
-  ZoMenuEntry _getTreeMenu() {
-    return ZoTreeMenu(
-      options: widget.options,
-      selected: value,
-      selectionType: widget.selectionType,
-      branchSelectable: widget.branchSelectable,
-      size: widget.size,
-      toolbar: widget.toolbar,
-      dismissMode: ZoOverlayDismissMode.close,
-      direction: ZoPopperDirection.bottomLeft,
-      autoFocus: false, // 手动控制
-      // height/width/matchString/autoFocus
-    );
-  }
-
-  /// 切换菜单层开启状态
-  void toggle() {
-    if (menuEntry.currentOpen) {
-      menuEntry.close();
-    } else {
-      menuEntry.open();
-      menuEntry.focus();
-    }
-  }
-
-  /// 聚焦处理
-  ///
-  /// 层的打开和关闭以及焦点处理
-  /// 1. 焦点：聚焦时打开层，失焦时，如果层不处于按下状态、也未获得焦点，将其关闭
-  /// 2. 为了防止菜单层关闭后焦点回到输入框导致重新打开，需要设置一个时间值，小于时间值时不打开层
-  /// 3. 输入框具有焦点时：按方向键下时，打开并移动焦点到菜单层，按escape键时，关闭层
-  /// 4. 点击Input，如果层未打开，则打开层，防止第2、3步主动关闭后用户重新打开的情况
-  void _onFocusChanged(bool focus) {
-    // 聚焦时显示下拉层, 失焦时，延迟一定时间，如果下一焦点不是当前层或未处于按下则关闭
-    if (focus) {
-      final lastCloseTime = menuEntry.lastCloseTime;
-
-      if (lastCloseTime != null) {
-        final diff = DateTime.now().difference(lastCloseTime);
-
-        if (diff > const Duration(milliseconds: 80)) {
-          menuEntry.open();
-        }
-      } else {
-        menuEntry.open();
-      }
-    } else if (!menuEntry.pressed && !menuEntry.focusScopeNode.hasFocus) {
-      menuEntry.close();
-    }
-
-    setState(() {
-      _isFocus = focus;
-    });
+    super.dispose();
   }
 
   void _onChanged(String? newValue) {
     setState(() {
       _inputValue = newValue;
     });
+
     widget.onInputChanged?.call(newValue);
 
     _changeLocalSearch();
   }
 
-  void _onOpenChanged(bool open) {
+  /// 覆盖父级层开关回调，补充输入焦点处理
+  @override
+  @protected
+  void onOpenChanged(bool open) {
     if (!open) {
       final now = DateTime.now();
 
@@ -341,11 +169,11 @@ class ZoSelectState extends ZoFormState<Iterable<Object>, ZoSelect> {
           now.difference(lastEscapeTime) <= _escapeCloseThreshold;
 
       // 如果最近一次关闭不是 escape 键触发的，则主动失焦输入框,
-      // 放置自动的焦点回退导致不太自然的输入框聚焦行为
+      // 防止自动的焦点回退导致不太自然的输入框聚焦行为
       if (!closeByEscape) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
-            _focusNode.unfocus();
+            focusNode.unfocus();
             return;
           }
         });
@@ -354,30 +182,9 @@ class ZoSelectState extends ZoFormState<Iterable<Object>, ZoSelect> {
     setState(() {});
   }
 
-  /// 更新selector的选中项到value并进行rerender
-  void _onSelectChanged() {
-    value = selector.getSelected().toSet();
-    setState(() {});
-  }
-
-  /// 接收 _onTap 事件时延迟开启触发，用于给其他时间阻塞的机会，因为 TapRegion 会优先触发
-  Timer? _tapRegionOpenTimer;
-
-  /// 清理 _onTap 的触发计时
-  void _stopTapRegionOpenTimer() {
-    _tapRegionOpenTimer?.cancel();
-    _tapRegionOpenTimer = null;
-  }
-
-  /// 输入框区域点击
-  void _onTap(PointerUpEvent event) {
-    if (!menuEntry.currentOpen) {
-      _stopTapRegionOpenTimer();
-      _tapRegionOpenTimer = Timer(Duration.zero, menuEntry.open);
-    }
-  }
-
-  /// 点击清理按钮
+  /// 处理清空操作
+  ///
+  /// 优先清空输入内容，否则清空选中值
   void _onClear() {
     if (_inputValue != null && _inputValue!.isNotEmpty) {
       setState(() {
@@ -391,90 +198,21 @@ class ZoSelectState extends ZoFormState<Iterable<Object>, ZoSelect> {
     selector.unselectAll();
   }
 
+  /// 同步本地搜索关键字
   void _changeLocalSearch() {
+    if (!canOpenMenu) return;
+
     if (widget.localSearch) {
       _localSearchDebuncer.run(() {
         menuEntry.matchString = _inputValue;
-        menuEntry.open();
+        openMenu();
       });
     } else if (menuEntry.matchString != null) {
       menuEntry.matchString = null;
     }
   }
 
-  /// 通过快捷键关闭
-  KeyEventResult _onShortcutsClose() {
-    menuEntry.close();
-    return KeyEventResult.handled;
-  }
-
-  /// 通过快捷键打开
-  KeyEventResult _onShortcutsOpen() {
-    if (menuEntry.currentOpen) {
-      menuEntry.focusChild();
-    } else {
-      menuEntry.open();
-    }
-
-    return KeyEventResult.handled;
-  }
-
-  /// 同步value变更到selector
-  @override
-  @protected
-  void onPropValueChanged() {
-    // 立即更新，但避免进行通知
-    selector.batch(() {
-      selector.setSelected(widget.value ?? {});
-    }, false);
-
-    // 但仍要通知层进行更新
-    WidgetsBinding.instance.addPostFrameCallback((d) {
-      menuEntry.changed();
-    });
-  }
-
-  @protected
-  void onPaint(RenderBox box) {
-    _lastRect = box.localToGlobal(Offset.zero) & box.size;
-
-    _rectUpdateThrottler.run(() {
-      _updateOverlayPosition(_lastRect!);
-    });
-  }
-
-  /// 输入框位置变更时，根据位置调整显示方向、最大高度等
-  void _updateOverlayPosition(Rect rect) {
-    menuEntry.actions(() {
-      menuEntry.rect = _lastRect;
-      menuEntry.width = rect.width;
-    }, menuEntry.currentOpen);
-  }
-
-  KeyEventResult _keyEvent(FocusNode node, KeyEvent event) {
-    if (ZoShortcutsHelper.checkEvent(_closeActivator, event)) {
-      return _onShortcutsClose();
-    } else if (ZoShortcutsHelper.checkEvent(_downActivator, event)) {
-      return _onShortcutsOpen();
-    }
-    return KeyEventResult.ignored;
-  }
-
-  /// 获取已选中项的选项列表，可传入长度限制获取数量, 列表项为一个二元组，当值没有对应的选项时选项会为null
-  List<(Object value, ZoOption? option)> _getShowOptionList(int length) {
-    final List<(Object value, ZoOption? option)> list = [];
-
-    final selected = selector.getSelected();
-
-    for (final val in selected) {
-      final node = menuEntry.controller.getNode(val);
-      list.add((val, node?.data));
-      if (list.length >= length) break;
-    }
-
-    return list;
-  }
-
+  /// 获取标签外观配置
   ZoTag _getTagConfig(Object value, ZoOption? option) {
     return widget.customTag?.call(value, option) ??
         ZoTag(
@@ -485,6 +223,7 @@ class ZoSelectState extends ZoFormState<Iterable<Object>, ZoSelect> {
         );
   }
 
+  /// 构建多选标签内容
   Widget _buildSelectTag({
     required Object value,
     required ZoOption? option,
@@ -528,42 +267,48 @@ class ZoSelectState extends ZoFormState<Iterable<Object>, ZoSelect> {
                 ),
               ),
             ),
-            SizedBox(width: closeSpace),
+            if (canOpenMenu) SizedBox(width: closeSpace),
           ],
         ),
       ),
     );
   }
 
+  /// 获取标签文本颜色
   Color? _getTagTextColor(ZoTag tag, ZoStyle style) {
     return tag.textStyle?.color ?? tag.color ?? style.textColor;
   }
 
-  /// 获取用于渲染的tag或文本
+  /// 获取用于渲染的标签或文本
   ///
-  /// tag的显示逻辑：
-  /// - 必要：包含选中项
-  /// - 输入框聚焦，无输入值，标签整体右移; 有值时，隐藏标签
-  /// - enableInput 为 false，固定显示
+  /// 多选默认显示标签
+  ///
+  /// 单选或强制文本模式显示逗号分隔文本
   Widget? _getShowTags() {
     final style = context.zoStyle;
 
-    final selected = _getShowOptionList(widget.maxSelectedShowNumber);
+    final length = selector.getSelected().length;
 
-    if (selected.isEmpty) return null;
+    if (length == 0) return null;
 
-    if (widget.selectionType != ZoSelectionType.multiple) {
-      final (value, option) = selected.first;
-      final text = option?.getTitleText() ?? value.toString();
-      return Text(text);
+    if (widget.selectionType != ZoSelectionType.multiple ||
+        widget.forceTextDisplay) {
+      final text = getSelectedText();
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        hitTestBehavior: HitTestBehavior.translucent,
+        child: IgnorePointer(
+          child: Text(text),
+        ),
+      );
     }
 
-    final length = selector.getSelected().length;
+    final selected = getSelectedOptionList(widget.maxSelectedShowNumber);
 
     final showMoreTips = length > widget.maxSelectedShowNumber;
 
     // 是否在左侧显示额外的间距，防止与光标重叠
-    final showLeftPadding = _isFocus && length > 0;
+    final showLeftPadding = canOpenMenu && isFocus && length > 0;
 
     final list = selected.map((opt) {
       final (value, option) = opt;
@@ -587,27 +332,28 @@ class ZoSelectState extends ZoFormState<Iterable<Object>, ZoSelect> {
               isSmall: isSmall,
             ),
           ),
-          Positioned(
-            right: 4,
-            child: Transform.scale(
-              scale: isSmall ? 0.6 : 0.8,
-              alignment: Alignment.centerRight,
-              child: ZoButton(
-                canRequestFocus: false,
-                icon: Icon(
-                  Icons.close,
-                  color: textColor,
+          if (canOpenMenu)
+            Positioned(
+              right: 4,
+              child: Transform.scale(
+                scale: isSmall ? 0.6 : 0.8,
+                alignment: Alignment.centerRight,
+                child: ZoButton(
+                  canRequestFocus: false,
+                  icon: Icon(
+                    Icons.close,
+                    color: textColor,
+                  ),
+                  size: ZoSize.small,
+                  plain: true,
+                  onTap: () {
+                    // 阻止点击导致层打开
+                    stopOpenTimer();
+                    selector.unselect(value);
+                  },
                 ),
-                size: ZoSize.small,
-                plain: true,
-                onTap: () {
-                  // 阻止点击导致层打开
-                  _stopTapRegionOpenTimer();
-                  selector.unselect(value);
-                },
               ),
             ),
-          ),
         ],
       );
     }).toList();
@@ -631,7 +377,7 @@ class ZoSelectState extends ZoFormState<Iterable<Object>, ZoSelect> {
     );
   }
 
-  /// 添加箭头动画
+  /// 构建展开指示器旋转动画
   Widget _buildArrowAnimation(ZoTransitionBuilderArgs<double> animate) {
     return RotationTransition(
       turns: animate.animation,
@@ -639,7 +385,7 @@ class ZoSelectState extends ZoFormState<Iterable<Object>, ZoSelect> {
     );
   }
 
-  /// 自定义尾随节点，添加展开指示器
+  /// 构建输入框尾随区域
   List<Widget>? _buildCustomTrailing() {
     if (!widget.showOpenIndicator && !widget.clear) return widget.trailing;
 
@@ -656,6 +402,7 @@ class ZoSelectState extends ZoFormState<Iterable<Object>, ZoSelect> {
         size: ZoSize.small,
         plain: true,
         onTap: toggle,
+        enabled: canOpenMenu,
         icon: const Icon(
           Icons.arrow_drop_down_rounded,
           size: 24,
@@ -663,13 +410,15 @@ class ZoSelectState extends ZoFormState<Iterable<Object>, ZoSelect> {
       ),
     );
 
-    final clearButton = ZoButton(
-      key: const ValueKey("_ZO_SELECT_CLEAR_BUTTON"),
-      icon: const Icon(Icons.clear),
-      plain: true,
-      size: ZoSize.small,
-      onTap: _onClear,
-    );
+    final Widget? clearButton = canOpenMenu
+        ? ZoButton(
+            key: const ValueKey("_ZO_SELECT_CLEAR_BUTTON"),
+            icon: const Icon(Icons.clear),
+            plain: true,
+            size: ZoSize.small,
+            onTap: _onClear,
+          )
+        : null;
 
     // 清空按钮显示逻辑：输入框有输入内容或包含两项以上的选中项
     var showClearButton = false;
@@ -681,20 +430,22 @@ class ZoSelectState extends ZoFormState<Iterable<Object>, ZoSelect> {
     }
 
     return [
-      if (showClearButton) clearButton,
+      if (showClearButton && clearButton != null) clearButton,
       if (widget.showOpenIndicator) openIndicator,
       ...?widget.trailing,
     ];
   }
 
+  /// 点击输入框区域时打开菜单
+  void _onTap(PointerUpEvent event) {
+    openMenu();
+  }
+
+  /// 构建输入框外层点击区域
   Widget _mainWrapper(BuildContext context, Widget mainWidget) {
     return TapRegion(
       onTapUpInside: _onTap,
-      child: Focus(
-        onKeyEvent: _keyEvent,
-        skipTraversal: true,
-        child: mainWidget,
-      ),
+      child: bindFocusWrapper(mainWidget),
     );
   }
 
@@ -711,35 +462,31 @@ class ZoSelectState extends ZoFormState<Iterable<Object>, ZoSelect> {
       tags = _getShowTags();
     }
 
-    return RenderTrigger(
-      onPaint: onPaint,
-      child: TapRegion(
-        groupId: menuEntry.groupId,
-        child: ZoInput<String>(
-          // 需要完全定制
-          clear: false,
-          // 覆盖padding
-          size: widget.size,
-          extra: tags,
-          mainWrapper: _mainWrapper,
-          // tags显示时，始终隐藏
-          hintText: tags == null ? widget.hintText : null,
-          leading: widget.leading,
-          trailing: _buildCustomTrailing(),
-          constraints: widget.constraints,
-          autofocus: widget.autofocus,
-          controller: widget.textController,
-          enabled: widget.enabled,
-          focusNode: _focusNode,
-          readOnly: widget.readOnly || !enableInput,
-          style: widget.textStyle,
-          textAlign: widget.textAlign,
-          textDirection: widget.textDirection,
-          textInputAction: widget.textInputAction,
-          onFocusChanged: _onFocusChanged,
-          value: _inputValue,
-          onChanged: _onChanged,
-        ),
+    return buildTarget(
+      context,
+      ZoInput<String>(
+        // 需要完全定制
+        clear: false,
+        // 覆盖padding
+        size: widget.size,
+        extra: tags,
+        mainWrapper: _mainWrapper,
+        // tags显示时，始终隐藏
+        hintText: tags == null ? widget.hintText : null,
+        leading: widget.leading,
+        trailing: _buildCustomTrailing(),
+        constraints: widget.constraints,
+        autofocus: widget.autofocus,
+        controller: widget.textController,
+        enabled: widget.enabled,
+        focusNode: focusNode,
+        readOnly: widget.readOnly || !enableInput,
+        style: widget.textStyle,
+        textAlign: widget.textAlign,
+        textDirection: widget.textDirection,
+        textInputAction: widget.textInputAction,
+        value: _inputValue,
+        onChanged: _onChanged,
       ),
     );
   }

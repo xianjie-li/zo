@@ -3,7 +3,9 @@ import "package:zo/zo.dart";
 
 /// 基于 [ZoMenusTrigger] 的下拉按钮组件
 ///
-/// 默认显示 [child], 选中后显示逗号分隔的选中文本
+/// 默认显示 [child]
+///
+/// 有选中值时显示逗号分隔的选中文本
 class ZoDropdown extends StatelessWidget {
   const ZoDropdown({
     super.key,
@@ -22,6 +24,7 @@ class ZoDropdown extends StatelessWidget {
     this.maxSelectedShowNumber = 10,
     this.showOpenIndicator = true,
     this.enabled = true,
+    this.openOnFocus = false,
     this.focusNode,
   }) : assert(
          buttonMaxWidth == null || buttonMaxWidth > 0,
@@ -29,6 +32,8 @@ class ZoDropdown extends StatelessWidget {
        );
 
   /// 当前选中值
+  ///
+  /// 不传时按空选中集处理
   final Iterable<Object>? value;
 
   /// 选中值变更回调
@@ -56,6 +61,8 @@ class ZoDropdown extends StatelessWidget {
   final ZoSize? size;
 
   /// 按钮最小宽度
+  ///
+  /// 不传时使用当前尺寸对应的默认高度作为最小宽度
   final double? buttonMinWidth;
 
   /// 按钮最大宽度
@@ -63,7 +70,9 @@ class ZoDropdown extends StatelessWidget {
 
   /// 菜单宽度
   ///
-  /// 不传时默认使用 [buttonMaxWidth]
+  /// 默认为 `200`
+  ///
+  /// 传入 `null` 时由 [ZoMenusTrigger] 跟随触发目标宽度
   final double? menuWidth;
 
   /// 文本拼接时显示的最大选中项数量
@@ -75,9 +84,15 @@ class ZoDropdown extends StatelessWidget {
   /// 是否启用
   final bool enabled;
 
+  /// 触发目标获取焦点时是否自动打开菜单
+  final bool openOnFocus;
+
   /// 外部传入的触发目标焦点
   final FocusNode? focusNode;
 
+  /// 默认按钮构造
+  ///
+  /// 保持按钮语义，同时复用 [ZoMenusTriggerState] 的选中态与开关能力
   Widget builder(ZoMenusTriggerBuilderArgs args) {
     final selectedText = args.state.getSelectedText();
     final hasSelected = selectedText.isNotEmpty;
@@ -124,8 +139,6 @@ class ZoDropdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final effectiveMenuWidth = menuWidth;
-
     return ZoMenusTrigger(
       value: value,
       onChanged: onChanged,
@@ -135,9 +148,10 @@ class ZoDropdown extends StatelessWidget {
       selectMenuType: selectMenuType,
       toolbar: toolbar,
       size: size,
-      menuWidth: effectiveMenuWidth,
+      menuWidth: menuWidth,
       maxSelectedShowNumber: maxSelectedShowNumber,
       enabled: enabled,
+      openOnFocus: openOnFocus,
       focusNode: focusNode,
       builder: builder,
     );
